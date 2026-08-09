@@ -29,8 +29,10 @@ const PORT = process.env.PORT || 3000;
 // Setup directories
 const uploadsDir = path.join(__dirname, 'public', 'uploads');
 const imagesDir = path.join(__dirname, 'public', 'images');
+const messagesDir = path.join(__dirname, 'public', 'images', 'messages');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 if (!fs.existsSync(imagesDir)) fs.mkdirSync(imagesDir, { recursive: true });
+if (!fs.existsSync(messagesDir)) fs.mkdirSync(messagesDir, { recursive: true });
 
 // Setup View Engine
 app.set('view engine', 'ejs');
@@ -73,6 +75,16 @@ const imageStorage = multer.diskStorage({
     }
 });
 const imageUpload = multer({ storage: imageStorage });
+
+const messageImageStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, messagesDir);
+    },
+    filename: function (req, file, cb) {
+        cb(null, 'msg-' + Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname));
+    }
+});
+const messageImageUpload = multer({ storage: messageImageStorage });
 
 // Database Initialization
 const db = new sqlite3.Database('./neobyte.db', (err) => {
@@ -131,13 +143,21 @@ function initializeSchema() {
 
         db.run(`CREATE TABLE IF NOT EXISTS messages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            conversation_id TEXT,
             sender_id INTEGER,
             receiver_id INTEGER,
             subject TEXT,
             body TEXT,
+            image_url TEXT,
+            is_system INTEGER DEFAULT 0,
             is_read INTEGER DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )`);
+        
+        // Safely add new columns if upgrading from older version
+        db.run("ALTER TABLE messages ADD COLUMN conversation_id TEXT", (err) => {});
+        db.run("ALTER TABLE messages ADD COLUMN image_url TEXT", (err) => {});
+        db.run("ALTER TABLE messages ADD COLUMN is_system INTEGER DEFAULT 0", (err) => {});
 
         db.run(`CREATE TABLE IF NOT EXISTS reviews (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -388,11 +408,20 @@ app.post('/checkout', requireAuth, upload.single('payment_proof'), (req, res) =>
     }
 
     db.serialize(() => {
-        const stmt = db.prepare("INSERT INTO orders (user_id, product_id, payment_method, payment_proof, delivery_note, download_key) VALUES (?, ?, ?, ?, ?, ?)");
         cartIds.forEach((productId) => {
-            stmt.run(userId, productId, payment_method, payment_proof, comment || '', crypto.randomBytes(8).toString('hex'));
+            const downloadKey = crypto.randomBytes(8).toString('hex');
+            db.run("INSERT INTO orders (user_id, product_id, payment_method, payment_proof, delivery_note, download_key) VALUES (?, ?, ?, ?, ?, ?)", [userId, productId, payment_method, payment_proof, comment || '', downloadKey]);
+            
+            // Send system message for the order
+            db.get("SELECT vendor_id, name FROM products WHERE id = ?", [productId], (err, product) => {
+                if (product) {
+                    const vendorId = product.vendor_id;
+                    const convId = userId < vendorId ? `${userId}_${vendorId}` : `${vendorId}_${userId}`;
+                    const body = `System Message: New order placed for "${product.name}". Awaiting vendor confirmation.`;
+                    db.run("INSERT INTO messages (conversation_id, sender_id, receiver_id, body, is_system) VALUES (?, ?, ?, ?, 1)", [convId, vendorId, userId, body]);
+                }
+            });
         });
-        stmt.finalize();
         req.session.cart = [];
         res.redirect('/dashboard');
     });
@@ -478,6 +507,11 @@ app.post('/order/complete/:id', requireAuth, (req, res) => {
                     "INSERT INTO reviews (vendor_id, buyer_id, product_id, rating, comment) VALUES (?, ?, ?, ?, ?)",
                     [order.vendor_id, userId, order.product_id, rating, comment],
                     (err) => {
+                        // Send system message
+                        const convId = userId < order.vendor_id ? `${userId}_${order.vendor_id}` : `${order.vendor_id}_${userId}`;
+                        const body = `System Message: The order for this product was marked as completed and a review was left.`;
+                        db.run("INSERT INTO messages (conversation_id, sender_id, receiver_id, body, is_system) VALUES (?, ?, ?, ?, 1)", [convId, userId, order.vendor_id, body]);
+                        
                         res.redirect('/dashboard');
                     }
                 );
@@ -498,14 +532,57 @@ app.get('/seller-dashboard', requireAuth, (req, res) => {
 
 // Messaging & Support Routes
 app.get('/messages', requireAuth, (req, res) => {
+    const userId = req.session.user.id;
     db.all(`
-        SELECT messages.*, users.username as sender_name 
-        FROM messages 
-        JOIN users ON messages.sender_id = users.id 
-        WHERE receiver_id = ? OR sender_id = ?
-        ORDER BY created_at DESC
-    `, [req.session.user.id, req.session.user.id], (err, messages) => {
-        res.render('messages', { messages: messages || [] });
+        SELECT DISTINCT u.id, u.username, u.vendor_logo, u.is_vendor
+        FROM users u
+        JOIN messages m ON (m.sender_id = u.id OR m.receiver_id = u.id)
+        WHERE (m.sender_id = ? OR m.receiver_id = ?) AND u.id != ?
+    `, [userId, userId, userId], (err, conversations) => {
+        db.get("SELECT id, username FROM users WHERE role = 'admin' LIMIT 1", (err, admin) => {
+            const partnerId = req.query.chat || (conversations.length > 0 ? conversations[0].id : (admin ? admin.id : null));
+            res.render('messages', { conversations: conversations || [], activePartnerId: partnerId, admin });
+        });
+    });
+});
+
+app.get('/api/messages/:partnerId', requireAuth, (req, res) => {
+    const userId = req.session.user.id;
+    const partnerId = req.params.partnerId;
+    db.all(`
+        SELECT * FROM messages 
+        WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)
+        ORDER BY created_at ASC
+    `, [userId, partnerId, partnerId, userId], (err, messages) => {
+        if (err) return res.status(500).json({error: err.message});
+        res.json(messages || []);
+    });
+});
+
+app.post('/api/messages/send', requireAuth, messageImageUpload.single('image'), (req, res) => {
+    const senderId = req.session.user.id;
+    const receiverId = req.body.receiver_id;
+    const body = req.body.body || '';
+    
+    let imageUrl = null;
+    if (req.file) {
+        imageUrl = '/images/messages/' + req.file.filename;
+    }
+    
+    if (!receiverId || (!body && !imageUrl)) {
+        return res.status(400).json({ error: 'Missing required fields' });
+    }
+    
+    const convId = senderId < receiverId ? `${senderId}_${receiverId}` : `${receiverId}_${senderId}`;
+
+    db.run(`
+        INSERT INTO messages (conversation_id, sender_id, receiver_id, body, image_url) 
+        VALUES (?, ?, ?, ?, ?)
+    `, [convId, senderId, receiverId, body, imageUrl], function(err) {
+        if (err) return res.status(500).json({error: err.message});
+        db.get("SELECT * FROM messages WHERE id = ?", [this.lastID], (err, msg) => {
+            res.json(msg);
+        });
     });
 });
 
@@ -585,6 +662,25 @@ app.get('/admin', requireAdmin, (req, res) => {
     });
 });
 
+app.post('/admin/broadcast', requireAdmin, (req, res) => {
+    const { body } = req.body;
+    const adminId = req.session.user.id;
+    
+    db.all("SELECT id FROM users WHERE id != ?", [adminId], (err, users) => {
+        if (!users) return res.redirect('/admin');
+        
+        db.serialize(() => {
+            const stmt = db.prepare("INSERT INTO messages (conversation_id, sender_id, receiver_id, body, is_system) VALUES (?, ?, ?, ?, 1)");
+            users.forEach(user => {
+                const convId = adminId < user.id ? `${adminId}_${user.id}` : `${user.id}_${adminId}`;
+                stmt.run(convId, adminId, user.id, `Admin Broadcast: ${body}`);
+            });
+            stmt.finalize();
+            res.redirect('/admin');
+        });
+    });
+});
+
 app.post('/admin/vendors/create', requireAdmin, (req, res) => {
     const { username, password, vendor_name, vendor_description } = req.body;
     const email = `${username}@vendor.local`;
@@ -616,13 +712,21 @@ app.post('/admin/vendors/impersonate/:id', requireAdmin, (req, res) => {
 app.post('/admin/verify/:id', requireAdmin, (req, res) => {
     const { card_number, cvv, expiry, delivery_note } = req.body;
     const orderId = req.params.id;
-    db.run(
-        "UPDATE orders SET status = 'active', card_number = ?, cvv = ?, expiry = ?, delivery_note = ? WHERE id = ?",
-        [card_number, cvv, expiry, delivery_note, orderId],
-        (err) => {
-            res.redirect('/admin');
-        }
-    );
+    
+    db.get("SELECT orders.user_id, products.vendor_id, products.name FROM orders JOIN products ON orders.product_id = products.id WHERE orders.id = ?", [orderId], (err, order) => {
+        db.run(
+            "UPDATE orders SET status = 'active', card_number = ?, cvv = ?, expiry = ?, delivery_note = ? WHERE id = ?",
+            [card_number, cvv, expiry, delivery_note, orderId],
+            (err) => {
+                if (order) {
+                    const convId = order.user_id < order.vendor_id ? `${order.user_id}_${order.vendor_id}` : `${order.vendor_id}_${order.user_id}`;
+                    const body = `System Message: Your order for "${order.name}" has been verified and the details have been delivered! Please check your dashboard.`;
+                    db.run("INSERT INTO messages (conversation_id, sender_id, receiver_id, body, is_system) VALUES (?, ?, ?, ?, 1)", [convId, order.vendor_id, order.user_id, body]);
+                }
+                res.redirect('/admin');
+            }
+        );
+    });
 });
 
 app.post('/admin/delete/:id', requireAdmin, (req, res) => {
@@ -679,6 +783,24 @@ app.use((req, res) => {
 });
 
 function startServer() {
+    // Cleanup self-destructing message images (older than 14 days)
+    setInterval(() => {
+        const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+        db.all("SELECT id, image_url FROM messages WHERE image_url IS NOT NULL AND created_at < ?", [fourteenDaysAgo], (err, messages) => {
+            if (!messages) return;
+            messages.forEach(msg => {
+                if (msg.image_url) {
+                    const filePath = path.join(__dirname, 'public', msg.image_url);
+                    fs.unlink(filePath, (err) => {
+                        if (!err || err.code === 'ENOENT') {
+                            db.run("UPDATE messages SET image_url = NULL WHERE id = ?", [msg.id]);
+                        }
+                    });
+                }
+            });
+        });
+    }, 24 * 60 * 60 * 1000); // Run once a day
+
     return app.listen(PORT, () => {
         console.log(`Server running on http://localhost:${PORT}`);
     });

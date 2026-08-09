@@ -1,37 +1,145 @@
 <%- include('header') %>
 
-<div class="container" style="max-width: 900px; margin-top: 30px; margin-bottom: 50px;">
-    <h2 style="text-align: center; color: #333; margin-bottom: 30px;">Market customer support</h2>
-
-    <div style="background: #fff; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden;">
-        <div style="background: var(--bg-header); color: #fff; padding: 10px 20px; font-weight: bold; font-size: 14px;">
-            Tickets
-        </div>
+<div class="container" style="max-width: 1200px; margin-top: 30px; margin-bottom: 50px;">
+    <div style="display: flex; height: 600px; background: #fff; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); overflow: hidden;">
         
-        <div style="padding: 20px;">
-            <% if (messages.length === 0) { %>
-                <div style="text-align: center; padding: 40px 0; color: #888; border-bottom: 1px solid #eee; margin-bottom: 20px;">
-                    No Records Found
+        <!-- Sidebar (Conversations) -->
+        <div style="width: 300px; border-right: 1px solid var(--border-color); background: #f8fafc; display: flex; flex-direction: column;">
+            <div style="padding: 15px; background: var(--bg-header); color: white; font-weight: bold; text-align: center;">
+                Conversations
+            </div>
+            <div style="flex-grow: 1; overflow-y: auto;">
+                <% if (conversations && conversations.length > 0) { %>
+                    <% conversations.forEach(conv => { %>
+                        <a href="/messages?chat=<%= conv.id %>" style="display: flex; align-items: center; padding: 15px; border-bottom: 1px solid #eee; text-decoration: none; color: inherit; background: <%= activePartnerId == conv.id ? '#e2e8f0' : 'transparent' %>;">
+                            <div style="width: 40px; height: 40px; border-radius: 50%; background: <%= conv.is_vendor ? 'var(--primary-purple)' : '#94a3b8' %>; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 10px;">
+                                <%= conv.username.charAt(0).toUpperCase() %>
+                            </div>
+                            <div>
+                                <div style="font-weight: bold; color: #333;"><%= conv.username %></div>
+                                <div style="font-size: 12px; color: #666;"><%= conv.is_vendor ? 'Vendor' : 'Customer' %></div>
+                            </div>
+                        </a>
+                    <% }) %>
+                <% } else { %>
+                    <div style="padding: 20px; text-align: center; color: #888;">No conversations yet.</div>
+                <% } %>
+            </div>
+            
+            <% if (admin && admin.id != session.user.id) { %>
+            <div style="padding: 10px; border-top: 1px solid #ccc; text-align: center;">
+                <a href="/messages?chat=<%= admin.id %>" class="btn btn-block" style="background: #ef4444; color: white; padding: 10px; border-radius: 4px; text-decoration: none; display: block;">Support (Admin)</a>
+            </div>
+            <% } %>
+        </div>
+
+        <!-- Main Chat Area -->
+        <div style="flex-grow: 1; display: flex; flex-direction: column; background: #fff;">
+            <% if (activePartnerId) { %>
+                <div style="padding: 15px; background: #f1f5f9; border-bottom: 1px solid var(--border-color); font-weight: bold; color: #333; display: flex; justify-content: space-between; align-items: center;">
+                    <span>Chatting</span>
+                </div>
+                
+                <div id="chatMessages" style="flex-grow: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; background: #fafafa;">
+                    <!-- Messages will be loaded here via JS -->
+                </div>
+                
+                <div style="padding: 15px; border-top: 1px solid var(--border-color); background: #f8fafc;">
+                    <form id="chatForm" style="display: flex; gap: 10px;" enctype="multipart/form-data">
+                        <input type="hidden" name="receiver_id" value="<%= activePartnerId %>">
+                        <label for="imageUpload" style="cursor: pointer; background: #e2e8f0; padding: 10px 15px; border-radius: 4px; color: #333; font-weight: bold;">
+                            📷
+                            <input type="file" id="imageUpload" name="image" accept="image/*" style="display: none;">
+                        </label>
+                        <input type="text" name="body" id="messageInput" placeholder="Type a message..." style="flex-grow: 1; padding: 10px 15px; border: 1px solid #cbd5e1; border-radius: 4px;" autocomplete="off">
+                        <button type="submit" style="background: var(--primary-green); color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold;">Send</button>
+                    </form>
+                    <div id="uploadPreview" style="display: none; margin-top: 10px; font-size: 12px; color: #16a34a;">Image selected for upload.</div>
                 </div>
             <% } else { %>
-                <div style="display: flex; flex-direction: column; gap: 15px; border-bottom: 1px solid #eee; padding-bottom: 20px; margin-bottom: 20px;">
-                    <% messages.forEach(msg => { %>
-                        <div class="form-panel" style="border-left: 4px solid <%= msg.sender_name === 'admin' ? 'var(--primary-purple)' : '#e2e8f0' %>; margin: 0;">
-                            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
-                                <strong style="font-size: 16px; color: #333;"><%= msg.subject %></strong>
-                                <span style="font-size: 12px; color: var(--text-muted);">From: <%= msg.sender_name %> | <%= new Date(msg.created_at).toLocaleString() %></span>
-                            </div>
-                            <div style="font-family: monospace; white-space: pre-wrap; font-size: 13px; background: #f8fafc; padding: 15px; border-radius: 4px; color: #444;"><%= msg.body %></div>
-                        </div>
-                    <% }) %>
+                <div style="flex-grow: 1; display: flex; align-items: center; justify-content: center; color: #888; flex-direction: column;">
+                    <div style="font-size: 48px; margin-bottom: 15px;">💬</div>
+                    <h3>Select a conversation to start chatting</h3>
                 </div>
             <% } %>
-
-            <div style="text-align: center; padding-bottom: 20px;">
-                <a href="/support" class="btn" style="background: #007bff; color: white; padding: 12px 30px; border-radius: 4px; font-weight: bold; text-decoration: none; display: inline-block;">Create Ticket</a>
-            </div>
         </div>
     </div>
 </div>
+
+<script>
+    const currentUserId = <%= session.user.id %>;
+    const activePartnerId = <%= activePartnerId || 'null' %>;
+    
+    if (activePartnerId) {
+        const chatMessages = document.getElementById('chatMessages');
+        
+        function fetchMessages() {
+            fetch(`/api/messages/${activePartnerId}`)
+                .then(res => res.json())
+                .then(messages => {
+                    chatMessages.innerHTML = '';
+                    messages.forEach(msg => {
+                        const isMe = msg.sender_id === currentUserId;
+                        const msgDiv = document.createElement('div');
+                        
+                        if (msg.is_system) {
+                            msgDiv.style = `margin: 10px auto; padding: 10px 15px; background: #fff3cd; color: #856404; border-radius: 8px; font-size: 13px; text-align: center; border: 1px solid #ffeeba; max-width: 80%;`;
+                            msgDiv.innerHTML = `<strong>System:</strong> ${msg.body}`;
+                        } else {
+                            msgDiv.style = `max-width: 70%; padding: 12px 16px; border-radius: 8px; font-size: 14px; line-height: 1.4; ${isMe ? 'background: #007bff; color: white; align-self: flex-end; border-bottom-right-radius: 2px;' : 'background: #e2e8f0; color: #333; align-self: flex-start; border-bottom-left-radius: 2px;'}`;
+                            
+                            let content = '';
+                            if (msg.image_url) {
+                                content += `<img src="${msg.image_url}" style="max-width: 100%; border-radius: 4px; margin-bottom: 8px;"><br>`;
+                            }
+                            if (msg.body) {
+                                content += msg.body.replace(/\n/g, '<br>');
+                            }
+                            
+                            const time = new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                            content += `<div style="font-size: 11px; margin-top: 5px; opacity: 0.7; text-align: right;">${time}</div>`;
+                            
+                            msgDiv.innerHTML = content;
+                        }
+                        
+                        chatMessages.appendChild(msgDiv);
+                    });
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                });
+        }
+        
+        fetchMessages();
+        setInterval(fetchMessages, 5000); // Poll every 5s
+        
+        // Handle image selection preview
+        document.getElementById('imageUpload').addEventListener('change', function(e) {
+            if (this.files && this.files[0]) {
+                document.getElementById('uploadPreview').style.display = 'block';
+                document.getElementById('uploadPreview').innerText = `Selected: ${this.files[0].name}`;
+            }
+        });
+
+        document.getElementById('chatForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            const msgInput = document.getElementById('messageInput');
+            const fileInput = document.getElementById('imageUpload');
+            
+            if (!msgInput.value.trim() && !fileInput.files.length) return;
+            
+            fetch('/api/messages/send', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                msgInput.value = '';
+                fileInput.value = '';
+                document.getElementById('uploadPreview').style.display = 'none';
+                fetchMessages();
+            });
+        });
+    }
+</script>
 
 <%- include('footer') %>
