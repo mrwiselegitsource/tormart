@@ -135,34 +135,36 @@
                     <p style="color: #666; font-size: 13px; margin: 0 0 20px 0; height: 38px; overflow: hidden; line-height: 1.4;"><%= vendor.vendor_description %></p>
                     
                     <!-- Stats Table -->
-                    <div style="text-align: left; font-size: 12px; margin-bottom: 25px; flex: 1;">
-                        <div class="stat-row">
-                            <span style="color: #64748b;">Category</span>
-                            <span style="color: #3b82f6; font-weight: bold;"><%= vendor.category || 'General' %></span>
+                    <div style="text-align: left; font-size: 14px; margin-bottom: 25px; flex: 1;">
+                        <div style="display: flex; justify-content: space-between; padding: 10px 12px; background: white;">
+                            <span style="color: #999;">Category</span>
+                            <span style="color: #007bff;"><%= vendor.category || 'General' %></span>
                         </div>
-                        <div class="stat-row">
-                            <span style="color: #64748b;">Status</span>
-                            <span style="color: #10b981; font-weight: bold;">Online</span>
+                        <div style="display: flex; justify-content: space-between; padding: 10px 12px; background: #f4f4f4;">
+                            <span style="color: #999;">Status</span>
+                            <span style="color: #28a745;">Online</span>
                         </div>
-                        <div class="stat-row">
-                            <span style="color: #64748b;">Member since</span>
-                            <span style="font-weight: 600; color: #333;">Aug 2023</span>
+                        <div style="display: flex; justify-content: space-between; padding: 10px 12px; background: white;">
+                            <span style="color: #999;">Member Since:</span>
+                            <span style="color: #333;">Sep 2021</span>
                         </div>
-                        <div class="stat-row">
-                            <span style="color: #64748b;">Orders</span>
-                            <span style="font-weight: 600; color: #333;"><%= Math.floor(Math.random() * 5000) + 100 %></span>
+                        <div style="display: flex; justify-content: space-between; padding: 10px 12px; background: #f4f4f4;">
+                            <span style="color: #999;">Orders</span>
+                            <span style="color: #333;"><%= Math.floor(Math.random() * 5000) + 100 %></span>
                         </div>
-                        <div class="stat-row">
-                            <span style="color: #64748b;">Customer protection</span>
-                            <span style="color: #10b981; font-weight: bold;">Yes</span>
+                        <div style="display: flex; justify-content: space-between; padding: 10px 12px; background: white;">
+                            <span style="color: #999;">Customer protection:</span>
+                            <span style="color: #28a745;">Yes</span>
                         </div>
-                        <div class="stat-row" style="border-bottom: none;">
-                            <span style="color: #64748b;">Rating</span>
-                            <span style="color: #f59e0b; font-size: 14px;">★★★★★</span>
+                        <div style="display: flex; justify-content: space-between; padding: 10px 12px; background: #f4f4f4; align-items: center;">
+                            <span style="color: #999;">Rating</span>
+                            <span style="color: #ff9900; font-size: 20px; letter-spacing: 2px;">★★★★★</span>
                         </div>
                     </div>
                     
-                    <a href="/vendor/<%= vendor.id %>" class="btn" style="background: var(--primary-purple); color: white; display: block; text-decoration: none; padding: 12px; border-radius: 4px; font-weight: bold; font-size: 14px; text-transform: uppercase;">View Vendor</a>
+                    <div style="text-align: center;">
+                        <a href="/vendor/<%= vendor.id %>" class="btn" style="background: #6f42c1; color: white; display: inline-block; text-decoration: none; padding: 10px 30px; border-radius: 4px; font-weight: normal; font-size: 15px;">View Vendor</a>
+                    </div>
                 </div>
             </div>
         <% }) %>
