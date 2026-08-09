@@ -1,0 +1,14 @@
+<% if (siteSettings.bg_animation_enabled === '1') { %>
+<div id="bg-animation" class="bg-animation-layer" aria-hidden="true"></div>
+<script src="/js/bg-animation.js"></script>
+<% if (siteSettings.bg_animation_config) { %>
+<script>
+(function() {
+    try {
+        var cfg = <%= siteSettings.bg_animation_config %>;
+        if (window.TorMartBg && cfg) window.TorMartBg.applyConfig(cfg);
+    } catch (e) {}
+})();
+</script>
+<% } %>
+<% } %>

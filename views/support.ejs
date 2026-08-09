@@ -1,0 +1,40 @@
+<%- include('header') %>
+
+<div class="container" style="max-width: 800px; margin-top: 20px;">
+    <div style="background: var(--bg-header); color: #fff; padding: 15px 20px; font-weight: bold; border-radius: 4px 4px 0 0; font-size: 14px;">
+        Open Ticket
+    </div>
+    
+    <div class="form-panel" style="border-radius: 0 0 4px 4px; padding: 30px;">
+        <form action="/support/send" method="POST">
+            <div class="form-group" style="margin-bottom: 25px;">
+                <label style="font-weight: bold; color: #333; font-size: 13px; text-transform: uppercase;">SUBJECT</label>
+                <input type="text" name="subject" class="form-control" placeholder="subject" required style="border: 1px solid #ccc; border-radius: 2px; padding: 10px;">
+            </div>
+            
+            <div style="border: 1px solid #e2e8f0; border-radius: 2px; padding: 20px; margin-bottom: 25px; background: #fafafa;">
+                <label style="display: block; margin-bottom: 10px; cursor: pointer; color: #555; font-size: 14px;">
+                    <input type="radio" name="department" value="Support Department" checked style="margin-right: 10px;"> Support Department
+                </label>
+                <label style="display: block; margin-bottom: 10px; cursor: pointer; color: #555; font-size: 14px;">
+                    <input type="radio" name="department" value="Partnership Department" style="margin-right: 10px;"> Partnership Department
+                </label>
+                <label style="display: block; margin-bottom: 10px; cursor: pointer; color: #555; font-size: 14px;">
+                    <input type="radio" name="department" value="Advertising Department" style="margin-right: 10px;"> Advertising Department
+                </label>
+                <label style="display: block; cursor: pointer; color: #555; font-size: 14px;">
+                    <input type="radio" name="department" value="Escrow Department" style="margin-right: 10px;"> Escrow Department
+                </label>
+            </div>
+            
+            <div class="form-group">
+                <label style="font-weight: bold; color: #333; font-size: 13px; text-transform: uppercase;">DESCRIBE PROBLEM OR QUESTION</label>
+                <textarea name="body" class="form-control" rows="8" placeholder="Message" required style="border: 1px solid #ccc; border-radius: 2px; padding: 10px; resize: vertical;"></textarea>
+            </div>
+            
+            <button type="submit" class="btn" style="background: #007bff; color: white; padding: 12px 30px; border-radius: 4px; font-weight: bold; border: none; cursor: pointer; width: 150px;">Send</button>
+        </form>
+    </div>
+</div>
+
+<%- include('footer') %>

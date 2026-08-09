@@ -1,0 +1,50 @@
+<%- include('header') %>
+
+<div class="container">
+    <h2 style="text-align: center; margin: 30px 0 20px 0; font-size: 20px;">All Virtual Cards</h2>
+
+    <div class="product-grid">
+        <% products.forEach(product => { %>
+            <div class="product-card">
+                <img src="<%= product.image %>" class="product-image" alt="<%= product.name %>">
+                <div class="product-details">
+                    <div class="product-title"><%= product.name %></div>
+                    <div class="product-desc"><%= product.description %></div>
+                    
+                    <div class="stat-row">
+                        <span>Category</span>
+                        <span style="color: #3b82f6; font-weight: bold;">Carding</span>
+                    </div>
+                    <div class="stat-row">
+                        <span>Status</span>
+                        <span class="text-green stat-value">Online</span>
+                    </div>
+                    <div class="stat-row">
+                        <span>Member Since:</span>
+                        <span class="stat-value">Apr 2021</span>
+                    </div>
+                    <div class="stat-row">
+                        <span>Orders</span>
+                        <span class="stat-value">15933</span>
+                    </div>
+                    <div class="stat-row">
+                        <span>Customer protection:</span>
+                        <span class="text-green stat-value">Yes</span>
+                    </div>
+                    <div class="stat-row" style="border-bottom: none;">
+                        <span>Rating</span>
+                        <span class="stars">★★★★★</span>
+                    </div>
+
+                    <div style="text-align: center; margin-top: 10px; font-weight: bold; font-size: 16px;">
+                        $<%= product.price.toFixed(2) %>
+                    </div>
+                    
+                    <a href="/product/<%= product.id %>" class="btn btn-purple btn-block" style="margin-top: 15px;">View Vendor</a>
+                </div>
+            </div>
+        <% }) %>
+    </div>
+</div>
+
+<%- include('footer') %>

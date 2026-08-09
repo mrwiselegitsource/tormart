@@ -1,0 +1,18 @@
+<div class="feature-badges-bar">
+    <% for (let i = 1; i <= 4; i++) {
+        const title = siteSettings['feature_' + i + '_title'];
+        const desc = siteSettings['feature_' + i + '_desc'];
+        const icon = siteSettings['feature_' + i + '_icon'];
+        if (!title) continue;
+    %>
+    <div class="feature-badge">
+        <div class="feature-badge-icon">
+            <img src="<%= icon || '/images/feature-default.svg' %>" alt="<%= title %>" onerror="this.src='/images/feature-default.svg'">
+        </div>
+        <div>
+            <strong><%= title %></strong>
+            <span><%= desc %></span>
+        </div>
+    </div>
+    <% } %>
+</div>

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TorMart Marketplace</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+    <header class="top-header">
+        <div class="brand">
+            <a href="/"><img src="/images/logo.png" alt="TorMart" style="max-height: 40px; display: block;" onerror="this.outerHTML='TorMart<span>★</span>'"></a>
+        </div>
+        <nav class="top-nav">
+            <% if (user) { %>
+                <a href="/dashboard">Login / Register</a>
+                <a href="#">Free Money</a>
+                <a href="#" style="color: var(--primary-yellow);">Proofs / Reviews</a>
+                <a href="#">Forum</a>
+                <a href="#">Wiki</a>
+                <a href="#">Escrow</a>
+                <a href="/support">Support</a>
+                <a href="/messages">Messages</a>
+                <% if (user.role === 'admin') { %>
+                    <a href="/admin" style="color: #ff9800;">Admin</a>
+                <% } %>
+                <% if (user.is_vendor === 1) { %>
+                    <a href="/vendor" style="color: #28a745;">Vendor Area</a>
+                <% } %>
+                <a href="/logout">Logout</a>
+            <% } else { %>
+                <a href="/login">Login / Register</a>
+                <a href="#">Free Money</a>
+                <a href="#" style="color: var(--primary-yellow);">Proofs / Reviews</a>
+                <a href="#">Forum</a>
+                <a href="#">Wiki</a>
+                <a href="#">Escrow</a>
+                <a href="#">Support</a>
+                <a href="#">Messages</a>
+            <% } %>
+        </nav>
+        <div>
+            <a href="/cart" class="cart-icon" style="color: white; text-decoration: none;">
+                🛒
+                <% if (cartCount > 0) { %>
+                    <span class="cart-badge"><%= cartCount %></span>
+                <% } %>
+            </a>
+        </div>
+    </header>
+
+    <div class="sub-nav">
+        <a href="/category/Carding">Carding</a>
+        <a href="/category/Money Transfers">Money Transfers</a>
+        <a href="/category/Gift Cards">Gift Cards</a>
+        <a href="/category/Cryptocurrency">Cryptocurrency</a>
+        <a href="/category/Fake money">Fake money</a>
+        <a href="/category/Hacking">Hacking</a>
+        <a href="/category/Documents">Documents</a>
+        <a href="/category/Electronics">Electronics</a>
+        <a href="/category/Porn">Porn</a>
+        <a href="/category/Casino Betting">Casino/Betting</a>
+    </div>

@@ -1,0 +1,82 @@
+<%- include('header') %>
+
+<div class="container" style="max-width: 900px;">
+    <div style="background: var(--bg-header); color: #fff; padding: 15px 20px; font-weight: bold; border-radius: 4px 4px 0 0;">
+        Checkout
+    </div>
+    
+    <div style="background: #fff; padding: 30px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-radius: 0 0 4px 4px;">
+        
+        <!-- Cart Summary Box -->
+        <div style="display: flex; gap: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 20px; margin-bottom: 30px;">
+            <img src="<%= cartItems[0].image %>" style="width: 80px; height: 60px; object-fit: cover; border-radius: 4px;">
+            <div>
+                <div style="font-weight: bold; font-size: 16px; color: #3b82f6;"><%= cartItems.map(i=>i.name).join(', ') %></div>
+                <div style="font-size: 12px; color: var(--text-muted); margin-top: 5px;">by ASIA</div>
+            </div>
+        </div>
+
+        <form action="/checkout" method="POST" enctype="multipart/form-data">
+            
+            <div class="form-group">
+                <input type="email" name="email" class="form-control" placeholder="Email" required>
+            </div>
+            <div class="form-group">
+                <input type="text" name="name" class="form-control" placeholder="Name" required>
+            </div>
+            <div class="form-group">
+                <input type="text" name="country" class="form-control" placeholder="Country" required>
+            </div>
+            <div class="form-group">
+                <input type="text" name="city" class="form-control" placeholder="City" required>
+            </div>
+            <div class="form-group">
+                <input type="text" name="street" class="form-control" placeholder="Street Address" required>
+            </div>
+            <div class="form-group">
+                <input type="text" name="zip" class="form-control" placeholder="ZIP" required>
+            </div>
+            <div class="form-group">
+                <textarea name="comment" class="form-control" rows="4" placeholder="Comment"></textarea>
+            </div>
+
+            <div style="font-weight: bold; margin: 20px 0;">Price: $<%= total.toFixed(2) %></div>
+
+            <!-- Cashback Banner -->
+            <div style="background: linear-gradient(135deg, #ec4899, #8b5cf6); border-radius: 8px; padding: 20px; color: white; margin-bottom: 30px;">
+                <div style="font-size: 12px; margin-bottom: 5px;">Available Time <span style="background: #fff; color: #111; padding: 2px 4px; border-radius: 2px;">2</span> <span style="background: #fff; color: #111; padding: 2px 4px; border-radius: 2px;">3</span> : <span style="background: #fff; color: #111; padding: 2px 4px; border-radius: 2px;">5</span> <span style="background: #fff; color: #111; padding: 2px 4px; border-radius: 2px;">9</span></div>
+                <div style="font-size: 16px; font-weight: bold;">$10</div>
+                <div style="font-size: 12px;">Spend $10 (You can pay 30% with bonuses)</div>
+            </div>
+
+            <div style="font-weight: bold; font-size: 16px; margin-bottom: 5px;">Total Price: &nbsp; $<%= total.toFixed(2) %></div>
+            <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px;">Payment method:</div>
+
+            <!-- Payment Methods -->
+            <label class="payment-method">
+                <input type="radio" name="payment_method" value="bitcoin" required checked>
+                <span style="color: #f59e0b; font-weight: bold; font-size: 16px;">₿</span>
+                <span style="font-size: 12px;">Bitcoin | <strong>0.005126 BTC</strong></span>
+            </label>
+            <label class="payment-method">
+                <input type="radio" name="payment_method" value="litecoin" required>
+                <span style="color: #94a3b8; font-weight: bold; font-size: 16px;">Ł</span>
+                <span style="font-size: 12px;">Litecoin | <strong>7.44186 LTC</strong></span>
+            </label>
+            <label class="payment-method">
+                <input type="radio" name="payment_method" value="ethereum" required>
+                <span style="color: #6366f1; font-weight: bold; font-size: 16px;">⟠</span>
+                <span style="font-size: 12px;">Ethereum | <strong>0.174482 ETH</strong></span>
+            </label>
+            
+            <div class="form-group" style="margin-top: 20px;">
+                <label>Upload Payment Proof</label>
+                <input type="file" name="payment_proof" class="form-control" accept="image/*" required>
+            </div>
+
+            <button type="submit" class="btn btn-green" style="margin-top: 20px; padding: 12px 30px;">Payment</button>
+        </form>
+    </div>
+</div>
+
+<%- include('footer') %>

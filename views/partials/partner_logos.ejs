@@ -1,0 +1,9 @@
+<% if (partnerLogos && partnerLogos.length > 0) { %>
+<div class="partner-logos-bar">
+    <% partnerLogos.forEach(logo => { %>
+        <a href="<%= logo.url || '#' %>" target="_blank" rel="noopener noreferrer">
+            <img src="<%= logo.image %>" alt="Partner" onerror="this.style.display='none'">
+        </a>
+    <% }) %>
+</div>
+<% } %>

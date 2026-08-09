@@ -1,0 +1,39 @@
+<div class="vendor-card">
+    <div class="vendor-card-header">
+        <img src="<%= vendor.vendor_banner || '/images/default-vendor-bg.svg' %>" alt="<%= vendor.vendor_name %>" onerror="this.src='/images/default-vendor-bg.svg'">
+    </div>
+    <div class="vendor-card-body">
+        <div class="vendor-logo-badge">
+            <img src="<%= vendor.vendor_logo || '/images/default-vendor-logo.png' %>" alt="<%= vendor.vendor_name %> logo" onerror="this.src='/images/default-vendor-logo.png'">
+        </div>
+        <h3 class="vendor-card-title"><%= vendor.vendor_name %></h3>
+        <p class="vendor-card-desc"><%= vendor.vendor_description || 'A verified vendor on TorMart.' %></p>
+
+        <div class="stat-row">
+            <span>Category</span>
+            <span class="stat-value stat-category"><%= categoryName || vendor.primary_category || 'General' %></span>
+        </div>
+        <div class="stat-row">
+            <span>Status</span>
+            <span class="stat-value <%= vendor.vendor_online !== 0 ? 'text-green' : 'text-red' %>"><%= vendor.vendor_online !== 0 ? 'Online' : 'Offline' %></span>
+        </div>
+        <div class="stat-row">
+            <span>Member Since:</span>
+            <span class="stat-value"><%= vendor.member_since_label || 'Apr 2021' %></span>
+        </div>
+        <div class="stat-row">
+            <span>Orders</span>
+            <span class="stat-value"><%= vendor.vendor_orders_count || 0 %></span>
+        </div>
+        <div class="stat-row">
+            <span>Customer protection:</span>
+            <span class="stat-value text-green">Yes</span>
+        </div>
+        <div class="stat-row stat-row-last">
+            <span>Rating</span>
+            <span class="stars"><% for(let s=0; s<5; s++) { %>★<% } %></span>
+        </div>
+
+        <a href="/vendor-profile/<%= vendor.id %>" class="btn btn-purple btn-block vendor-card-btn">View Vendor</a>
+    </div>
+</div>

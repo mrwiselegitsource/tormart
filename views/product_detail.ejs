@@ -1,0 +1,63 @@
+<%- include('header') %>
+
+<div class="container" style="max-width: 1000px; display: grid; grid-template-columns: 3fr 1fr; gap: 30px;">
+    
+    <!-- Main Content Left Side -->
+    <div>
+        <div class="form-panel" style="margin-bottom: 20px;">
+            <div style="display: flex; gap: 20px;">
+                <img src="<%= product.image %>" alt="<%= product.name %>" style="width: 250px; height: 160px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border-color);">
+                
+                <div style="flex: 1;">
+                    <h2 style="font-size: 24px; margin-bottom: 5px; color: #111;"><%= product.name %></h2>
+                    <p style="color: var(--primary-green); font-weight: bold; font-size: 14px; margin-bottom: 10px;">Vendor: TorMart Official Store</p>
+                    <p style="font-size: 13px; color: var(--text-muted);"><%= product.description %></p>
+                    
+                    <div style="margin-top: 15px; font-size: 24px; font-weight: bold; color: #111;">
+                        $<%= product.price.toFixed(2) %>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-panel">
+            <h3 style="border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 15px;">Product Description</h3>
+            <div style="font-size: 14px; line-height: 1.6; color: var(--text-main);">
+                <p><strong>Limit Amount:</strong> $<%= product.limit_amount %></p>
+                <p><strong>Tier:</strong> <span style="text-transform: capitalize;"><%= product.tier %></span></p>
+                <p>High balance virtual cards directly loaded and ready for use. 100% money back guarantee through the Escrow system.</p>
+                <br>
+                <p>Features:</p>
+                <ul>
+                    <li>Usable on all major online retailers</li>
+                    <li>Instant delivery of card details upon admin verification</li>
+                    <li>Supports 3D Secure bypass on selected gateways</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar Right Side -->
+    <div>
+        <div class="form-panel" style="text-align: center; margin-bottom: 20px; padding: 15px;">
+            <form action="/cart/add" method="POST">
+                <input type="hidden" name="product_id" value="<%= product.id %>">
+                <button type="submit" class="btn btn-green btn-block" style="font-size: 16px; padding: 12px; margin-bottom: 10px;">Buy Now</button>
+            </form>
+            <div style="font-size: 12px; color: var(--text-muted);">
+                <span style="color: #f59e0b;">★ ★ ★ ★ ★</span> (4.9/5 Reviews)
+            </div>
+        </div>
+
+        <!-- Sidebar Placeholders -->
+        <div style="margin-bottom: 20px;">
+            <img src="/images/sidebar-trust.jpg" alt="Shop with Confidence Placeholder" style="width: 100%; border-radius: 4px; background: #e2e8f0; border: 1px dashed #94a3b8; min-height: 150px;">
+        </div>
+
+        <div>
+            <img src="/images/sidebar-ad.jpg" alt="Sidebar Ad Placeholder" style="width: 100%; border-radius: 4px; background: #e2e8f0; border: 1px dashed #94a3b8; min-height: 250px;">
+        </div>
+    </div>
+</div>
+
+<%- include('footer') %>

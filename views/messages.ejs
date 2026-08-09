@@ -1,0 +1,37 @@
+<%- include('header') %>
+
+<div class="container" style="max-width: 900px; margin-top: 30px; margin-bottom: 50px;">
+    <h2 style="text-align: center; color: #333; margin-bottom: 30px;">Market customer support</h2>
+
+    <div style="background: #fff; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); overflow: hidden;">
+        <div style="background: var(--bg-header); color: #fff; padding: 10px 20px; font-weight: bold; font-size: 14px;">
+            Tickets
+        </div>
+        
+        <div style="padding: 20px;">
+            <% if (messages.length === 0) { %>
+                <div style="text-align: center; padding: 40px 0; color: #888; border-bottom: 1px solid #eee; margin-bottom: 20px;">
+                    No Records Found
+                </div>
+            <% } else { %>
+                <div style="display: flex; flex-direction: column; gap: 15px; border-bottom: 1px solid #eee; padding-bottom: 20px; margin-bottom: 20px;">
+                    <% messages.forEach(msg => { %>
+                        <div class="form-panel" style="border-left: 4px solid <%= msg.sender_name === 'admin' ? 'var(--primary-purple)' : '#e2e8f0' %>; margin: 0;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+                                <strong style="font-size: 16px; color: #333;"><%= msg.subject %></strong>
+                                <span style="font-size: 12px; color: var(--text-muted);">From: <%= msg.sender_name %> | <%= new Date(msg.created_at).toLocaleString() %></span>
+                            </div>
+                            <div style="font-family: monospace; white-space: pre-wrap; font-size: 13px; background: #f8fafc; padding: 15px; border-radius: 4px; color: #444;"><%= msg.body %></div>
+                        </div>
+                    <% }) %>
+                </div>
+            <% } %>
+
+            <div style="text-align: center; padding-bottom: 20px;">
+                <a href="/support" class="btn" style="background: #007bff; color: white; padding: 12px 30px; border-radius: 4px; font-weight: bold; text-decoration: none; display: inline-block;">Create Ticket</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<%- include('footer') %>

@@ -1,0 +1,67 @@
+<%- include('header') %>
+
+<div class="container">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="color: #111;">My Profile</h2>
+    </div>
+
+    <% if (orders.length === 0) { %>
+        <div class="form-panel" style="text-align: center;">
+            <p>You have no orders history.</p>
+        </div>
+    <% } else { %>
+        <table>
+            <thead>
+                <tr>
+                    <th>Order #</th>
+                    <th>Product</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <% orders.forEach(order => { %>
+                    <tr>
+                        <td style="font-weight: bold;">#<%= order.id %></td>
+                        <td><%= order.name %></td>
+                        <td style="color: var(--text-muted); font-size: 12px;"><%= new Date(order.created_at).toLocaleString() %></td>
+                        <td>
+                            <span style="background: <%= order.status === 'active' ? 'var(--primary-green)' : '#f59e0b' %>; color: white; padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; text-transform: uppercase;">
+                                <%= order.status %>
+                            </span>
+                        </td>
+                        <td>
+                            <% if (order.status === 'active') { %>
+                                <div style="background: #f8fafc; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; font-family: monospace; font-size: 12px; margin-top: 5px;">
+                                    <strong>Card:</strong> <%= order.card_number %><br>
+                                    <strong>Exp:</strong> <%= order.expiry %> | <strong>CVV:</strong> <%= order.cvv %><br>
+                                    <strong>Note:</strong> <%= order.delivery_note || 'None' %>
+                                </div>
+                                <div style="margin-top: 10px;">
+                                    <form action="/order/complete/<%= order.id %>" method="POST" style="display: flex; gap: 5px; flex-direction: column;">
+                                        <select name="rating" required style="padding: 5px;">
+                                            <option value="5">★★★★★ (5/5)</option>
+                                            <option value="4">★★★★☆ (4/5)</option>
+                                            <option value="3">★★★☆☆ (3/5)</option>
+                                            <option value="2">★★☆☆☆ (2/5)</option>
+                                            <option value="1">★☆☆☆☆ (1/5)</option>
+                                        </select>
+                                        <input type="text" name="comment" placeholder="Leave a review..." required style="padding: 5px;">
+                                        <button type="submit" class="btn" style="background: #28a745; color: white; border: none; padding: 5px; font-weight: bold; cursor: pointer;">Release Escrow & Review</button>
+                                    </form>
+                                </div>
+                            <% } else if (order.status === 'completed') { %>
+                                <span style="font-size: 12px; color: #28a745; font-weight: bold;">Escrow Released</span>
+                            <% } else { %>
+                                <span style="font-size: 12px; color: var(--text-muted);">Awaiting Seller</span>
+                            <% } %>
+                        </td>
+                    </tr>
+                <% }) %>
+            </tbody>
+        </table>
+    <% } %>
+</div>
+
+<%- include('footer') %>
