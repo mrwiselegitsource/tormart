@@ -1,0 +1,194 @@
+<%- include('header') %>
+
+<div class="container" style="max-width: 900px; margin-top: 30px; margin-bottom: 50px;">
+    <!-- Page Header Banner -->
+    <div style="background: linear-gradient(135deg, var(--bg-header) 0%, #2c1044 100%); color: #fff; padding: 25px 30px; border-radius: 6px 6px 0 0; border-bottom: 3px solid var(--primary-purple); box-shadow: 0 2px 5px rgba(0,0,0,0.15);">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <div>
+                <h1 style="font-size: 24px; font-weight: bold; margin: 0; color: #fff; display: flex; align-items: center; gap: 10px;">
+                    <span style="color: var(--primary-yellow);">❓</span> Frequently Asked Questions
+                </h1>
+                <p style="margin: 5px 0 0 0; font-size: 13px; color: #cbd5e1;">Comprehensive answers regarding transactions, escrow, disputes, and safety</p>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button type="button" onclick="toggleAllFAQ(true)" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 6px 12px; border-radius: 4px; font-size: 12px; cursor: pointer;">Expand All</button>
+                <button type="button" onclick="toggleAllFAQ(false)" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; padding: 6px 12px; border-radius: 4px; font-size: 12px; cursor: pointer;">Collapse All</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- FAQ Main Panel -->
+    <div style="background: #fff; padding: 35px 40px; border-radius: 0 0 6px 6px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); color: #333;">
+
+        <!-- FAQ Item 1: How to buy -->
+        <div class="faq-item" style="border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 16px; overflow: hidden; transition: all 0.2s ease;">
+            <div class="faq-header" onclick="toggleFAQ(this)" style="background: #f8fafc; padding: 16px 20px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span style="background: var(--primary-purple); color: #fff; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold;">1</span>
+                    <span style="font-weight: bold; font-size: 15px; color: #1e293b;">How to buy products on TorMart?</span>
+                </div>
+                <span class="faq-icon" style="font-size: 18px; font-weight: bold; color: var(--primary-purple); transition: transform 0.2s;">+</span>
+            </div>
+            <div class="faq-body" style="display: none; padding: 20px; border-top: 1px solid var(--border-color); background: #fff; font-size: 14px; line-height: 1.6; color: #475569;">
+                <p style="margin-bottom: 12px;">Purchasing on TorMart is fully automated, secure, and protected by marketplace escrow:</p>
+                <ol style="padding-left: 20px; margin-bottom: 12px;">
+                    <li style="margin-bottom: 6px;"><strong>Browse Catalog:</strong> Search categories or vendors for your desired virtual cards, money transfers, accounts, or services.</li>
+                    <li style="margin-bottom: 6px;"><strong>Add to Cart:</strong> Click "Add to Cart" or "Buy Now" on the product detail page.</li>
+                    <li style="margin-bottom: 6px;"><strong>Checkout & Deposit:</strong> Proceed to checkout and select your preferred cryptocurrency payment method. Send the exact amount to the generated escrow deposit address.</li>
+                    <li style="margin-bottom: 6px;"><strong>Instant Delivery / Processing:</strong> Once blockchain confirmations are registered, your order details and credentials will appear in your <a href="/dashboard" style="color: var(--primary-purple); font-weight: bold; text-decoration: underline;">Dashboard</a>.</li>
+                    <li style="margin-bottom: 6px;"><strong>Inspect & Release Escrow:</strong> Test and verify the product. Once satisfied, release escrow and submit your review.</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- FAQ Item 2: Payment methods -->
+        <div class="faq-item" style="border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 16px; overflow: hidden; transition: all 0.2s ease;">
+            <div class="faq-header" onclick="toggleFAQ(this)" style="background: #f8fafc; padding: 16px 20px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span style="background: var(--primary-purple); color: #fff; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold;">2</span>
+                    <span style="font-weight: bold; font-size: 15px; color: #1e293b;">What payment methods are accepted?</span>
+                </div>
+                <span class="faq-icon" style="font-size: 18px; font-weight: bold; color: var(--primary-purple); transition: transform 0.2s;">+</span>
+            </div>
+            <div class="faq-body" style="display: none; padding: 20px; border-top: 1px solid var(--border-color); background: #fff; font-size: 14px; line-height: 1.6; color: #475569;">
+                <p style="margin-bottom: 10px;">To ensure the highest level of privacy and reliability, TorMart exclusively accepts decentralized cryptocurrencies:</p>
+                <ul style="padding-left: 20px; margin-bottom: 12px;">
+                    <li style="margin-bottom: 6px;"><strong>Bitcoin (BTC):</strong> Industry-standard cryptocurrency with automated 1-confirmation detection.</li>
+                    <li style="margin-bottom: 6px;"><strong>Monero (XMR):</strong> Recommended for untraceable and fully anonymous privacy-first settlements.</li>
+                    <li style="margin-bottom: 6px;"><strong>USDT / Stablecoins:</strong> Fast, low-fee fiat-pegged transfers for stable transaction values.</li>
+                </ul>
+                <p style="margin-bottom: 0; color: #64748b; font-size: 13px;"><em>Note: We generate unique single-use deposit addresses for every order to prevent public address clustering.</em></p>
+            </div>
+        </div>
+
+        <!-- FAQ Item 3: Escrow system -->
+        <div class="faq-item" style="border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 16px; overflow: hidden; transition: all 0.2s ease;">
+            <div class="faq-header" onclick="toggleFAQ(this)" style="background: #f8fafc; padding: 16px 20px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span style="background: var(--primary-purple); color: #fff; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold;">3</span>
+                    <span style="font-weight: bold; font-size: 15px; color: #1e293b;">How does the Escrow system work?</span>
+                </div>
+                <span class="faq-icon" style="font-size: 18px; font-weight: bold; color: var(--primary-purple); transition: transform 0.2s;">+</span>
+            </div>
+            <div class="faq-body" style="display: none; padding: 20px; border-top: 1px solid var(--border-color); background: #fff; font-size: 14px; line-height: 1.6; color: #475569;">
+                <p style="margin-bottom: 10px;">Our marketplace escrow guarantees that vendors do not receive funds until the customer has received and verified the order:</p>
+                <div style="background: #f1f5f9; padding: 12px 16px; border-radius: 4px; margin-bottom: 12px;">
+                    <strong style="color: var(--primary-green);">🛡️ 100% Buyer Protection:</strong> When you purchase an item, your crypto payment is locked in TorMart's secure escrow vault.
+                </div>
+                <p style="margin-bottom: 8px;">The escrow funds remain locked until one of the following occurs:</p>
+                <ul style="padding-left: 20px; margin-bottom: 12px;">
+                    <li style="margin-bottom: 6px;">You manually click <strong>"Release Escrow & Review"</strong> in your Dashboard after validating the delivered product.</li>
+                    <li style="margin-bottom: 6px;">The automated escrow timer expires without any opened dispute.</li>
+                    <li style="margin-bottom: 6px;">A marketplace administrator intervenes in an open dispute to resolve payment distribution.</li>
+                </ul>
+                <p style="color: #dc2626; font-size: 13px; font-weight: bold; margin-bottom: 0;">⚠️ WARNING: Never finalize early (FE) or do off-platform direct deals. Vendors demanding off-escrow payments are subject to immediate termination.</p>
+            </div>
+        </div>
+
+        <!-- FAQ Item 4: Disputes -->
+        <div class="faq-item" style="border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 16px; overflow: hidden; transition: all 0.2s ease;">
+            <div class="faq-header" onclick="toggleFAQ(this)" style="background: #f8fafc; padding: 16px 20px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span style="background: var(--primary-purple); color: #fff; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold;">4</span>
+                    <span style="font-weight: bold; font-size: 15px; color: #1e293b;">How do Disputes and Refunds operate?</span>
+                </div>
+                <span class="faq-icon" style="font-size: 18px; font-weight: bold; color: var(--primary-purple); transition: transform 0.2s;">+</span>
+            </div>
+            <div class="faq-body" style="display: none; padding: 20px; border-top: 1px solid var(--border-color); background: #fff; font-size: 14px; line-height: 1.6; color: #475569;">
+                <p style="margin-bottom: 10px;">If a delivered item is invalid, depleted, or not as described:</p>
+                <ol style="padding-left: 20px; margin-bottom: 12px;">
+                    <li style="margin-bottom: 6px;"><strong>Do NOT Release Escrow:</strong> Leaving the escrow active preserves your right to full restitution.</li>
+                    <li style="margin-bottom: 6px;"><strong>Message the Vendor:</strong> First attempt direct resolution via the <a href="/messages" style="color: var(--primary-purple); font-weight: bold; text-decoration: underline;">Messages</a> section for immediate replacement.</li>
+                    <li style="margin-bottom: 6px;"><strong>Open a Support Ticket:</strong> If the seller fails to respond or replace the item, visit <a href="/support" style="color: var(--primary-purple); font-weight: bold; text-decoration: underline;">Support</a> and submit a ticket with department "Escrow Department" or "Support Department".</li>
+                    <li style="margin-bottom: 6px;"><strong>Provide Proof:</strong> Attach screenshots, balance check logs, or video proof. Marketplace mediators will review evidence and issue a full refund from escrow.</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- FAQ Item 5: Account security -->
+        <div class="faq-item" style="border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 16px; overflow: hidden; transition: all 0.2s ease;">
+            <div class="faq-header" onclick="toggleFAQ(this)" style="background: #f8fafc; padding: 16px 20px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span style="background: var(--primary-purple); color: #fff; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold;">5</span>
+                    <span style="font-weight: bold; font-size: 15px; color: #1e293b;">How do I protect my account and operational security?</span>
+                </div>
+                <span class="faq-icon" style="font-size: 18px; font-weight: bold; color: var(--primary-purple); transition: transform 0.2s;">+</span>
+            </div>
+            <div class="faq-body" style="display: none; padding: 20px; border-top: 1px solid var(--border-color); background: #fff; font-size: 14px; line-height: 1.6; color: #475569;">
+                <p style="margin-bottom: 10px;">Operational security (OPSEC) is the user's highest responsibility:</p>
+                <ul style="padding-left: 20px; margin-bottom: 12px;">
+                    <li style="margin-bottom: 6px;"><strong>Unique Passwords:</strong> Generate high-entropy passwords (16+ characters) using a trusted local password manager.</li>
+                    <li style="margin-bottom: 6px;"><strong>Official Onion Mirrors:</strong> Bookmark verified Tor links. Beware of phishing links or fake search engine results.</li>
+                    <li style="margin-bottom: 6px;"><strong>Disable JavaScript:</strong> For standard browsing, ensure your Tor Browser security slider is set appropriately.</li>
+                    <li style="margin-bottom: 6px;"><strong>No Personal Identifiers:</strong> Never use usernames, handles, or passwords affiliated with clearnet identities.</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- FAQ Item 6: Vendor applications -->
+        <div class="faq-item" style="border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 0; overflow: hidden; transition: all 0.2s ease;">
+            <div class="faq-header" onclick="toggleFAQ(this)" style="background: #f8fafc; padding: 16px 20px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span style="background: var(--primary-purple); color: #fff; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold;">6</span>
+                    <span style="font-weight: bold; font-size: 15px; color: #1e293b;">How do I apply for Vendor Status?</span>
+                </div>
+                <span class="faq-icon" style="font-size: 18px; font-weight: bold; color: var(--primary-purple); transition: transform 0.2s;">+</span>
+            </div>
+            <div class="faq-body" style="display: none; padding: 20px; border-top: 1px solid var(--border-color); background: #fff; font-size: 14px; line-height: 1.6; color: #475569;">
+                <p style="margin-bottom: 10px;">We welcome professional vendors and suppliers who meet our strict reliability guidelines:</p>
+                <ul style="padding-left: 20px; margin-bottom: 12px;">
+                    <li style="margin-bottom: 6px;"><strong>Review Rules & Forbidden Items:</strong> Check our <a href="/cooperation" style="color: var(--primary-purple); font-weight: bold; text-decoration: underline;">Cooperation Policy</a> for the list of prohibited items (e.g. violent services, fentanyl, weapons, poisons).</li>
+                    <li style="margin-bottom: 6px;"><strong>Vendor Bond Deposit:</strong> A refundable vendor bond is held in security deposit to guarantee honest fulfillment.</li>
+                    <li style="margin-bottom: 6px;"><strong>Submit Application:</strong> Submit a support ticket under the subject <em>"Cooperation"</em> detailing your product categories and cross-market reputation proofs.</li>
+                    <li style="margin-bottom: 6px;"><strong>Approval & Listing:</strong> Upon review by administration, vendor privileges are unlocked in your account menu.</li>
+                </ul>
+                <div style="margin-top: 15px;">
+                    <a href="/cooperation" class="btn btn-purple" style="font-size: 13px; padding: 8px 16px;">View Cooperation Guide</a>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+function toggleFAQ(header) {
+    var body = header.nextElementSibling;
+    var icon = header.querySelector('.faq-icon');
+    var isExpanded = body.style.display === 'block';
+    
+    if (isExpanded) {
+        body.style.display = 'none';
+        icon.innerText = '+';
+        icon.style.transform = 'rotate(0deg)';
+        header.style.background = '#f8fafc';
+    } else {
+        body.style.display = 'block';
+        icon.innerText = '−';
+        icon.style.transform = 'rotate(180deg)';
+        header.style.background = '#f1f5f9';
+    }
+}
+
+function toggleAllFAQ(expand) {
+    var items = document.querySelectorAll('.faq-item');
+    items.forEach(function(item) {
+        var header = item.querySelector('.faq-header');
+        var body = item.querySelector('.faq-body');
+        var icon = item.querySelector('.faq-icon');
+        if (expand) {
+            body.style.display = 'block';
+            icon.innerText = '−';
+            icon.style.transform = 'rotate(180deg)';
+            header.style.background = '#f1f5f9';
+        } else {
+            body.style.display = 'none';
+            icon.innerText = '+';
+            icon.style.transform = 'rotate(0deg)';
+            header.style.background = '#f8fafc';
+        }
+    });
+}
+</script>
+
+<%- include('footer') %>

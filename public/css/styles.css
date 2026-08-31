@@ -368,3 +368,122 @@ footer ul li {
         animation: none !important;
     }
 }
+
+/* ===== RESPONSIVE DESIGN ===== */
+
+/* Tablet and below (max 1024px) */
+@media (max-width: 1024px) {
+    .top-header {
+        padding: 10px 15px;
+    }
+    .top-nav {
+        gap: 10px;
+        font-size: 12px;
+    }
+    .sub-nav {
+        padding: 10px 15px;
+        gap: 12px;
+        font-size: 13px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    footer {
+        padding: 30px 20px;
+        flex-wrap: wrap;
+        gap: 30px;
+    }
+    .footer-bottom {
+        padding: 12px 20px;
+        flex-direction: column;
+        text-align: center;
+        gap: 8px;
+    }
+}
+
+/* Mobile (max 768px) */
+@media (max-width: 768px) {
+    .top-header {
+        flex-wrap: wrap;
+        padding: 10px 15px;
+        gap: 10px;
+    }
+    .top-nav {
+        order: 3;
+        width: 100%;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px;
+        font-size: 11px;
+        border-top: 1px solid rgba(255,255,255,0.1);
+        padding-top: 10px;
+    }
+    .sub-nav {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        justify-content: flex-start;
+        gap: 15px;
+        padding: 10px 15px;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+    }
+    .sub-nav::-webkit-scrollbar {
+        display: none;
+    }
+    .sub-nav a {
+        white-space: nowrap;
+        font-size: 12px;
+    }
+    .container {
+        padding: 0 15px;
+    }
+    footer {
+        flex-direction: column;
+        padding: 30px 20px;
+        gap: 25px;
+    }
+    .footer-bottom {
+        padding: 12px 15px;
+    }
+
+    /* Product detail 2-column -> 1-column */
+    .container[style*="grid-template-columns: 3fr 1fr"] {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Tables scroll horizontally */
+    table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+        -webkit-overflow-scrolling: touch;
+    }
+    thead, tbody, tr {
+        display: table;
+        width: 100%;
+        table-layout: fixed;
+    }
+    th, td {
+        padding: 10px 8px;
+        font-size: 12px;
+    }
+}
+
+/* Small mobile (max 480px) */
+@media (max-width: 480px) {
+    .top-header {
+        padding: 8px 10px;
+    }
+    .brand {
+        font-size: 18px;
+    }
+    .brand img {
+        max-height: 28px !important;
+    }
+    .top-nav {
+        gap: 6px;
+        font-size: 10px;
+    }
+    .container {
+        padding: 0 10px;
+    }
+}

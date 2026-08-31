@@ -1,0 +1,129 @@
+<%- include('header') %>
+
+<div class="container" style="max-width: 900px; margin-top: 30px; margin-bottom: 50px;">
+    <!-- Page Header Banner -->
+    <div style="background: linear-gradient(135deg, var(--bg-header) 0%, #2c1044 100%); color: #fff; padding: 25px 30px; border-radius: 6px 6px 0 0; border-bottom: 3px solid var(--primary-purple); box-shadow: 0 2px 5px rgba(0,0,0,0.15);">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <div>
+                <h1 style="font-size: 24px; font-weight: bold; margin: 0; color: #fff; display: flex; align-items: center; gap: 10px;">
+                    <span style="color: var(--primary-yellow);">🛡️</span> Privacy Policy
+                </h1>
+                <p style="margin: 5px 0 0 0; font-size: 13px; color: #cbd5e1;">Zero-Logs Commitment & Data Protection Architecture</p>
+            </div>
+            <div style="background: rgba(126, 34, 206, 0.4); border: 1px solid var(--primary-purple); padding: 5px 12px; border-radius: 20px; font-size: 12px; color: #f1f5f9; font-weight: bold;">
+                Status: <span style="color: var(--primary-green);">Encrypted & Zero-Log</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main Content Panel -->
+    <div style="background: #fff; padding: 35px 40px; border-radius: 0 0 6px 6px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); color: #333; line-height: 1.7; font-size: 14px;">
+        
+        <!-- Notice Box -->
+        <div style="background: #f8fafc; border-left: 4px solid var(--primary-purple); padding: 15px 20px; border-radius: 0 4px 4px 0; margin-bottom: 30px; font-size: 13px; color: #475569;">
+            <strong style="color: #1e293b;">TorMart Security Mandate:</strong> We operate under a strict, verifiable zero-knowledge architecture. No IP addresses, hardware identifiers, or personal telemetry are ever logged or retained on our servers.
+        </div>
+
+        <!-- Section 1: Data Collection -->
+        <div style="margin-bottom: 35px;">
+            <h3 style="font-size: 17px; font-weight: bold; color: #1e293b; margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                <span style="color: var(--primary-purple);">1.</span> Data Collection
+            </h3>
+            <p style="margin-bottom: 12px; color: #475569;">
+                TorMart collects only the bare minimum data required to facilitate anonymous peer-to-peer commerce:
+            </p>
+            <ul style="padding-left: 20px; margin-bottom: 12px; color: #475569;">
+                <li style="margin-bottom: 6px;"><strong style="color: #1e293b;">Account Credentials:</strong> A pseudonymous username and cryptographically hashed password (bcrypt). We never ask for, require, or store email addresses, real names, or phone numbers.</li>
+                <li style="margin-bottom: 6px;"><strong style="color: #1e293b;">Order Transaction Metadata:</strong> Temporary order records necessary to track escrow status, product identifiers, and payment state.</li>
+                <li style="margin-bottom: 6px;"><strong style="color: #1e293b;">Zero Connection Logging:</strong> We do not log incoming IP addresses, Tor exit nodes, user-agent strings, or connection timestamps.</li>
+            </ul>
+        </div>
+
+        <!-- Section 2: Data Usage -->
+        <div style="margin-bottom: 35px;">
+            <h3 style="font-size: 17px; font-weight: bold; color: #1e293b; margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                <span style="color: var(--primary-purple);">2.</span> Data Usage
+            </h3>
+            <p style="margin-bottom: 12px; color: #475569;">
+                Information collected during transactions is utilized strictly for system operation:
+            </p>
+            <ul style="padding-left: 20px; margin-bottom: 12px; color: #475569;">
+                <li style="margin-bottom: 6px;">Facilitating multi-signature and escrow holds until buyer confirmation or dispute resolution.</li>
+                <li style="margin-bottom: 6px;">Routing encrypted peer messages between buyers, sellers, and administrators.</li>
+                <li style="margin-bottom: 6px;">Automated purging: Sensitive delivery notes and transaction details are automatically scrubbed upon order finalization.</li>
+                <li style="margin-bottom: 6px;">No analytics profiling, behavioural tracking, or marketing automation exists on TorMart.</li>
+            </ul>
+        </div>
+
+        <!-- Section 3: Cookies -->
+        <div style="margin-bottom: 35px;">
+            <h3 style="font-size: 17px; font-weight: bold; color: #1e293b; margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                <span style="color: var(--primary-purple);">3.</span> Cookies & Local Storage
+            </h3>
+            <p style="margin-bottom: 12px; color: #475569;">
+                TorMart adheres to the strictest privacy protocols regarding client-side data:
+            </p>
+            <ul style="padding-left: 20px; margin-bottom: 12px; color: #475569;">
+                <li style="margin-bottom: 6px;"><strong style="color: #1e293b;">Session Only:</strong> We use an ephemeral, encrypted HTTP-only session cookie exclusively for maintaining authenticated login state and CSRF token integrity.</li>
+                <li style="margin-bottom: 6px;"><strong style="color: #1e293b;">No Tracking Cookies:</strong> Zero persistent tracking cookies, cross-site beacons, or local storage fingerprinting scripts are deployed.</li>
+                <li style="margin-bottom: 6px;"><strong style="color: #1e293b;">Browser Cleared:</strong> Session cookies automatically expire and are purged when you close your browser or log out.</li>
+            </ul>
+        </div>
+
+        <!-- Section 4: Third Parties -->
+        <div style="margin-bottom: 35px;">
+            <h3 style="font-size: 17px; font-weight: bold; color: #1e293b; margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                <span style="color: var(--primary-purple);">4.</span> Third Parties & External Services
+            </h3>
+            <p style="margin-bottom: 12px; color: #475569;">
+                We maintain absolute isolation from third-party networks:
+            </p>
+            <ul style="padding-left: 20px; margin-bottom: 12px; color: #475569;">
+                <li style="margin-bottom: 6px;">TorMart does not load external scripts, fonts, stylesheets, or trackers from Google, Cloudflare, social platforms, or ad networks.</li>
+                <li style="margin-bottom: 6px;">All assets, icons, and stylesheets are hosted locally on our infrastructure to prevent IP leakage.</li>
+                <li style="margin-bottom: 6px;">No user transaction records or identifiers are ever shared, sold, or disclosed to any third-party entities.</li>
+            </ul>
+        </div>
+
+        <!-- Section 5: Security -->
+        <div style="margin-bottom: 35px;">
+            <h3 style="font-size: 17px; font-weight: bold; color: #1e293b; margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                <span style="color: var(--primary-purple);">5.</span> Security Architecture & Encryption
+            </h3>
+            <p style="margin-bottom: 12px; color: #475569;">
+                Our platform incorporates multi-tiered operational security measures:
+            </p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-top: 15px;">
+                <div style="background: #f8fafc; padding: 15px; border-radius: 4px; border: 1px solid var(--border-color);">
+                    <div style="font-weight: bold; color: var(--primary-purple); margin-bottom: 5px; font-size: 13px;">🔒 Cryptographic Hashing</div>
+                    <div style="font-size: 12px; color: #64748b;">Passwords are salted and hashed using modern bcrypt rounds. Plaintext credentials never touch disk.</div>
+                </div>
+                <div style="background: #f8fafc; padding: 15px; border-radius: 4px; border: 1px solid var(--border-color);">
+                    <div style="font-weight: bold; color: var(--primary-green); margin-bottom: 5px; font-size: 13px;">🛡️ Anti-CSRF & Protection</div>
+                    <div style="font-size: 12px; color: #64748b;">Unique cryptographically randomized tokens guard every state-changing form submission.</div>
+                </div>
+                <div style="background: #f8fafc; padding: 15px; border-radius: 4px; border: 1px solid var(--border-color);">
+                    <div style="font-weight: bold; color: #eab308; margin-bottom: 5px; font-size: 13px;">⚡ Auto-Scrubbing</div>
+                    <div style="font-size: 12px; color: #64748b;">Delivery credentials and decrypted notes are expunged from the active database following escrow settlement.</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 6: Contact -->
+        <div>
+            <h3 style="font-size: 17px; font-weight: bold; color: #1e293b; margin-bottom: 12px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                <span style="color: var(--primary-purple);">6.</span> Contact & Encrypted Inquiries
+            </h3>
+            <p style="margin-bottom: 15px; color: #475569;">
+                For security inquiries, audit verifications, or dispute appeals, contact TorMart administration strictly through our internal support portal:
+            </p>
+            <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                <a href="/support" class="btn btn-purple" style="font-size: 13px; padding: 10px 20px;">Open Support Ticket</a>
+                <a href="/messages" class="btn" style="background: #334155; color: white; font-size: 13px; padding: 10px 20px;">Encrypted Messages</a>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<%- include('footer') %>

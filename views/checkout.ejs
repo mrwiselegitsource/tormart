@@ -17,6 +17,7 @@
         </div>
 
         <form action="/checkout" method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             
             <div class="form-group">
                 <input type="email" name="email" class="form-control" placeholder="Email" required>

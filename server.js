@@ -353,9 +353,11 @@ app.get('/search', (req, res) => {
 
 app.get('/product/:id', (req, res) => {
     db.get("SELECT * FROM products WHERE id = ?", [req.params.id], (err, product) => {
-        if (!product) return res.redirect('/cards');
-        db.all("SELECT * FROM products WHERE category = ? AND id != ? ORDER BY id DESC LIMIT 3", [product.category, product.id], (err, relatedProducts) => {
-            res.render('product_detail', { product, relatedProducts: relatedProducts || [] });
+        if (!product) return res.redirect('/');
+        db.get("SELECT * FROM users WHERE id = ?", [product.vendor_id], (err, vendor) => {
+            db.all("SELECT * FROM products WHERE category = ? AND id != ? ORDER BY id DESC LIMIT 3", [product.category, product.id], (err, relatedProducts) => {
+                res.render('product_detail', { product, vendor: vendor || { id: 0, username: 'Unknown' }, relatedProducts: relatedProducts || [] });
+            });
         });
     });
 });
@@ -394,7 +396,7 @@ app.post('/wishlist/toggle', (req, res) => {
     } else {
         req.session.wishlist.push(product_id);
     }
-    res.redirect(req.get('Referer') || '/cards');
+    res.redirect(req.get('Referer') || '/');
 });
 
 // Cart Routes

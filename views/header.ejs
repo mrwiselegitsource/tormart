@@ -14,11 +14,11 @@
         <nav class="top-nav">
             <% if (user) { %>
                 <a href="/dashboard">Login / Register</a>
-                <a href="#">Free Money</a>
-                <a href="#" style="color: var(--primary-yellow);">Proofs / Reviews</a>
-                <a href="#">Forum</a>
-                <a href="#">Wiki</a>
-                <a href="#">Escrow</a>
+                <a href="/faq">Free Money</a>
+                <a href="/" style="color: var(--primary-yellow);">Proofs / Reviews</a>
+                <a href="/faq">Forum</a>
+                <a href="/faq">Wiki</a>
+                <a href="/refunds">Escrow</a>
                 <a href="/support">Support</a>
                 <a href="/messages">Messages</a>
                 <% if (user.role === 'admin') { %>
@@ -30,13 +30,13 @@
                 <a href="/logout">Logout</a>
             <% } else { %>
                 <a href="/login">Login / Register</a>
-                <a href="#">Free Money</a>
-                <a href="#" style="color: var(--primary-yellow);">Proofs / Reviews</a>
-                <a href="#">Forum</a>
-                <a href="#">Wiki</a>
-                <a href="#">Escrow</a>
-                <a href="#">Support</a>
-                <a href="#">Messages</a>
+                <a href="/faq">Free Money</a>
+                <a href="/" style="color: var(--primary-yellow);">Proofs / Reviews</a>
+                <a href="/faq">Forum</a>
+                <a href="/faq">Wiki</a>
+                <a href="/refunds">Escrow</a>
+                <a href="/login">Support</a>
+                <a href="/login">Messages</a>
             <% } %>
         </nav>
         <div>

@@ -1,10 +1,19 @@
 <%- include('header') %>
 
+<style>
+    .chat-layout { display: flex; height: 600px; background: #fff; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); overflow: hidden; }
+    .chat-sidebar { width: 300px; border-right: 1px solid var(--border-color); background: #f8fafc; display: flex; flex-direction: column; }
+    @media (max-width: 768px) {
+        .chat-layout { flex-direction: column; height: auto; min-height: 500px; }
+        .chat-sidebar { width: 100%; max-height: 200px; border-right: none; border-bottom: 1px solid var(--border-color); }
+    }
+</style>
+
 <div class="container" style="max-width: 1200px; margin-top: 30px; margin-bottom: 50px;">
-    <div style="display: flex; height: 600px; background: #fff; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); overflow: hidden;">
+    <div class="chat-layout">
         
         <!-- Sidebar (Conversations) -->
-        <div style="width: 300px; border-right: 1px solid var(--border-color); background: #f8fafc; display: flex; flex-direction: column;">
+        <div class="chat-sidebar">
             <div style="padding: 15px; background: var(--bg-header); color: white; font-weight: bold; text-align: center;">
                 Conversations
             </div>
