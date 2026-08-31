@@ -39,7 +39,8 @@
                                     <strong>Note:</strong> <%= order.delivery_note || 'None' %>
                                 </div>
                                 <div style="margin-top: 10px;">
-                                    <form action="/order/complete/<%= order.id %>" method="POST" style="display: flex; gap: 5px; flex-direction: column;">
+                                    <form action="/order/complete/<%= order.id %>" method="POST" enctype="multipart/form-data" style="display: flex; gap: 5px; flex-direction: column;">
+                                        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                                         <select name="rating" required style="padding: 5px;">
                                             <option value="5">★★★★★ (5/5)</option>
                                             <option value="4">★★★★☆ (4/5)</option>
@@ -48,6 +49,8 @@
                                             <option value="1">★☆☆☆☆ (1/5)</option>
                                         </select>
                                         <input type="text" name="comment" placeholder="Leave a review..." required style="padding: 5px;">
+                                        <div style="font-size: 11px; color: #555;">Optional: Upload proof photo</div>
+                                        <input type="file" name="review_photo" accept="image/*" style="padding: 5px; font-size: 11px;">
                                         <button type="submit" class="btn" style="background: #28a745; color: white; border: none; padding: 5px; font-weight: bold; cursor: pointer;">Release Escrow & Review</button>
                                     </form>
                                 </div>

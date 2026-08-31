@@ -21,6 +21,37 @@
         </div>
     </div>
 
+    <div style="background: #fff; padding: 20px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 30px;">
+        <h3 style="margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 10px;">My Proofs (Images & Videos)</h3>
+        
+        <div style="display: flex; gap: 15px; overflow-x: auto; padding-bottom: 15px; margin-bottom: 20px;">
+            <% if (proofs && proofs.length > 0) { %>
+                <% proofs.forEach(proof => { %>
+                    <div style="position: relative; width: 120px; height: 160px; background: #eee; border-radius: 4px; flex-shrink: 0; overflow: hidden;">
+                        <% if (proof.type === 'video') { %>
+                            <video src="<%= proof.file_url %>" style="width: 100%; height: 100%; object-fit: cover;"></video>
+                            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #ffcc00; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #333; font-size: 20px;">▶</div>
+                        <% } else { %>
+                            <img src="<%= proof.file_url %>" style="width: 100%; height: 100%; object-fit: cover;">
+                        <% } %>
+                        <form action="/vendor/proofs/delete/<%= proof.id %>" method="POST" style="position: absolute; top: 5px; right: 5px; margin: 0;">
+                            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                            <button type="submit" style="background: rgba(255,0,0,0.8); color: white; border: none; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center;">✕</button>
+                        </form>
+                    </div>
+                <% }) %>
+            <% } else { %>
+                <div style="color: #888; font-size: 13px;">No proofs uploaded yet.</div>
+            <% } %>
+        </div>
+
+        <form action="/vendor/proofs/add" method="POST" enctype="multipart/form-data" style="display: flex; align-items: center; gap: 10px;">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <input type="file" name="proof_file" accept="image/*,video/*" required style="border: 1px solid #ccc; padding: 8px; border-radius: 4px;">
+            <button type="submit" class="btn btn-purple">Upload Proof</button>
+        </form>
+    </div>
+
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
         <h3 style="margin: 0; color: #333;">My Listings</h3>
     </div>
@@ -43,6 +74,7 @@
     <div class="form-panel">
         <h3 style="margin-top: 0;">Add New Listing</h3>
         <form action="/vendor/products/add" method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             <div style="display: flex; gap: 15px;">
                 <div class="form-group" style="flex: 1;">
                     <label>Product Name</label>

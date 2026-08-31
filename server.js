@@ -86,6 +86,30 @@ const messageImageStorage = multer.diskStorage({
 });
 const messageImageUpload = multer({ storage: messageImageStorage });
 
+const proofsDir = path.join(__dirname, 'public', 'images', 'proofs');
+if (!fs.existsSync(proofsDir)) fs.mkdirSync(proofsDir, { recursive: true });
+const proofsStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, proofsDir);
+    },
+    filename: function (req, file, cb) {
+        cb(null, 'proof-' + Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname));
+    }
+});
+const proofsUpload = multer({ storage: proofsStorage });
+
+const reviewsDir = path.join(__dirname, 'public', 'images', 'reviews');
+if (!fs.existsSync(reviewsDir)) fs.mkdirSync(reviewsDir, { recursive: true });
+const reviewsStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, reviewsDir);
+    },
+    filename: function (req, file, cb) {
+        cb(null, 'review-' + Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname));
+    }
+});
+const reviewsUpload = multer({ storage: reviewsStorage });
+
 // Database Initialization
 const db = new sqlite3.Database('./neobyte.db', (err) => {
     if (err) console.error('Database connection error:', err);
@@ -170,6 +194,17 @@ function initializeSchema() {
             FOREIGN KEY(vendor_id) REFERENCES users(id),
             FOREIGN KEY(buyer_id) REFERENCES users(id),
             FOREIGN KEY(product_id) REFERENCES products(id)
+        )`);
+
+        db.run("ALTER TABLE reviews ADD COLUMN photo_url TEXT", (err) => {});
+
+        db.run(`CREATE TABLE IF NOT EXISTS vendor_proofs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            vendor_id INTEGER,
+            file_url TEXT,
+            type TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(vendor_id) REFERENCES users(id)
         )`);
 
         db.get("SELECT COUNT(*) AS count FROM users WHERE role = 'admin'", (err, row) => {
@@ -285,7 +320,9 @@ app.get('/vendor-profile/:id', (req, res) => {
                 WHERE reviews.vendor_id = ? 
                 ORDER BY reviews.created_at DESC
             `, [vendor.id], (err, reviews) => {
-                res.render('vendor_profile', { vendor, products: products || [], reviews: reviews || [] });
+                db.all("SELECT * FROM vendor_proofs WHERE vendor_id = ? ORDER BY id ASC", [vendor.id], (err, proofs) => {
+                    res.render('vendor_profile', { vendor, products: products || [], reviews: reviews || [], proofs: proofs || [] });
+                });
             });
         });
     });
@@ -489,10 +526,11 @@ app.get('/dashboard', requireAuth, (req, res) => {
     });
 });
 
-app.post('/order/complete/:id', requireAuth, (req, res) => {
+app.post('/order/complete/:id', requireAuth, reviewsUpload.single('review_photo'), (req, res) => {
     const { rating, comment } = req.body;
     const orderId = req.params.id;
     const userId = req.session.user.id;
+    const photo_url = req.file ? '/images/reviews/' + req.file.filename : null;
     
     // Get order details to find the vendor
     db.get(`
@@ -504,8 +542,8 @@ app.post('/order/complete/:id', requireAuth, (req, res) => {
         if (order) {
             db.run("UPDATE orders SET status = 'completed' WHERE id = ?", [orderId], (err) => {
                 db.run(
-                    "INSERT INTO reviews (vendor_id, buyer_id, product_id, rating, comment) VALUES (?, ?, ?, ?, ?)",
-                    [order.vendor_id, userId, order.product_id, rating, comment],
+                    "INSERT INTO reviews (vendor_id, buyer_id, product_id, rating, comment, photo_url) VALUES (?, ?, ?, ?, ?, ?)",
+                    [order.vendor_id, userId, order.product_id, rating, comment, photo_url],
                     (err) => {
                         // Send system message
                         const convId = userId < order.vendor_id ? `${userId}_${order.vendor_id}` : `${order.vendor_id}_${userId}`;
@@ -630,7 +668,9 @@ app.get('/vendor', requireVendor, (req, res) => {
             WHERE products.vendor_id = ?
             ORDER BY orders.created_at DESC
         `, [req.session.user.id], (err, orders) => {
-            res.render('vendor', { products: products || [], orders: orders || [] });
+            db.all('SELECT * FROM vendor_proofs WHERE vendor_id = ? ORDER BY id DESC', [req.session.user.id], (err, proofs) => {
+                res.render('vendor', { products: products || [], orders: orders || [], proofs: proofs || [] });
+            });
         });
     });
 });
@@ -645,6 +685,35 @@ app.post('/vendor/products/add', requireVendor, imageUpload.single('product_imag
             res.redirect('/vendor');
         }
     );
+});
+
+app.post('/vendor/proofs/add', requireVendor, proofsUpload.single('proof_file'), (req, res) => {
+    if (!req.file) return res.redirect('/vendor');
+    
+    const type = req.file.mimetype.startsWith('video/') ? 'video' : 'image';
+    const file_url = '/images/proofs/' + req.file.filename;
+
+    db.run(
+        "INSERT INTO vendor_proofs (vendor_id, file_url, type) VALUES (?, ?, ?)",
+        [req.session.user.id, file_url, type],
+        (err) => {
+            res.redirect('/vendor');
+        }
+    );
+});
+
+app.post('/vendor/proofs/delete/:id', requireVendor, (req, res) => {
+    db.get("SELECT file_url FROM vendor_proofs WHERE id = ? AND vendor_id = ?", [req.params.id, req.session.user.id], (err, proof) => {
+        if (proof) {
+            const filePath = path.join(__dirname, 'public', proof.file_url);
+            fs.unlink(filePath, () => {});
+            db.run("DELETE FROM vendor_proofs WHERE id = ?", [req.params.id], () => {
+                res.redirect('/vendor');
+            });
+        } else {
+            res.redirect('/vendor');
+        }
+    });
 });
 
 // Admin Dashboard

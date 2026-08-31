@@ -26,7 +26,7 @@
                 <% } %>
             </div>
             
-            <% if (admin && admin.id != session.user.id) { %>
+            <% if (admin && admin.id != user.id) { %>
             <div style="padding: 10px; border-top: 1px solid #ccc; text-align: center;">
                 <a href="/messages?chat=<%= admin.id %>" class="btn btn-block" style="background: #ef4444; color: white; padding: 10px; border-radius: 4px; text-decoration: none; display: block;">Support (Admin)</a>
             </div>
@@ -67,7 +67,7 @@
 </div>
 
 <script>
-    const currentUserId = <%= session.user.id %>;
+    const currentUserId = <%= user.id %>;
     const activePartnerId = <%= activePartnerId || 'null' %>;
     
     if (activePartnerId) {
