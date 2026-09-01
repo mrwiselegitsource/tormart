@@ -11,7 +11,7 @@
         <div class="brand">
             <a href="/"><img src="/images/logo.png" alt="TorMart" style="max-height: 40px; display: block;" onerror="this.outerHTML='TorMart<span>★</span>'"></a>
         </div>
-        <div style="display: flex; align-items: center;">
+        
         <nav class="top-nav">
             <% if (user) { %>
                 <a href="/dashboard">Login / Register</a>
@@ -40,8 +40,9 @@
                 <a href="/login">Messages</a>
             <% } %>
         </nav>
-        <div>
-            <a href="/cart" class="cart-icon" style="color: white; text-decoration: none; margin-right: 15px; display: flex; align-items: center; gap: 4px;">
+        
+        <div style="display: flex; align-items: center; gap: 20px;">
+            <a href="/cart" class="cart-icon" style="color: white; text-decoration: none; display: flex; align-items: center; gap: 4px;">
                 <img src="/images/cart-icon.png" alt="Cart" style="height: 18px; object-fit: contain;">
                 <% if (cartCount > 0) { %>
                     <span class="cart-badge"><%= cartCount %></span>
@@ -54,7 +55,6 @@
                 <span></span>
                 <span></span>
             </div>
-        </div>
         </div>
     </header>
 
