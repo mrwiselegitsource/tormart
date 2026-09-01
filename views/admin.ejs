@@ -9,7 +9,7 @@
         <p style="font-size: 13px; color: #666; margin-bottom: 20px;">Upload image files to update the site's branding. Files will overwrite the existing placeholders.</p>
         <form action="/admin/upload-asset" method="POST" enctype="multipart/form-data">
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 15px;">
                 <div class="form-group">
                     <label>Main Logo (logo.png)</label>
                     <input type="file" name="logo.png" class="form-control" accept="image/png, image/jpeg">
@@ -19,7 +19,7 @@
                     <input type="file" name="default-vendor-logo.png" class="form-control" accept="image/png, image/jpeg">
                 </div>
             </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 15px;">
                 <div class="form-group">
                     <label>Top Banner 1 (top-banner-1.jpg)</label>
                     <input type="file" name="top-banner-1.jpg" class="form-control" accept="image/png, image/jpeg">
@@ -29,7 +29,7 @@
                     <input type="file" name="top-banner-2.jpg" class="form-control" accept="image/png, image/jpeg">
                 </div>
             </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 15px;">
                 <div class="form-group">
                     <label>Bottom Banner 1 (bottom-banner-1.jpg)</label>
                     <input type="file" name="bottom-banner-1.jpg" class="form-control" accept="image/png, image/jpeg">
@@ -108,7 +108,7 @@
     <div class="form-panel" style="margin-bottom: 40px; border-top: 4px solid var(--primary-purple);">
         <h3 style="margin-bottom: 20px;">Add New Product (Card) - Global/Admin Store</h3>
         <form action="/admin/products/add" method="POST" enctype="multipart/form-data">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
                 <div class="form-group">
                     <label>Product Name</label>
                     <input type="text" name="name" class="form-control" placeholder="e.g. VISA Platinum $5000" required>
@@ -119,7 +119,7 @@
                 </div>
             </div>
             
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
                 <div class="form-group">
                     <label>Limit Amount (optional)</label>
                     <input type="number" name="limit_amount" class="form-control" placeholder="e.g. 5000">
@@ -168,7 +168,7 @@
                         </span>
                     </div>
 
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
                         <div>
                             <h4 style="margin-bottom: 10px; font-size: 14px;">Payment Proof</h4>
                             <% if (order.payment_proof) { %>

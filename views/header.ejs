@@ -11,6 +11,7 @@
         <div class="brand">
             <a href="/"><img src="/images/logo.png" alt="TorMart" style="max-height: 40px; display: block;" onerror="this.outerHTML='TorMart<span>★</span>'"></a>
         </div>
+        <div style="display: flex; align-items: center;">
         <nav class="top-nav">
             <% if (user) { %>
                 <a href="/dashboard">Login / Register</a>
@@ -40,14 +41,35 @@
             <% } %>
         </nav>
         <div>
-            <a href="/cart" class="cart-icon" style="color: white; text-decoration: none;">
+            <a href="/cart" class="cart-icon" style="color: white; text-decoration: none; margin-right: 15px;">
                 🛒
                 <% if (cartCount > 0) { %>
                     <span class="cart-badge"><%= cartCount %></span>
                 <% } %>
             </a>
+            
+            <!-- Hamburger Icon (Mobile Only) -->
+            <div class="hamburger-menu" onclick="toggleMobileMenu()">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
         </div>
     </header>
+
+    <!-- Mobile Menu Overlay -->
+    <div class="mobile-menu-overlay" id="mobileMenuOverlay" onclick="toggleMobileMenu()"></div>
+
+    <!-- Scripts for Mobile Menu -->
+    <script>
+        function toggleMobileMenu() {
+            document.querySelector('.top-nav').classList.toggle('active');
+            document.querySelector('.hamburger-menu').classList.toggle('active');
+            document.getElementById('mobileMenuOverlay').classList.toggle('active');
+            document.body.classList.toggle('menu-open');
+        }
+    </script>
 
     <div class="sub-nav">
         <a href="/category/Carding">Carding</a>
