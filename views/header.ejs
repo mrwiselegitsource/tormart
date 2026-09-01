@@ -41,8 +41,8 @@
             <% } %>
         </nav>
         <div>
-            <a href="/cart" class="cart-icon" style="color: white; text-decoration: none; margin-right: 15px;">
-                🛒
+            <a href="/cart" class="cart-icon" style="color: white; text-decoration: none; margin-right: 15px; display: flex; align-items: center; gap: 4px;">
+                <img src="/images/cart-icon.png" alt="Cart" style="height: 18px; object-fit: contain;">
                 <% if (cartCount > 0) { %>
                     <span class="cart-badge"><%= cartCount %></span>
                 <% } %>
