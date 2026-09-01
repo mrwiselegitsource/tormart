@@ -441,6 +441,10 @@ app.get('/faq', (req, res) => {
     res.render('faq');
 });
 
+app.get('/bitcoin-guide', (req, res) => {
+    res.render('bitcoin_guide');
+});
+
 app.get('/terms', (req, res) => {
     res.render('terms');
 });
