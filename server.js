@@ -207,6 +207,77 @@ function initializeSchema() {
             FOREIGN KEY(vendor_id) REFERENCES users(id)
         )`);
 
+        // ---- FORUM TABLES ----
+        db.run(`CREATE TABLE IF NOT EXISTS forum_posts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            category TEXT DEFAULT 'General',
+            title TEXT NOT NULL,
+            body TEXT NOT NULL,
+            upvotes INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )`);
+
+        db.run(`CREATE TABLE IF NOT EXISTS forum_comments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            post_id INTEGER,
+            user_id INTEGER,
+            body TEXT NOT NULL,
+            upvotes INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(post_id) REFERENCES forum_posts(id),
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )`);
+
+        db.run(`CREATE TABLE IF NOT EXISTS forum_post_votes (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            post_id INTEGER,
+            user_id INTEGER,
+            vote INTEGER DEFAULT 1,
+            UNIQUE(post_id, user_id)
+        )`);
+
+        db.run(`CREATE TABLE IF NOT EXISTS user_follows (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            follower_id INTEGER,
+            following_id INTEGER,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(follower_id, following_id)
+        )`);
+
+        // Add is_vip column to users if not exists
+        db.run("ALTER TABLE users ADD COLUMN is_vip INTEGER DEFAULT 0", (err) => {});
+
+        // Seed forum posts for simulation (if empty)
+        db.get("SELECT COUNT(*) AS count FROM forum_posts", (err, row) => {
+            if (!err && row && row.count === 0) {
+                db.get("SELECT id FROM users WHERE role = 'admin'", (err2, adminUser) => {
+                    const uid = adminUser ? adminUser.id : 1;
+                    const seedPosts = [
+                        ['General', 'Finally got my first card to work — full guide inside', 'Step by step process with screenshots. Tested on 3 different BINs. Ask me anything below.', 847, -2],
+                        ['Tips & Tricks', 'Best BIN list for online shopping in 2026 (working)', 'Compiled from 6 months of testing. Sorted by success rate and region.', 1243, -4],
+                        ['Vendor Reviews', 'Review: Northstar Labs — 10/10, instant delivery', 'Ordered twice. Both times delivered within 3 minutes of payment confirmation.', 512, -6],
+                        ['Help & Support', 'Question: Escrow not releasing after 48 hours?', 'My order was marked complete but escrow still shows pending. Anyone else had this issue?', 93, -8],
+                        ['General', 'New to the forum — introduction post', 'Been lurking for months, finally made a purchase and unlocked VIP. This community is gold.', 334, -12],
+                        ['Tips & Tricks', 'Full OPSEC guide for staying anonymous on darknet markets', 'Tails OS + Tor Browser + Monero + VPN. Here is how I set it all up.', 2109, -24],
+                        ['Vendor Reviews', 'Which vendors have the fastest delivery times? [2026 updated]', 'Ranked list based on community votes. Updated monthly. Comment your experience.', 678, -26],
+                        ['General', 'Weekly discussion: Best methods this month?', 'Drop your techniques. Keep it vague for OPSEC but share the concept.', 1567, -48],
+                        ['Help & Support', 'Common reasons why newly purchased items may fail and how to fix', 'List of debugging steps that helped me. Saved me a lot of money.', 445, -50],
+                        ['Tips & Tricks', 'VPN vs Tor — which is safer for this marketplace?', 'Deep dive into the technical differences and my personal recommendation.', 889, -72],
+                        ['General', 'Reached 100 successful orders — AMA', 'Happy to answer questions about my workflow, favourite vendors, and how I avoid issues.', 3021, -96],
+                        ['Vendor Reviews', 'WARNING: Fake vendor impersonating a known seller — avoid', 'Screenshots included. Report to admin if you see this username. Stay safe.', 1872, -120],
+                    ];
+                    const stmt = db.prepare("INSERT INTO forum_posts (user_id, category, title, body, upvotes, created_at) VALUES (?, ?, ?, ?, ?, datetime('now', ? || ' hours'))");
+                    seedPosts.forEach(([cat, title, body, upvotes, hoursAgo]) => {
+                        stmt.run(uid, cat, title, body, upvotes, String(hoursAgo));
+                    });
+                    stmt.finalize();
+                });
+            }
+        });
+
+
         db.get("SELECT COUNT(*) AS count FROM users WHERE role = 'admin'", (err, row) => {
             if (!err && row.count === 0) {
                 const hash = bcrypt.hashSync('admin123', 10);
@@ -462,6 +533,9 @@ app.post('/checkout', requireAuth, upload.single('payment_proof'), (req, res) =>
             });
         });
         req.session.cart = [];
+        // Grant VIP on order placement
+        db.run("UPDATE users SET is_vip = 1 WHERE id = ?", [userId]);
+        if (req.session.user) req.session.user.is_vip = 1;
         res.redirect('/dashboard');
     });
 });
@@ -485,7 +559,7 @@ app.post('/login', (req, res) => {
     const { login_id, password } = req.body;
     db.get("SELECT * FROM users WHERE email = ? OR username = ?", [login_id, login_id], (err, user) => {
         if (user && bcrypt.compareSync(password, user.password)) {
-            req.session.user = { id: user.id, username: user.username, role: user.role, is_vendor: user.is_vendor };
+            req.session.user = { id: user.id, username: user.username, role: user.role, is_vendor: user.is_vendor, is_vip: user.is_vip || 0 };
             if (user.role === 'admin') return res.redirect('/admin');
             return res.redirect('/dashboard');
         }
@@ -543,6 +617,9 @@ app.post('/order/complete/:id', requireAuth, reviewsUpload.single('review_photo'
     `, [orderId, userId], (err, order) => {
         if (order) {
             db.run("UPDATE orders SET status = 'completed' WHERE id = ?", [orderId], (err) => {
+                // Grant VIP status to user when they complete their first order
+                db.run("UPDATE users SET is_vip = 1 WHERE id = ?", [userId]);
+                if (req.session.user) req.session.user.is_vip = 1;
                 db.run(
                     "INSERT INTO reviews (vendor_id, buyer_id, product_id, rating, comment, photo_url) VALUES (?, ?, ?, ?, ?, ?)",
                     [order.vendor_id, userId, order.product_id, rating, comment, photo_url],
@@ -628,6 +705,115 @@ app.post('/api/messages/send', requireAuth, messageImageUpload.single('image'), 
 
 app.get('/support', requireAuth, (req, res) => {
     res.render('support');
+});
+
+
+// ============================================================
+// FORUM ROUTES
+// ============================================================
+
+// Helper to check if user is VIP
+function isVip(user) {
+    if (!user) return false;
+    if (user.role === 'admin') return true;
+    return user.is_vip === 1;
+}
+
+// GET /forum — main forum page
+app.get('/forum', (req, res) => {
+    const user = req.session.user || null;
+    const vip = isVip(user);
+    const category = req.query.cat || null;
+    const sort = req.query.sort || 'hot'; // hot | new | top
+
+    let orderBy = 'p.upvotes DESC, p.created_at DESC';
+    if (sort === 'new') orderBy = 'p.created_at DESC';
+    else if (sort === 'top') orderBy = 'p.upvotes DESC';
+
+    let query = `
+        SELECT p.*, u.username, 
+               (SELECT COUNT(*) FROM forum_comments WHERE post_id = p.id) AS comment_count
+        FROM forum_posts p
+        JOIN users u ON p.user_id = u.id
+        ${category ? "WHERE p.category = ?" : ""}
+        ORDER BY ${orderBy}
+        LIMIT 30
+    `;
+    const params = category ? [category] : [];
+
+    db.all(query, params, (err, posts) => {
+        res.render('forum', { user, vip, posts: posts || [], category, sort });
+    });
+});
+
+// GET /forum/post/:id — single post thread (VIP only)
+app.get('/forum/post/:id', (req, res) => {
+    const user = req.session.user || null;
+    if (!isVip(user)) return res.redirect('/forum');
+    db.get(`SELECT p.*, u.username FROM forum_posts p JOIN users u ON p.user_id = u.id WHERE p.id = ?`, [req.params.id], (err, post) => {
+        if (!post) return res.redirect('/forum');
+        db.all(`SELECT c.*, u.username FROM forum_comments c JOIN users u ON c.user_id = u.id WHERE c.post_id = ? ORDER BY c.created_at ASC`, [post.id], (err, comments) => {
+            res.render('forum_post', { user, post, comments: comments || [] });
+        });
+    });
+});
+
+// POST /forum/post — create new post (VIP only)
+app.post('/forum/post', requireAuth, (req, res) => {
+    if (!isVip(req.session.user)) return res.redirect('/forum');
+    const { title, body, category } = req.body;
+    if (!title || !body) return res.redirect('/forum');
+    db.run("INSERT INTO forum_posts (user_id, category, title, body) VALUES (?, ?, ?, ?)",
+        [req.session.user.id, category || 'General', title.trim(), body.trim()],
+        function(err) {
+            if (err) return res.redirect('/forum');
+            res.redirect('/forum/post/' + this.lastID);
+        }
+    );
+});
+
+// POST /forum/post/:id/comment — add comment (VIP only)
+app.post('/forum/post/:id/comment', requireAuth, (req, res) => {
+    if (!isVip(req.session.user)) return res.redirect('/forum');
+    const { body } = req.body;
+    if (!body) return res.redirect('/forum/post/' + req.params.id);
+    db.run("INSERT INTO forum_comments (post_id, user_id, body) VALUES (?, ?, ?)",
+        [req.params.id, req.session.user.id, body.trim()],
+        (err) => res.redirect('/forum/post/' + req.params.id)
+    );
+});
+
+// POST /forum/post/:id/vote — upvote a post (VIP only)
+app.post('/forum/post/:id/vote', requireAuth, (req, res) => {
+    if (!isVip(req.session.user)) return res.json({ error: 'VIP only' });
+    const postId = req.params.id;
+    const userId = req.session.user.id;
+    db.get("SELECT id FROM forum_post_votes WHERE post_id = ? AND user_id = ?", [postId, userId], (err, existing) => {
+        if (existing) {
+            db.run("DELETE FROM forum_post_votes WHERE post_id = ? AND user_id = ?", [postId, userId]);
+            db.run("UPDATE forum_posts SET upvotes = MAX(0, upvotes - 1) WHERE id = ?", [postId]);
+            return res.json({ voted: false });
+        }
+        db.run("INSERT INTO forum_post_votes (post_id, user_id) VALUES (?, ?)", [postId, userId]);
+        db.run("UPDATE forum_posts SET upvotes = upvotes + 1 WHERE id = ?", [postId]);
+        res.json({ voted: true });
+    });
+});
+
+// POST /forum/follow/:id — follow a user (VIP only)
+app.post('/forum/follow/:id', requireAuth, (req, res) => {
+    if (!isVip(req.session.user)) return res.redirect('/forum');
+    const followerId = req.session.user.id;
+    const followingId = req.params.id;
+    if (followerId == followingId) return res.redirect('/forum');
+    db.get("SELECT id FROM user_follows WHERE follower_id = ? AND following_id = ?", [followerId, followingId], (err, existing) => {
+        if (existing) {
+            db.run("DELETE FROM user_follows WHERE follower_id = ? AND following_id = ?", [followerId, followingId]);
+        } else {
+            db.run("INSERT OR IGNORE INTO user_follows (follower_id, following_id) VALUES (?, ?)", [followerId, followingId]);
+        }
+        res.redirect(req.get('Referer') || '/forum');
+    });
 });
 
 app.get('/cooperation', (req, res) => {

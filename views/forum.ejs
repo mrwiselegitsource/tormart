@@ -1,0 +1,733 @@
+<%- include('header') %>
+
+<style>
+/* ============ FORUM BASE ============ */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+
+:root {
+    --reddit-bg: #dae0e6;
+    --reddit-card: #ffffff;
+    --reddit-border: #edeff1;
+    --reddit-text: #1c1c1c;
+    --reddit-muted: #878a8c;
+    --reddit-orange: #ff4500;
+    --reddit-blue: #0079d3;
+    --reddit-upvote: #ff4500;
+    --forum-dark: #1a1a2e;
+    --forum-purple: #7e22ce;
+    --forum-green: #22c55e;
+    --forum-gold: #ffcc00;
+    --sidebar-w: 312px;
+}
+
+.forum-page { font-family: 'IBM Plex Sans', Arial, sans-serif; background: var(--reddit-bg); min-height: 100vh; }
+
+/* ====== FORUM HEADER BANNER ====== */
+.forum-banner {
+    background: linear-gradient(135deg, var(--forum-dark) 0%, #2d1b69 50%, #1a1a2e 100%);
+    padding: 0;
+    border-bottom: 3px solid var(--forum-purple);
+}
+.forum-banner-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 18px 20px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+.forum-icon {
+    width: 56px; height: 56px;
+    background: var(--forum-purple);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 26px;
+    border: 3px solid rgba(255,255,255,0.2);
+    box-shadow: 0 0 20px rgba(126,34,206,0.5);
+    flex-shrink: 0;
+}
+.forum-banner-text h1 { color: #fff; font-size: 20px; font-weight: 700; margin: 0 0 3px; }
+.forum-banner-text p { color: rgba(255,255,255,0.6); font-size: 13px; margin: 0; }
+.live-badge {
+    margin-left: auto;
+    display: flex; align-items: center; gap: 8px;
+    color: #fff; font-size: 13px; font-weight: 600;
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.15);
+    padding: 8px 16px; border-radius: 20px;
+    backdrop-filter: blur(4px);
+}
+.live-dot {
+    width: 10px; height: 10px;
+    background: #ef4444; border-radius: 50%;
+    animation: livePulse 1.5s ease-in-out infinite;
+    box-shadow: 0 0 8px #ef4444;
+}
+@keyframes livePulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+/* ====== LAYOUT ====== */
+.forum-layout {
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 0 20px;
+    display: grid;
+    grid-template-columns: 1fr var(--sidebar-w);
+    gap: 24px;
+    align-items: start;
+}
+
+/* ====== SORT BAR ====== */
+.sort-bar {
+    background: var(--reddit-card);
+    border-radius: 4px;
+    padding: 10px 12px;
+    display: flex;
+    gap: 4px;
+    margin-bottom: 10px;
+    border: 1px solid var(--reddit-border);
+}
+.sort-btn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 8px 14px;
+    border-radius: 20px;
+    font-size: 14px; font-weight: 700;
+    color: var(--reddit-muted);
+    text-decoration: none;
+    transition: all 0.15s;
+    cursor: pointer;
+    background: none; border: none;
+}
+.sort-btn:hover, .sort-btn.active {
+    background: rgba(0,0,0,0.06);
+    color: var(--reddit-blue);
+}
+
+/* ====== POST CARD ====== */
+.post-card {
+    background: var(--reddit-card);
+    border: 1px solid var(--reddit-border);
+    border-radius: 4px;
+    display: flex;
+    margin-bottom: 10px;
+    transition: border-color 0.15s;
+    overflow: hidden;
+    position: relative;
+}
+.post-card:hover { border-color: #818384; cursor: pointer; }
+.post-card.blurred { pointer-events: none; }
+.post-card.blurred .post-title,
+.post-card.blurred .post-meta,
+.post-card.blurred .post-footer { filter: blur(4px); user-select: none; }
+
+/* Vote Column */
+.vote-col {
+    background: #f8f9fa;
+    width: 40px; flex-shrink: 0;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 8px 4px; gap: 4px;
+}
+.vote-btn {
+    width: 24px; height: 24px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 2px;
+    border: none; background: none; cursor: pointer;
+    color: var(--reddit-muted); font-size: 18px;
+    transition: all 0.15s;
+}
+.vote-btn:hover { background: rgba(255,69,0,0.1); color: var(--reddit-upvote); }
+.vote-count {
+    font-size: 12px; font-weight: 700;
+    color: var(--reddit-text);
+    line-height: 1;
+}
+
+/* Post Body */
+.post-body { flex: 1; padding: 8px 8px 8px 8px; min-width: 0; }
+.post-category-tag {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 12px; color: var(--reddit-muted);
+    margin-bottom: 6px;
+}
+.cat-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    display: inline-block;
+}
+.cat-General { background: #6366f1; }
+.cat-Tips { background: var(--forum-green); }
+.cat-Vendor { background: var(--forum-gold); }
+.cat-Help { background: #ef4444; }
+
+.post-title {
+    font-size: 18px; font-weight: 500;
+    color: var(--reddit-text);
+    margin: 0 0 8px; line-height: 1.3;
+    text-decoration: none; display: block;
+}
+.post-title:hover { color: var(--reddit-blue); text-decoration: none; }
+
+.post-meta { font-size: 12px; color: var(--reddit-muted); margin-bottom: 8px; }
+.post-meta strong { color: var(--reddit-text); }
+
+.post-footer {
+    display: flex; gap: 4px; flex-wrap: wrap;
+}
+.post-action-btn {
+    display: flex; align-items: center; gap: 5px;
+    padding: 6px 8px; border-radius: 2px;
+    font-size: 12px; font-weight: 700;
+    color: var(--reddit-muted);
+    border: none; background: none; cursor: pointer;
+    transition: background 0.15s;
+    text-decoration: none;
+}
+.post-action-btn:hover { background: rgba(0,0,0,0.06); color: var(--reddit-text); }
+
+/* ====== SIDEBAR ====== */
+.sidebar-card {
+    background: var(--reddit-card);
+    border: 1px solid var(--reddit-border);
+    border-radius: 4px;
+    margin-bottom: 16px;
+    overflow: hidden;
+}
+.sidebar-header {
+    background: linear-gradient(135deg, var(--forum-dark), #2d1b69);
+    padding: 40px 12px 12px;
+    position: relative; overflow: hidden;
+}
+.sidebar-header-bg {
+    position: absolute; inset: 0;
+    background: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.03) 10px, rgba(255,255,255,0.03) 20px);
+}
+.sidebar-header h3 { color: #fff; font-size: 14px; font-weight: 700; margin: 0 0 4px; position: relative; }
+.sidebar-header p { color: rgba(255,255,255,0.7); font-size: 12px; margin: 0; position: relative; }
+.sidebar-body { padding: 12px; }
+.sidebar-stat-row { display: flex; justify-content: space-between; margin-bottom: 16px; }
+.sidebar-stat { text-align: center; }
+.sidebar-stat strong { display: block; font-size: 16px; font-weight: 700; color: var(--reddit-text); }
+.sidebar-stat span { font-size: 12px; color: var(--reddit-muted); }
+.sidebar-divider { height: 1px; background: var(--reddit-border); margin: 12px 0; }
+.sidebar-section-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--reddit-muted); margin-bottom: 8px; }
+.cat-link {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 4px; font-size: 14px; color: var(--reddit-text);
+    text-decoration: none; border-radius: 2px;
+    transition: background 0.1s;
+}
+.cat-link:hover { background: rgba(0,0,0,0.05); text-decoration: none; color: var(--reddit-text); }
+
+/* ====== VIP GATE OVERLAY ====== */
+.vip-gate-wrapper {
+    position: relative;
+    margin-top: 10px;
+}
+.vip-blurred-posts {
+    filter: blur(6px);
+    pointer-events: none;
+    user-select: none;
+    opacity: 0.7;
+}
+.vip-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 10;
+    padding: 20px;
+}
+.vip-gate-card {
+    background: rgba(26, 26, 46, 0.96);
+    border: 1px solid rgba(126, 34, 206, 0.6);
+    border-radius: 12px;
+    padding: 40px 36px;
+    text-align: center;
+    max-width: 480px;
+    width: 100%;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 0 60px rgba(126, 34, 206, 0.3), 0 20px 60px rgba(0,0,0,0.5);
+    position: relative; overflow: hidden;
+}
+.vip-gate-card::before {
+    content: '';
+    position: absolute; inset: -1px;
+    border-radius: 13px;
+    padding: 1px;
+    background: linear-gradient(135deg, rgba(126,34,206,0.8), rgba(34,197,94,0.4), rgba(255,204,0,0.3));
+    -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor; mask-composite: exclude;
+    pointer-events: none;
+}
+.vip-lock-icon { font-size: 52px; margin-bottom: 16px; display: block; }
+.vip-gate-card h2 { color: #fff; font-size: 22px; font-weight: 700; margin: 0 0 10px; }
+.vip-gate-card p { color: rgba(255,255,255,0.65); font-size: 14px; line-height: 1.6; margin: 0 0 24px; }
+.vip-btn-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.vip-btn-primary {
+    background: linear-gradient(135deg, var(--forum-purple), #9333ea);
+    color: #fff; font-weight: 700; font-size: 14px;
+    padding: 12px 24px; border-radius: 6px;
+    text-decoration: none; border: none; cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: 0 4px 20px rgba(126,34,206,0.4);
+}
+.vip-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(126,34,206,0.6); color: #fff; text-decoration: none; }
+.vip-btn-secondary {
+    background: rgba(255,255,255,0.1);
+    color: #fff; font-weight: 600; font-size: 14px;
+    padding: 12px 24px; border-radius: 6px;
+    text-decoration: none; border: 1px solid rgba(255,255,255,0.2);
+    cursor: pointer; transition: background 0.2s;
+}
+.vip-btn-secondary:hover { background: rgba(255,255,255,0.18); color: #fff; text-decoration: none; }
+.vip-perks { display: flex; gap: 20px; justify-content: center; margin-top: 20px; }
+.vip-perk { text-align: center; }
+.vip-perk-icon { font-size: 20px; display: block; margin-bottom: 4px; }
+.vip-perk-text { font-size: 11px; color: rgba(255,255,255,0.5); }
+
+/* ====== LIVE NOTIFICATIONS (Simulation) ====== */
+#sim-feed {
+    position: fixed;
+    bottom: 20px; right: 20px;
+    z-index: 999;
+    display: flex; flex-direction: column-reverse; gap: 8px;
+    pointer-events: none;
+    width: 320px;
+}
+.sim-toast {
+    background: rgba(26, 26, 46, 0.96);
+    border: 1px solid rgba(126,34,206,0.5);
+    border-radius: 10px;
+    padding: 12px 14px;
+    display: flex; align-items: flex-start; gap: 10px;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4), 0 0 0 1px rgba(126,34,206,0.2);
+    animation: toastIn 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards;
+    pointer-events: auto;
+}
+@keyframes toastIn {
+    from { opacity: 0; transform: translateX(30px) scale(0.95); }
+    to { opacity: 1; transform: translateX(0) scale(1); }
+}
+@keyframes toastOut {
+    from { opacity: 1; transform: translateX(0); max-height: 80px; }
+    to { opacity: 0; transform: translateX(30px); max-height: 0; margin: 0; padding: 0; }
+}
+.toast-avatar {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--forum-purple), #9333ea);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 700; color: #fff;
+    flex-shrink: 0;
+    border: 2px solid rgba(126,34,206,0.5);
+}
+.toast-content { flex: 1; min-width: 0; }
+.toast-name { font-size: 12px; font-weight: 700; color: #fff; margin-bottom: 3px; }
+.toast-msg { font-size: 11px; color: rgba(255,255,255,0.55); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.toast-time { font-size: 10px; color: rgba(255,255,255,0.3); margin-top: 4px; }
+
+/* ====== CREATE POST BAR (VIP) ====== */
+.create-post-bar {
+    background: var(--reddit-card);
+    border: 1px solid var(--reddit-border);
+    border-radius: 4px;
+    padding: 8px;
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 10px;
+}
+.create-avatar {
+    width: 38px; height: 38px; border-radius: 4px;
+    background: #edeff1; display: flex; align-items: center; justify-content: center;
+    font-size: 20px; flex-shrink: 0;
+}
+.create-input {
+    flex: 1; border: 1px solid var(--reddit-border); border-radius: 4px;
+    padding: 8px 12px; font-size: 14px; background: #f6f7f8;
+    cursor: pointer; color: var(--reddit-muted);
+    font-family: inherit;
+}
+.create-input:hover { border-color: var(--reddit-blue); background: #fff; }
+
+/* ====== NEW POST MODAL ====== */
+.modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7); z-index: 200;
+    display: none; align-items: center; justify-content: center;
+    backdrop-filter: blur(3px);
+}
+.modal-backdrop.open { display: flex; }
+.modal-box {
+    background: #fff; border-radius: 8px;
+    width: 100%; max-width: 600px; max-height: 90vh; overflow-y: auto;
+    padding: 24px; position: relative;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+}
+.modal-close { position: absolute; top: 16px; right: 16px; font-size: 20px; cursor: pointer; color: var(--reddit-muted); background: none; border: none; }
+.modal-title { font-size: 18px; font-weight: 700; margin: 0 0 20px; }
+.modal-input, .modal-textarea, .modal-select {
+    width: 100%; border: 1px solid var(--reddit-border);
+    border-radius: 4px; padding: 10px 12px; font-size: 14px;
+    font-family: inherit; margin-bottom: 12px;
+    outline: none; resize: vertical;
+}
+.modal-input:focus, .modal-textarea:focus, .modal-select:focus { border-color: var(--reddit-blue); }
+.modal-textarea { min-height: 120px; }
+.modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+.modal-btn-cancel { padding: 8px 16px; border-radius: 20px; border: 1px solid var(--reddit-border); background: none; cursor: pointer; font-weight: 700; font-size: 14px; }
+.modal-btn-post { padding: 8px 16px; border-radius: 20px; background: var(--reddit-orange); color: #fff; border: none; cursor: pointer; font-weight: 700; font-size: 14px; }
+
+/* ====== RESPONSIVE ====== */
+@media (max-width: 960px) {
+    .forum-layout { grid-template-columns: 1fr; }
+    .forum-sidebar { display: none; }
+    #sim-feed { width: 280px; }
+}
+@media (max-width: 640px) {
+    .forum-banner-inner { flex-wrap: wrap; }
+    .live-badge { margin-left: 0; }
+    .forum-layout { padding: 0 10px; }
+    .vip-gate-card { padding: 28px 20px; }
+    .vip-btn-row { flex-direction: column; }
+    #sim-feed { width: calc(100% - 20px); right: 10px; }
+}
+</style>
+
+<div class="forum-page">
+
+    <!-- Forum Banner -->
+    <div class="forum-banner">
+        <div class="forum-banner-inner">
+            <div class="forum-icon">💬</div>
+            <div class="forum-banner-text">
+                <h1>TorMart Community Forum</h1>
+                <p>The private hub for verified buyers · r/TorMart</p>
+            </div>
+            <div class="live-badge">
+                <span class="live-dot"></span>
+                <span id="live-count">0</span> online now
+            </div>
+        </div>
+    </div>
+
+    <div class="forum-layout">
+
+        <!-- Main Feed Column -->
+        <div class="forum-main">
+
+            <% if (vip) { %>
+            <!-- ===== VIP VIEW ===== -->
+            <!-- Create Post Bar -->
+            <div class="create-post-bar">
+                <div class="create-avatar">🧑</div>
+                <input class="create-input" type="text" placeholder="Create Post" id="openPostModal" readonly onclick="document.getElementById('newPostModal').classList.add('open')">
+            </div>
+
+            <!-- Sort Bar -->
+            <div class="sort-bar">
+                <a href="/forum?sort=hot<%= category ? '&cat=' + encodeURIComponent(category) : '' %>" class="sort-btn <%= sort === 'hot' ? 'active' : '' %>">🔥 Hot</a>
+                <a href="/forum?sort=new<%= category ? '&cat=' + encodeURIComponent(category) : '' %>" class="sort-btn <%= sort === 'new' ? 'active' : '' %>">✨ New</a>
+                <a href="/forum?sort=top<%= category ? '&cat=' + encodeURIComponent(category) : '' %>" class="sort-btn <%= sort === 'top' ? 'active' : '' %>">📈 Top</a>
+            </div>
+
+            <!-- Posts List -->
+            <% if (posts.length === 0) { %>
+            <div style="background:#fff;border:1px solid #edeff1;border-radius:4px;padding:40px;text-align:center;color:#878a8c;">
+                <div style="font-size:40px;margin-bottom:12px;">📭</div>
+                <p style="font-size:16px;font-weight:700;color:#1c1c1c;margin-bottom:8px;">No posts here yet</p>
+                <p style="font-size:14px;">Be the first to post in this category!</p>
+            </div>
+            <% } else { %>
+            <% posts.forEach(post => { 
+                const catSlug = post.category.replace(/[^a-z]/gi, '');
+                const timeDiff = (() => {
+                    const diff = Math.floor((Date.now() - new Date(post.created_at).getTime()) / 1000);
+                    if (diff < 60) return diff + 's ago';
+                    if (diff < 3600) return Math.floor(diff/60) + 'm ago';
+                    if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
+                    return Math.floor(diff/86400) + 'd ago';
+                })();
+            %>
+            <div class="post-card">
+                <div class="vote-col">
+                    <button class="vote-btn" onclick="vote(event, <%= post.id %>, this)">▲</button>
+                    <span class="vote-count" id="votes-<%= post.id %>"><%= post.upvotes > 999 ? (post.upvotes/1000).toFixed(1)+'k' : post.upvotes %></span>
+                    <button class="vote-btn" style="color:var(--reddit-muted);font-size:16px;">▼</button>
+                </div>
+                <div class="post-body">
+                    <div class="post-category-tag">
+                        <span class="cat-dot cat-<%= catSlug %>"></span>
+                        <strong>f/<%= post.category %></strong>
+                        <span>• Posted by u/<%= post.username %></span>
+                        <span>• <%= timeDiff %></span>
+                    </div>
+                    <a href="/forum/post/<%= post.id %>" class="post-title"><%= post.title %></a>
+                    <div class="post-footer">
+                        <a href="/forum/post/<%= post.id %>" class="post-action-btn">💬 <%= post.comment_count %> Comments</a>
+                        <button class="post-action-btn" onclick="navigator.clipboard&&navigator.clipboard.writeText(window.location.origin+'/forum/post/<%= post.id %>')">🔗 Share</button>
+                        <button class="post-action-btn">⭐ Save</button>
+                    </div>
+                </div>
+            </div>
+            <% }) %>
+            <% } %>
+
+            <% } else { %>
+            <!-- ===== NON-VIP SIMULATION VIEW ===== -->
+
+            <!-- Sort Bar (fake, non-functional) -->
+            <div class="sort-bar">
+                <span class="sort-btn active">🔥 Hot</span>
+                <span class="sort-btn">✨ New</span>
+                <span class="sort-btn">📈 Top</span>
+            </div>
+
+            <!-- VIP Gate Wrapper -->
+            <div class="vip-gate-wrapper">
+                <!-- Blurred real posts behind the gate -->
+                <div class="vip-blurred-posts">
+                    <% posts.slice(0, 6).forEach(post => { %>
+                    <div class="post-card">
+                        <div class="vote-col">
+                            <button class="vote-btn">▲</button>
+                            <span class="vote-count"><%= post.upvotes > 999 ? (post.upvotes/1000).toFixed(1)+'k' : post.upvotes %></span>
+                            <button class="vote-btn" style="font-size:16px;">▼</button>
+                        </div>
+                        <div class="post-body">
+                            <div class="post-category-tag">
+                                <span class="cat-dot cat-General"></span>
+                                <strong>f/<%= post.category %></strong>
+                                <span>• Posted by u/██████</span>
+                            </div>
+                            <div class="post-title" style="color:#1c1c1c;"><%= post.title %></div>
+                            <div class="post-footer">
+                                <span class="post-action-btn">💬 <%= post.comment_count || Math.floor(Math.random()*50+5) %> Comments</span>
+                                <span class="post-action-btn">🔗 Share</span>
+                            </div>
+                        </div>
+                    </div>
+                    <% }) %>
+                </div>
+
+                <!-- The Gate Overlay -->
+                <div class="vip-overlay">
+                    <div class="vip-gate-card">
+                        <span class="vip-lock-icon">🔒</span>
+                        <h2>Members-Only Community</h2>
+                        <p>Join thousands of verified buyers discussing deals, sharing strategies, and helping each other succeed. Make a purchase to unlock full access instantly.</p>
+
+                        <div class="vip-btn-row">
+                            <a href="/" class="vip-btn-primary">🛒 Browse & Purchase to Unlock</a>
+                            <a href="/login" class="vip-btn-secondary"><%= user ? 'View My Orders' : 'Login to Check Access' %></a>
+                        </div>
+
+                        <div class="vip-perks">
+                            <div class="vip-perk">
+                                <span class="vip-perk-icon">💬</span>
+                                <span class="vip-perk-text">Post & Reply</span>
+                            </div>
+                            <div class="vip-perk">
+                                <span class="vip-perk-icon">🔥</span>
+                                <span class="vip-perk-text">Exclusive Deals</span>
+                            </div>
+                            <div class="vip-perk">
+                                <span class="vip-perk-icon">👥</span>
+                                <span class="vip-perk-text">Follow Members</span>
+                            </div>
+                            <div class="vip-perk">
+                                <span class="vip-perk-icon">⭐</span>
+                                <span class="vip-perk-text">VIP Badge</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <% } %>
+        </div>
+
+        <!-- ===== SIDEBAR ===== -->
+        <div class="forum-sidebar">
+            <!-- About -->
+            <div class="sidebar-card">
+                <div class="sidebar-header">
+                    <div class="sidebar-header-bg"></div>
+                    <h3>f/TorMart</h3>
+                    <p>The verified buyers community</p>
+                </div>
+                <div class="sidebar-body">
+                    <p style="font-size:14px;color:#1c1c1c;margin-bottom:16px;">A private forum for members who have made at least one purchase. Share experiences, tips, and connect with fellow buyers.</p>
+                    <div class="sidebar-stat-row">
+                        <div class="sidebar-stat">
+                            <strong id="member-count">2,847</strong>
+                            <span>Members</span>
+                        </div>
+                        <div class="sidebar-stat">
+                            <strong><span id="online-count">0</span></strong>
+                            <span>Online</span>
+                        </div>
+                        <div class="sidebar-stat">
+                            <strong>2021</strong>
+                            <span>Founded</span>
+                        </div>
+                    </div>
+                    <% if (vip) { %>
+                    <button onclick="document.getElementById('newPostModal').classList.add('open')" style="width:100%;background:var(--reddit-orange);color:#fff;font-weight:700;font-size:14px;padding:10px;border-radius:20px;border:none;cursor:pointer;margin-bottom:8px;">+ Create Post</button>
+                    <% } else { %>
+                    <a href="/" style="display:block;width:100%;background:var(--reddit-orange);color:#fff;font-weight:700;font-size:14px;padding:10px;border-radius:20px;text-align:center;text-decoration:none;margin-bottom:8px;">Unlock Access</a>
+                    <% } %>
+                </div>
+            </div>
+
+            <!-- Categories -->
+            <div class="sidebar-card">
+                <div class="sidebar-body">
+                    <div class="sidebar-section-title">Browse Categories</div>
+                    <a href="/forum" class="cat-link"><span class="cat-dot cat-General" style="width:12px;height:12px;border-radius:50%;flex-shrink:0;"></span> General Discussion</a>
+                    <a href="/forum?cat=Tips+%26+Tricks" class="cat-link"><span class="cat-dot cat-Tips" style="width:12px;height:12px;border-radius:50%;flex-shrink:0;"></span> Tips &amp; Tricks</a>
+                    <a href="/forum?cat=Vendor+Reviews" class="cat-link"><span class="cat-dot cat-Vendor" style="width:12px;height:12px;border-radius:50%;flex-shrink:0;"></span> Vendor Reviews</a>
+                    <a href="/forum?cat=Help+%26+Support" class="cat-link"><span class="cat-dot cat-Help" style="width:12px;height:12px;border-radius:50%;flex-shrink:0;"></span> Help &amp; Support</a>
+                </div>
+            </div>
+
+            <!-- Rules -->
+            <div class="sidebar-card">
+                <div class="sidebar-body">
+                    <div class="sidebar-section-title">Community Rules</div>
+                    <ol style="padding-left:16px;font-size:13px;color:#1c1c1c;line-height:2;">
+                        <li>Be respectful to all members</li>
+                        <li>No scamming or fraud within the community</li>
+                        <li>Keep OPSEC — don't share personal info</li>
+                        <li>Use spoiler tags for sensitive content</li>
+                        <li>No advertising without mod approval</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /forum-layout -->
+</div><!-- /forum-page -->
+
+<!-- ===== NEW POST MODAL (VIP only) ===== -->
+<% if (vip) { %>
+<div class="modal-backdrop" id="newPostModal">
+    <div class="modal-box">
+        <button class="modal-close" onclick="document.getElementById('newPostModal').classList.remove('open')">✕</button>
+        <div class="modal-title">Create a Post</div>
+        <form action="/forum/post" method="POST">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <select name="category" class="modal-select">
+                <option value="General">f/General</option>
+                <option value="Tips &amp; Tricks">f/Tips &amp; Tricks</option>
+                <option value="Vendor Reviews">f/Vendor Reviews</option>
+                <option value="Help &amp; Support">f/Help &amp; Support</option>
+            </select>
+            <input type="text" name="title" class="modal-input" placeholder="Title (required)" required maxlength="300">
+            <textarea name="body" class="modal-textarea" placeholder="Share your thoughts, tips, or questions..." required></textarea>
+            <div class="modal-footer">
+                <button type="button" class="modal-btn-cancel" onclick="document.getElementById('newPostModal').classList.remove('open')">Cancel</button>
+                <button type="submit" class="modal-btn-post">Post</button>
+            </div>
+        </form>
+    </div>
+</div>
+<% } %>
+
+<!-- ===== LIVE SIMULATION TOASTS ===== -->
+<div id="sim-feed"></div>
+
+<script>
+// ---- Live counter animation ----
+const liveEl = document.getElementById('live-count');
+const onlineEl = document.getElementById('online-count');
+let liveBase = 183 + Math.floor(Math.random() * 80);
+setInterval(() => {
+    liveBase += Math.floor(Math.random() * 5) - 2;
+    if (liveBase < 120) liveBase = 120;
+    if (liveEl) liveEl.textContent = liveBase;
+    if (onlineEl) onlineEl.textContent = liveBase;
+}, 4000);
+if (liveEl) liveEl.textContent = liveBase;
+if (onlineEl) onlineEl.textContent = liveBase;
+
+// ---- Simulation toasts ----
+const simData = [
+    { initials: 'D', name: 'D***k', msg: 'Just got my order delivered, works perfectly! 🔥' },
+    { initials: 'M', name: 'M****a', msg: 'Anyone tried the new BIN list? Results are insane' },
+    { initials: 'R', name: 'R**s', msg: 'Northstar Labs never disappoints, 5th order done ✅' },
+    { initials: 'K', name: 'K****y', msg: 'Finally unlocked VIP, this forum is worth it' },
+    { initials: 'T', name: 'T***o', msg: 'The OPSEC guide in Tips section changed my game' },
+    { initials: 'J', name: 'J***e', msg: 'Escrow protected me on a bad order, 10/10 system' },
+    { initials: 'A', name: 'A***x', msg: 'New post up: complete cashout method for 2026 👀' },
+    { initials: 'S', name: 'S****n', msg: 'Who has experience with crypto transfers? DM me' },
+    { initials: 'L', name: 'L***a', msg: 'Just hit 50 successful orders, AMA in General 🎉' },
+    { initials: 'C', name: 'C***s', msg: 'Vendor Review posted — read before you buy this week' },
+    { initials: 'P', name: 'P***l', msg: 'Tips forum saved me $400 this month, no cap' },
+    { initials: 'N', name: 'N***i', msg: 'New here, bought first order and unlocked this — wow' },
+];
+
+let toastIndex = Math.floor(Math.random() * simData.length);
+
+function showToast() {
+    const d = simData[toastIndex % simData.length];
+    toastIndex++;
+    const feed = document.getElementById('sim-feed');
+    if (!feed) return;
+
+    const toast = document.createElement('div');
+    toast.className = 'sim-toast';
+    toast.innerHTML = `
+        <div class="toast-avatar">${d.initials}</div>
+        <div class="toast-content">
+            <div class="toast-name">${d.name} just posted</div>
+            <div class="toast-msg">${d.msg.substring(0, 50)}${d.msg.length > 50 ? '...' : ''}</div>
+            <div class="toast-time">just now</div>
+        </div>
+    `;
+    feed.appendChild(toast);
+
+    // Auto-remove after 5s
+    setTimeout(() => {
+        toast.style.animation = 'toastOut 0.4s ease forwards';
+        setTimeout(() => toast.remove(), 400);
+    }, 5000);
+
+    // Keep max 3 toasts
+    while (feed.children.length > 3) {
+        feed.removeChild(feed.firstChild);
+    }
+}
+
+// Start toasts after 2s, then every 4-7s
+setTimeout(() => {
+    showToast();
+    setInterval(showToast, 4000 + Math.random() * 3000);
+}, 2000);
+
+// ---- Vote handler (VIP only) ----
+<% if (vip) { %>
+function vote(e, postId, btn) {
+    e.preventDefault(); e.stopPropagation();
+    fetch('/forum/post/' + postId + '/vote', {
+        method: 'POST',
+        headers: { 'x-csrf-token': '<%= csrfToken %>', 'Content-Type': 'application/json' }
+    })
+    .then(r => r.json())
+    .then(d => {
+        const countEl = document.getElementById('votes-' + postId);
+        if (!countEl) return;
+        let current = parseInt(countEl.textContent.replace('k','')) || 0;
+        if (d.voted) { countEl.textContent = current + 1; btn.style.color = 'var(--reddit-upvote)'; }
+        else { countEl.textContent = Math.max(0, current - 1); btn.style.color = ''; }
+    });
+}
+<% } else { %>
+function vote() {}
+<% } %>
+
+// Close modal on backdrop click
+document.addEventListener('click', (e) => {
+    const modal = document.getElementById('newPostModal');
+    if (modal && e.target === modal) modal.classList.remove('open');
+});
+</script>
+
+<%- include('footer') %>

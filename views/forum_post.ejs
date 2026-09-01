@@ -1,0 +1,200 @@
+<%- include('header') %>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
+:root {
+    --reddit-bg: #dae0e6;
+    --reddit-card: #ffffff;
+    --reddit-border: #edeff1;
+    --reddit-text: #1c1c1c;
+    --reddit-muted: #878a8c;
+    --reddit-orange: #ff4500;
+    --reddit-blue: #0079d3;
+    --forum-purple: #7e22ce;
+    --forum-dark: #1a1a2e;
+}
+.forum-page { font-family: 'IBM Plex Sans', Arial, sans-serif; background: var(--reddit-bg); min-height: 100vh; }
+.forum-banner {
+    background: linear-gradient(135deg, var(--forum-dark) 0%, #2d1b69 50%, var(--forum-dark) 100%);
+    border-bottom: 3px solid var(--forum-purple);
+}
+.forum-banner-inner { max-width: 1200px; margin: 0 auto; padding: 14px 20px; display: flex; align-items: center; gap: 12px; }
+.back-link { color: rgba(255,255,255,0.7); font-size: 14px; text-decoration: none; }
+.back-link:hover { color: #fff; }
+.banner-title { color: #fff; font-size: 16px; font-weight: 700; margin: 0; }
+
+.forum-layout { max-width: 1200px; margin: 20px auto; padding: 0 20px; display: grid; grid-template-columns: 1fr 312px; gap: 24px; align-items: start; }
+@media (max-width: 960px) { .forum-layout { grid-template-columns: 1fr; } .forum-sidebar { display: none; } }
+
+/* Post Card */
+.post-full {
+    background: var(--reddit-card);
+    border: 1px solid var(--reddit-border);
+    border-radius: 4px;
+    margin-bottom: 10px;
+    overflow: hidden;
+}
+.post-full-inner { display: flex; }
+.vote-col {
+    background: #f8f9fa; width: 40px; flex-shrink: 0;
+    display: flex; flex-direction: column; align-items: center;
+    padding: 8px 4px; gap: 4px;
+}
+.vote-btn { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 2px; border: none; background: none; cursor: pointer; color: var(--reddit-muted); font-size: 18px; }
+.vote-btn:hover { color: var(--reddit-orange); }
+.vote-count { font-size: 12px; font-weight: 700; color: var(--reddit-text); }
+
+.post-full-body { flex: 1; padding: 12px; }
+.post-cat-tag { font-size: 12px; color: var(--reddit-muted); margin-bottom: 8px; }
+.post-cat-tag strong { color: var(--forum-purple); }
+.post-full-title { font-size: 22px; font-weight: 700; color: var(--reddit-text); margin: 0 0 12px; line-height: 1.3; }
+.post-full-text { font-size: 15px; line-height: 1.7; color: #333; margin-bottom: 16px; white-space: pre-wrap; }
+.post-full-footer { display: flex; gap: 4px; border-top: 1px solid var(--reddit-border); padding-top: 8px; }
+.action-btn { display: flex; align-items: center; gap: 5px; padding: 6px 8px; border-radius: 2px; font-size: 12px; font-weight: 700; color: var(--reddit-muted); border: none; background: none; cursor: pointer; }
+.action-btn:hover { background: rgba(0,0,0,0.06); color: var(--reddit-text); }
+
+/* Comment Box */
+.comment-box {
+    background: var(--reddit-card);
+    border: 1px solid var(--reddit-border);
+    border-radius: 4px;
+    padding: 16px;
+    margin-bottom: 10px;
+}
+.comment-box h3 { font-size: 14px; font-weight: 500; color: var(--reddit-muted); margin: 0 0 12px; }
+.comment-textarea {
+    width: 100%; border: 1px solid var(--reddit-border);
+    border-radius: 4px; padding: 10px; font-size: 14px;
+    font-family: inherit; min-height: 100px; resize: vertical;
+    outline: none;
+}
+.comment-textarea:focus { border-color: var(--reddit-blue); }
+.comment-submit-row { display: flex; justify-content: flex-end; margin-top: 8px; }
+.comment-submit { background: var(--reddit-orange); color: #fff; border: none; padding: 8px 20px; border-radius: 20px; font-weight: 700; font-size: 14px; cursor: pointer; }
+
+/* Comment Thread */
+.comments-section { background: var(--reddit-card); border: 1px solid var(--reddit-border); border-radius: 4px; padding: 16px; }
+.comments-title { font-size: 14px; font-weight: 700; color: var(--reddit-text); margin: 0 0 16px; }
+.comment-item { padding: 8px 0 8px 12px; border-left: 2px solid var(--reddit-border); margin-bottom: 12px; }
+.comment-meta { font-size: 12px; color: var(--reddit-muted); margin-bottom: 6px; }
+.comment-meta strong { color: var(--reddit-text); }
+.comment-body { font-size: 14px; line-height: 1.6; color: var(--reddit-text); white-space: pre-wrap; }
+.comment-actions { display: flex; gap: 4px; margin-top: 6px; }
+.comment-action { font-size: 12px; font-weight: 700; color: var(--reddit-muted); background: none; border: none; cursor: pointer; padding: 4px 6px; border-radius: 2px; }
+.comment-action:hover { background: rgba(0,0,0,0.05); }
+.no-comments { text-align: center; color: var(--reddit-muted); padding: 30px 0; font-size: 14px; }
+
+/* Sidebar */
+.sidebar-card { background: var(--reddit-card); border: 1px solid var(--reddit-border); border-radius: 4px; margin-bottom: 16px; overflow: hidden; }
+.sidebar-body { padding: 12px; }
+</style>
+
+<div class="forum-page">
+    <div class="forum-banner">
+        <div class="forum-banner-inner">
+            <a href="/forum" class="back-link">← Back to Forum</a>
+            <span style="color:rgba(255,255,255,0.3)">›</span>
+            <h1 class="banner-title" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:600px;"><%= post.title %></h1>
+        </div>
+    </div>
+
+    <div class="forum-layout">
+        <div class="forum-main">
+
+            <!-- Full Post -->
+            <div class="post-full">
+                <div class="post-full-inner">
+                    <div class="vote-col">
+                        <button class="vote-btn" onclick="votePost()">▲</button>
+                        <span class="vote-count" id="vote-count"><%= post.upvotes > 999 ? (post.upvotes/1000).toFixed(1)+'k' : post.upvotes %></span>
+                        <button class="vote-btn" style="font-size:16px;">▼</button>
+                    </div>
+                    <div class="post-full-body">
+                        <div class="post-cat-tag">
+                            <strong>f/<%= post.category %></strong>
+                            <span> · Posted by u/<%= post.username %> · <%= new Date(post.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) %></span>
+                        </div>
+                        <h1 class="post-full-title"><%= post.title %></h1>
+                        <div class="post-full-text"><%= post.body %></div>
+                        <div class="post-full-footer">
+                            <button class="action-btn">💬 <%= comments.length %> Comments</button>
+                            <button class="action-btn" onclick="navigator.clipboard&&navigator.clipboard.writeText(window.location.href).then(()=>alert('Link copied!'))">🔗 Share</button>
+                            <button class="action-btn">⭐ Save</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comment Form -->
+            <div class="comment-box">
+                <h3>Comment as u/<%= user.username %></h3>
+                <form action="/forum/post/<%= post.id %>/comment" method="POST">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <textarea name="body" class="comment-textarea" placeholder="What are your thoughts?" required></textarea>
+                    <div class="comment-submit-row">
+                        <button type="submit" class="comment-submit">Comment</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Comments List -->
+            <div class="comments-section">
+                <div class="comments-title"><%= comments.length %> Comment<%= comments.length !== 1 ? 's' : '' %></div>
+                <% if (comments.length === 0) { %>
+                <div class="no-comments">
+                    <div style="font-size:32px;margin-bottom:8px;">💭</div>
+                    No comments yet — be the first to share your thoughts!
+                </div>
+                <% } else { %>
+                <% comments.forEach(c => {
+                    const diff = Math.floor((Date.now() - new Date(c.created_at).getTime()) / 1000);
+                    let timeStr = diff < 60 ? diff + 's ago' : diff < 3600 ? Math.floor(diff/60) + 'm ago' : diff < 86400 ? Math.floor(diff/3600) + 'h ago' : Math.floor(diff/86400) + 'd ago';
+                %>
+                <div class="comment-item">
+                    <div class="comment-meta">
+                        <strong>u/<%= c.username %></strong>
+                        <span> · <%= timeStr %></span>
+                        <% if (c.upvotes > 0) { %><span style="color:var(--reddit-orange);font-weight:700;"> · ▲ <%= c.upvotes %></span><% } %>
+                    </div>
+                    <div class="comment-body"><%= c.body %></div>
+                    <div class="comment-actions">
+                        <button class="comment-action">▲ Upvote</button>
+                        <button class="comment-action">↩ Reply</button>
+                        <button class="comment-action">🔗 Share</button>
+                    </div>
+                </div>
+                <% }) %>
+                <% } %>
+            </div>
+
+        </div>
+
+        <!-- Sidebar -->
+        <div class="forum-sidebar">
+            <div class="sidebar-card">
+                <div class="sidebar-body">
+                    <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--reddit-muted);margin-bottom:10px;">About Community</div>
+                    <p style="font-size:14px;color:var(--reddit-text);margin-bottom:16px;">The private hub for verified TorMart buyers. Discussion, tips, reviews, and more.</p>
+                    <a href="/forum" style="display:block;background:var(--reddit-orange);color:#fff;text-align:center;padding:10px;border-radius:20px;font-weight:700;font-size:14px;text-decoration:none;margin-bottom:8px;">← Back to Feed</a>
+                    <a href="/forum" onclick="setTimeout(()=>document.getElementById&&document.getElementById('openPostModal')&&document.getElementById('openPostModal').click(),500)" style="display:block;background:transparent;border:1px solid var(--reddit-orange);color:var(--reddit-orange);text-align:center;padding:10px;border-radius:20px;font-weight:700;font-size:14px;text-decoration:none;">+ Create Post</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function votePost() {
+    fetch('/forum/post/<%= post.id %>/vote', {
+        method: 'POST',
+        headers: { 'x-csrf-token': '<%= csrfToken %>', 'Content-Type': 'application/json' }
+    }).then(r => r.json()).then(d => {
+        const el = document.getElementById('vote-count');
+        if (!el) return;
+        const cur = parseInt(el.textContent) || 0;
+        el.textContent = d.voted ? cur + 1 : Math.max(0, cur - 1);
+    });
+}
+</script>
+
+<%- include('footer') %>
