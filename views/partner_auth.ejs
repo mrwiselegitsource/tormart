@@ -13,6 +13,9 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: #f0f2f5;
         }
+        * {
+            box-sizing: border-box;
+        }
         .partner-wrapper {
             display: flex;
             flex-direction: column;
@@ -100,9 +103,12 @@
             display: flex;
             gap: 10px;
             margin-bottom: 20px;
+            flex-wrap: wrap;
+            justify-content: space-between;
         }
         .partner-captcha-input {
             flex: 1;
+            min-width: 100px;
             border: 1px solid #ccc;
             border-radius: 4px;
             padding: 12px 15px;
@@ -162,6 +168,12 @@
             border-radius: 4px;
             margin-bottom: 20px;
             text-align: center;
+        }
+
+        @media (max-width: 480px) {
+            .partner-header, .partner-footer { padding: 15px 20px; }
+            .partner-main { padding: 20px 10px; }
+            .partner-box-content { padding: 20px; }
         }
     </style>
 </head>
