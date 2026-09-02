@@ -832,7 +832,7 @@ app.get('/messages', requireAuth, (req, res) => {
         WHERE (m.sender_id = ? OR m.receiver_id = ?) AND u.id != ?
     `, [userId, userId, userId], (err, conversations) => {
         db.get("SELECT id, username FROM users WHERE role = 'admin' LIMIT 1", (err, admin) => {
-            const partnerId = req.query.chat || (conversations.length > 0 ? conversations[0].id : (admin ? admin.id : null));
+            const partnerId = req.query.chat || null;
             res.render('messages', { conversations: conversations || [], activePartnerId: partnerId, admin });
         });
     });
