@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register a partner account | TorMart JOB</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f0f2f5;
+        }
+        .partner-wrapper {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            max-width: 1200px;
+            margin: 0 auto;
+            background-image: url('/images/dollar-bg.png');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
+        }
+        .partner-header {
+            background-color: #1e1b4b; /* Dark purple */
+            padding: 20px 40px;
+            display: flex;
+            align-items: center;
+        }
+        .partner-logo {
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+        }
+        .partner-logo span { color: #facc15; font-size: 28px; margin-left: 5px; }
+        
+        .partner-main {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 40px 20px;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+        .partner-box {
+            background: white;
+            width: 100%;
+            max-width: 480px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .partner-box-header {
+            background-color: #2e2a5c;
+            color: white;
+            padding: 15px 20px;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .partner-box-content {
+            padding: 30px;
+        }
+        .partner-box-content h2 {
+            font-size: 18px;
+            color: #333;
+            margin-top: 0;
+            margin-bottom: 20px;
+        }
+        
+        .partner-input-group {
+            display: flex;
+            align-items: center;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            background: #fff;
+        }
+        .partner-input-icon {
+            padding: 12px 15px;
+            color: #a0aec0;
+            font-size: 18px;
+            border-right: 1px solid #eee;
+            background: #f8fafc;
+        }
+        .partner-input {
+            flex: 1;
+            border: none;
+            padding: 12px 15px;
+            outline: none;
+            font-size: 14px;
+        }
+        
+        .partner-captcha-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .partner-captcha-input {
+            flex: 1;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 12px 15px;
+            outline: none;
+        }
+        .partner-captcha-img-box {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .partner-captcha-img-box img {
+            height: 44px;
+            border: 1px solid #eee;
+            border-radius: 4px;
+            background: #f0fdf4;
+        }
+        .partner-captcha-refresh {
+            background: #f8fafc;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 0 15px;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 44px;
+        }
+        
+        .partner-btn {
+            display: block;
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+        }
+        .partner-btn-blue { background-color: #007bff; }
+        .partner-btn-blue:hover { background-color: #0056b3; }
+        .partner-btn-green { background-color: #28a745; }
+        .partner-btn-green:hover { background-color: #218838; }
+
+        .partner-footer {
+            background-color: #1e1b4b; /* Dark purple */
+            padding: 20px 40px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .alert-error {
+            background: #fee2e2;
+            color: #b91c1c;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<div class="partner-wrapper">
+    <!-- Header -->
+    <div class="partner-header">
+        <a href="/" class="partner-logo">
+            TorMart <span>JOB ❉</span>
+        </a>
+    </div>
+
+    <!-- Main Content -->
+    <div class="partner-main">
+        <% if (typeof error !== 'undefined' && error) { %>
+            <div style="width: 100%; text-align: center;">
+                <div class="alert-error" style="display: inline-block; min-width: 300px;"><%= error %></div>
+            </div>
+        <% } %>
+        
+        <!-- Registration Box -->
+        <div class="partner-box">
+            <div class="partner-box-header">Register a partner account</div>
+            <div class="partner-box-content">
+                <h2>Register a partner account</h2>
+                <form action="/partner/register" method="POST">
+                    <div class="partner-input-group">
+                        <div class="partner-input-icon">@</div>
+                        <input type="email" name="email" class="partner-input" placeholder="Email" required>
+                    </div>
+                    <div class="partner-input-group">
+                        <div class="partner-input-icon">***</div>
+                        <input type="password" name="password" class="partner-input" placeholder="Password" required>
+                    </div>
+                    <div class="partner-input-group">
+                        <div class="partner-input-icon">₿</div>
+                        <input type="text" name="btc_wallet" class="partner-input" placeholder="Your BTC Wallet" required>
+                    </div>
+                    
+                    <div class="partner-captcha-group">
+                        <input type="text" name="captcha" class="partner-captcha-input" placeholder="Code" required>
+                        <div class="partner-captcha-img-box">
+                            <img src="/captcha" alt="CAPTCHA" class="captcha-image">
+                            <button type="button" class="partner-captcha-refresh reload-captcha">🔄</button>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="partner-btn partner-btn-blue">Register</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Login Box -->
+        <div class="partner-box">
+            <div class="partner-box-header">Login</div>
+            <div class="partner-box-content">
+                <h2>I am returning partner</h2>
+                <form action="/partner/login" method="POST">
+                    <div class="partner-input-group">
+                        <div class="partner-input-icon">@</div>
+                        <input type="email" name="email" class="partner-input" placeholder="Email" required>
+                    </div>
+                    <div class="partner-input-group">
+                        <div class="partner-input-icon">***</div>
+                        <input type="password" name="password" class="partner-input" placeholder="Password" required>
+                    </div>
+                    
+                    <div class="partner-captcha-group">
+                        <input type="text" name="captcha" class="partner-captcha-input" placeholder="Code" required>
+                        <div class="partner-captcha-img-box">
+                            <img src="/captcha" alt="CAPTCHA" class="captcha-image">
+                            <button type="button" class="partner-captcha-refresh reload-captcha">🔄</button>
+                        </div>
+                    </div>
+                    
+                    <button type="submit" class="partner-btn partner-btn-green">Login</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Footer -->
+    <div class="partner-footer">
+        <a href="/" class="partner-logo">
+            TorMart <span>JOB ❉</span>
+        </a>
+    </div>
+</div>
+
+<script>
+    document.querySelectorAll('.reload-captcha').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const time = new Date().getTime();
+            document.querySelectorAll('.captcha-image').forEach(img => {
+                img.src = '/captcha?' + time;
+            });
+        });
+    });
+</script>
+
+</body>
+</html>

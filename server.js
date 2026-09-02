@@ -131,8 +131,14 @@ function initializeSchema() {
             vendor_logo TEXT,
             vendor_banner TEXT,
             vendor_status TEXT DEFAULT 'pending',
+            btc_wallet TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )`);
+
+        // Add btc_wallet if missing
+        db.run(`ALTER TABLE users ADD COLUMN btc_wallet TEXT`, (err) => {
+            // Ignore error if column already exists
+        });
 
         db.run(`CREATE TABLE IF NOT EXISTS products (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -556,6 +562,41 @@ app.get('/download/:orderId', requireAuth, (req, res) => {
 });
 
 // Auth Routes
+app.get('/partner/auth', (req, res) => {
+    if (req.session.user) {
+        return res.redirect('/dashboard');
+    }
+    res.render('partner_auth', { error: null });
+});
+
+app.post('/partner/register', (req, res) => {
+    const { email, password, btc_wallet, captcha } = req.body;
+    if (!captcha || !req.session.captcha || captcha.toLowerCase() !== req.session.captcha.toLowerCase()) {
+        return res.render('partner_auth', { error: 'Invalid CAPTCHA code' });
+    }
+    const username = email.split('@')[0]; // Quick username generation
+    const hash = bcrypt.hashSync(password, 10);
+    db.run("INSERT INTO users (username, email, password, btc_wallet) VALUES (?, ?, ?, ?)", [username, email, hash, btc_wallet], function(err) {
+        if (err) return res.render('partner_auth', { error: 'Email already exists.' });
+        req.session.user = { id: this.lastID, username, role: 'client', is_vendor: 0, is_vip: 0 };
+        res.redirect('/dashboard');
+    });
+});
+
+app.post('/partner/login', (req, res) => {
+    const { email, password, captcha } = req.body;
+    if (!captcha || !req.session.captcha || captcha.toLowerCase() !== req.session.captcha.toLowerCase()) {
+        return res.render('partner_auth', { error: 'Invalid CAPTCHA code' });
+    }
+    db.get("SELECT * FROM users WHERE email = ? OR username = ?", [email, email], (err, user) => {
+        if (user && bcrypt.compareSync(password, user.password)) {
+            req.session.user = { id: user.id, username: user.username, role: user.role, is_vendor: user.is_vendor, is_vip: user.is_vip || 0 };
+            return res.redirect('/dashboard');
+        }
+        res.render('partner_auth', { error: 'Invalid credentials' });
+    });
+});
+
 app.get('/captcha', (req, res) => {
     const captcha = svgCaptcha.create({ size: 4, noise: 2, color: true, background: '#f0fdf4', width: 120, height: 40 });
     req.session.captcha = captcha.text;
