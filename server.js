@@ -1,5 +1,6 @@
 const express = require('express');
 const session = require('express-session');
+const svgCaptcha = require('svg-captcha');
 const bodyParser = require('body-parser');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
@@ -555,12 +556,22 @@ app.get('/download/:orderId', requireAuth, (req, res) => {
 });
 
 // Auth Routes
+app.get('/captcha', (req, res) => {
+    const captcha = svgCaptcha.create({ size: 4, noise: 2, color: true, background: '#f0fdf4', width: 120, height: 40 });
+    req.session.captcha = captcha.text;
+    res.type('svg');
+    res.status(200).send(captcha.data);
+});
+
 app.get('/login', (req, res) => {
     res.render('login', { error: null });
 });
 
 app.post('/login', (req, res) => {
-    const { login_id, password } = req.body;
+    const { login_id, password, captcha } = req.body;
+    if (!captcha || !req.session.captcha || captcha.toLowerCase() !== req.session.captcha.toLowerCase()) {
+        return res.render('login', { error: 'Invalid CAPTCHA code' });
+    }
     db.get("SELECT * FROM users WHERE email = ? OR username = ?", [login_id, login_id], (err, user) => {
         if (user && bcrypt.compareSync(password, user.password)) {
             req.session.user = { id: user.id, username: user.username, role: user.role, is_vendor: user.is_vendor, is_vip: user.is_vip || 0 };
@@ -576,7 +587,10 @@ app.get('/register', (req, res) => {
 });
 
 app.post('/register', (req, res) => {
-    const { username, password } = req.body;
+    const { username, password, captcha } = req.body;
+    if (!captcha || !req.session.captcha || captcha.toLowerCase() !== req.session.captcha.toLowerCase()) {
+        return res.render('login', { error: 'Invalid CAPTCHA code' });
+    }
     // We will just generate a fake email for now or skip it if the form doesn't have it
     // Wait, the screenshot has only Username and Password for Register. Let's adapt.
     const email = req.body.email || `${username}@user.local`;

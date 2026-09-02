@@ -30,11 +30,11 @@
                     </div>
                     
                     <div style="display: flex; gap: 10px; margin-bottom: 25px;">
-                        <input type="text" placeholder="Code" required style="flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 2px; font-size: 14px;">
-                        <div style="width: 120px; background: #f0fdf4; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; font-family: cursive; color: #ef4444; font-size: 24px; letter-spacing: 3px; font-weight: bold;">
-                            F6WT
+                        <input type="text" name="captcha" placeholder="Code" required style="flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 2px; font-size: 14px;">
+                        <div style="width: 120px; background: #f0fdf4; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                            <img src="/captcha" id="captcha-img-register" alt="CAPTCHA" style="width: 100%; height: 100%; object-fit: cover;">
                         </div>
-                        <button type="button" style="width: 45px; background: #f8fafc; border: 1px solid #ddd; cursor: pointer; border-radius: 2px;">
+                        <button type="button" onclick="document.getElementById('captcha-img-register').src='/captcha?'+Date.now()" style="width: 45px; background: #f8fafc; border: 1px solid #ddd; cursor: pointer; border-radius: 2px;">
                             🔄
                         </button>
                     </div>
@@ -68,11 +68,11 @@
                     </div>
                     
                     <div style="display: flex; gap: 10px; margin-bottom: 25px;">
-                        <input type="text" placeholder="Code" required style="flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 2px; font-size: 14px;">
-                        <div style="width: 120px; background: #f0fdf4; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; font-family: cursive; color: #ef4444; font-size: 24px; letter-spacing: 3px; font-weight: bold;">
-                            KZXK
+                        <input type="text" name="captcha" placeholder="Code" required style="flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 2px; font-size: 14px;">
+                        <div style="width: 120px; background: #f0fdf4; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                            <img src="/captcha" id="captcha-img-login" alt="CAPTCHA" style="width: 100%; height: 100%; object-fit: cover;">
                         </div>
-                        <button type="button" style="width: 45px; background: #f8fafc; border: 1px solid #ddd; cursor: pointer; border-radius: 2px;">
+                        <button type="button" onclick="document.getElementById('captcha-img-login').src='/captcha?'+Date.now()" style="width: 45px; background: #f8fafc; border: 1px solid #ddd; cursor: pointer; border-radius: 2px;">
                             🔄
                         </button>
                     </div>
