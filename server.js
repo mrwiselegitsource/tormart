@@ -1082,6 +1082,67 @@ app.post('/vendor/proofs/delete/:id', requireVendor, (req, res) => {
         }
     });
 });
+app.post('/vendor/profile/edit', requireVendor, imageUpload.single('vendor_logo'), (req, res) => {
+    const { vendor_name, vendor_description } = req.body;
+    
+    if (req.file) {
+        const logo_url = '/images/' + req.file.filename;
+        db.run("UPDATE users SET vendor_name = ?, vendor_description = ?, vendor_logo = ? WHERE id = ?", [vendor_name, vendor_description, logo_url, req.session.user.id], () => {
+            req.session.user.vendor_name = vendor_name;
+            req.session.user.vendor_logo = logo_url;
+            res.redirect('/vendor');
+        });
+    } else {
+        db.run("UPDATE users SET vendor_name = ?, vendor_description = ? WHERE id = ?", [vendor_name, vendor_description, req.session.user.id], () => {
+            req.session.user.vendor_name = vendor_name;
+            res.redirect('/vendor');
+        });
+    }
+});
+
+app.post('/vendor/products/edit/:id', requireVendor, imageUpload.single('product_image'), (req, res) => {
+    const { name, description, price, limit_amount, tier, category } = req.body;
+    
+    db.get("SELECT id, image FROM products WHERE id = ? AND vendor_id = ?", [req.params.id, req.session.user.id], (err, product) => {
+        if (!product) return res.redirect('/vendor');
+        
+        const updateParams = [name, description, price, limit_amount, tier, category];
+        let query = "UPDATE products SET name = ?, description = ?, price = ?, limit_amount = ?, tier = ?, category = ?";
+        
+        if (req.file) {
+            query += ", image = ?";
+            updateParams.push('/images/' + req.file.filename);
+            
+            if (product.image && !product.image.includes('ai-asset') && !product.image.includes('default')) {
+                const oldPath = path.join(__dirname, 'public', product.image);
+                fs.unlink(oldPath, () => {});
+            }
+        }
+        
+        query += " WHERE id = ? AND vendor_id = ?";
+        updateParams.push(req.params.id, req.session.user.id);
+        
+        db.run(query, updateParams, () => {
+            res.redirect('/vendor');
+        });
+    });
+});
+
+app.post('/vendor/products/delete/:id', requireVendor, (req, res) => {
+    db.get("SELECT id, image FROM products WHERE id = ? AND vendor_id = ?", [req.params.id, req.session.user.id], (err, product) => {
+        if (product) {
+            if (product.image && !product.image.includes('ai-asset') && !product.image.includes('default')) {
+                const oldPath = path.join(__dirname, 'public', product.image);
+                fs.unlink(oldPath, () => {});
+            }
+            db.run("DELETE FROM products WHERE id = ?", [req.params.id], () => {
+                res.redirect('/vendor');
+            });
+        } else {
+            res.redirect('/vendor');
+        }
+    });
+});
 
 // Admin Dashboard
 app.get('/admin', requireAdmin, (req, res) => {
