@@ -36,5 +36,44 @@
         </div>
         <div style="display: flex; align-items: center;">TorMart 2019-2026</div>
     </div>
+
+    <% if (typeof user === 'undefined' || !user) { %>
+    <!-- Promo Popup Modal -->
+    <div class="promo-overlay" id="promoModal">
+        <div class="promo-modal">
+            <button class="promo-close" onclick="closePromoModal()">×</button>
+            <div class="promo-image-container">
+                <img src="/images/promo-moneybag.png" alt="Get $10 Free">
+            </div>
+            <h2>GET $10 FOR FREE</h2>
+            <p class="promo-subtitle"><strong>Register now and you will get:</strong></p>
+            <p class="promo-text">$10 free sign up bonus<br>20% cashback on your first purchase!</p>
+            <div class="promo-buttons">
+                <a href="/login" class="promo-btn promo-btn-register">Register</a>
+                <a href="/login" class="promo-btn promo-btn-login">Login</a>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function closePromoModal() {
+            document.getElementById('promoModal').classList.remove('active');
+            localStorage.setItem('promo_popup_last_shown', Date.now());
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const lastShown = localStorage.getItem('promo_popup_last_shown');
+            const cooldownMs = 15 * 60 * 1000; // 15 minutes
+            
+            if (!lastShown || (Date.now() - parseInt(lastShown) > cooldownMs)) {
+                setTimeout(() => {
+                    document.getElementById('promoModal').classList.add('active');
+                    localStorage.setItem('promo_popup_last_shown', Date.now());
+                }, 5000);
+            }
+        });
+    </script>
+    <% } %>
+
 </body>
 </html>

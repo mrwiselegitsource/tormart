@@ -557,3 +557,108 @@ body.menu-open {
         padding: 0 10px;
     }
 }
+
+/* Promo Popup Modal */
+.promo-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.7);
+    z-index: 2000;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+}
+.promo-overlay.active {
+    display: flex;
+    opacity: 1;
+}
+.promo-modal {
+    background-color: #222;
+    border-radius: 12px;
+    padding: 30px 40px;
+    width: 90%;
+    max-width: 400px;
+    text-align: center;
+    position: relative;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    transform: translateY(20px);
+    transition: transform 0.4s ease;
+    color: white;
+}
+.promo-overlay.active .promo-modal {
+    transform: translateY(0);
+}
+.promo-close {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    width: 30px;
+    height: 30px;
+    background: rgba(255,255,255,0.2);
+    border: none;
+    border-radius: 50%;
+    color: white;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+.promo-close:hover {
+    background: rgba(255,255,255,0.4);
+}
+.promo-image-container {
+    margin-bottom: 15px;
+}
+.promo-image-container img {
+    height: 140px;
+    object-fit: contain;
+    filter: drop-shadow(0px 10px 15px rgba(0,0,0,0.5));
+}
+.promo-modal h2 {
+    font-size: 24px;
+    margin: 10px 0;
+    font-weight: 800;
+}
+.promo-subtitle {
+    font-size: 16px;
+    margin-bottom: 5px;
+}
+.promo-text {
+    font-size: 14px;
+    color: #ccc;
+    margin-bottom: 25px;
+    line-height: 1.5;
+}
+.promo-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.promo-btn {
+    display: block;
+    width: 100%;
+    padding: 14px;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: bold;
+    font-size: 16px;
+    transition: filter 0.2s;
+}
+.promo-btn:hover {
+    filter: brightness(1.1);
+}
+.promo-btn-register {
+    background-color: #1ed760;
+    color: white;
+}
+.promo-btn-login {
+    background-color: #444;
+    color: white;
+}
