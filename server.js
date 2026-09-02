@@ -665,6 +665,47 @@ app.post('/partner/links/add', requireAuth, (req, res) => {
     });
 });
 
+// Partner Settings
+app.get('/partner/settings', requireAuth, (req, res) => {
+    db.get("SELECT email, btc_wallet FROM users WHERE id = ?", [req.session.user.id], (err, user) => {
+        res.render('partner_settings', { 
+            email: user ? user.email : '',
+            btc_wallet: user ? user.btc_wallet : '',
+            success: req.query.success || null,
+            error: req.query.error || null
+        });
+    });
+});
+
+app.post('/partner/settings/password', requireAuth, (req, res) => {
+    const { current_password, new_password } = req.body;
+    db.get("SELECT password FROM users WHERE id = ?", [req.session.user.id], (err, user) => {
+        if (user && bcrypt.compareSync(current_password, user.password)) {
+            const hash = bcrypt.hashSync(new_password, 10);
+            db.run("UPDATE users SET password = ? WHERE id = ?", [hash, req.session.user.id], (err) => {
+                res.redirect('/partner/settings?success=Password+updated');
+            });
+        } else {
+            res.redirect('/partner/settings?error=Invalid+current+password');
+        }
+    });
+});
+
+app.post('/partner/settings/email', requireAuth, (req, res) => {
+    const { email } = req.body;
+    db.run("UPDATE users SET email = ? WHERE id = ?", [email, req.session.user.id], (err) => {
+        if (err) return res.redirect('/partner/settings?error=Email+already+in+use');
+        res.redirect('/partner/settings?success=Email+updated');
+    });
+});
+
+app.post('/partner/settings/btc', requireAuth, (req, res) => {
+    const { btc_wallet } = req.body;
+    db.run("UPDATE users SET btc_wallet = ? WHERE id = ?", [btc_wallet, req.session.user.id], (err) => {
+        res.redirect('/partner/settings?success=BTC+Wallet+updated');
+    });
+});
+
 app.get('/captcha', (req, res) => {
     const captcha = svgCaptcha.create({ size: 4, noise: 2, color: true, background: '#f0fdf4', width: 120, height: 40 });
     req.session.captcha = captcha.text;

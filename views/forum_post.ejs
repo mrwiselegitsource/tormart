@@ -117,8 +117,8 @@
                         <h1 class="post-full-title"><%= post.title %></h1>
                         <div class="post-full-text"><%= post.body %></div>
                         <div class="post-full-footer">
-                            <button class="action-btn">💬 <%= comments.length %> Comments</button>
-                            <button class="action-btn" onclick="navigator.clipboard&&navigator.clipboard.writeText(window.location.href).then(()=>alert('Link copied!'))">🔗 Share</button>
+                            <button class="action-btn"><i data-lucide="message-circle"></i> <%= comments.length %> Comments</button>
+                            <button class="action-btn" onclick="navigator.clipboard&&navigator.clipboard.writeText(window.location.href).then(()=>alert('Link copied!'))"><i data-lucide="link"></i> Share</button>
                             <button class="action-btn">⭐ Save</button>
                         </div>
                     </div>
@@ -142,7 +142,7 @@
                 <div class="comments-title"><%= comments.length %> Comment<%= comments.length !== 1 ? 's' : '' %></div>
                 <% if (comments.length === 0) { %>
                 <div class="no-comments">
-                    <div style="font-size:32px;margin-bottom:8px;">💭</div>
+                    <div style="margin-bottom:8px; color: #64748b;"><i data-lucide="message-square" style="width: 32px; height: 32px;"></i></div>
                     No comments yet — be the first to share your thoughts!
                 </div>
                 <% } else { %>
@@ -160,7 +160,7 @@
                     <div class="comment-actions">
                         <button class="comment-action">▲ Upvote</button>
                         <button class="comment-action">↩ Reply</button>
-                        <button class="comment-action">🔗 Share</button>
+                        <button class="comment-action"><i data-lucide="link" style="width: 14px; height: 14px; margin-right: 2px; vertical-align: middle;"></i> Share</button>
                     </div>
                 </div>
                 <% }) %>

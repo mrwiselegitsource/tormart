@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Partner Dashboard | TorMart JOB</title>
+    <link rel="stylesheet" href="/css/styles.css">
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f0f2f5;
+        }
+        * { box-sizing: border-box; }
+        .partner-header, .partner-footer {
+            background-color: #1e1b4b; /* Dark purple */
+            padding: 20px 40px;
+            display: flex;
+            align-items: center;
+        }
+        .partner-logo {
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <div class="partner-header">
+        <a href="/" class="partner-logo">
+            <img src="/images/logo.png" alt="TorMart" style="max-height: 30px; margin-right: 5px;"> <span>JOB</span>
+        </a>
+    </div>
+
+    <!-- Dashboard Content -->
+    <div class="dashboard-wrapper">
+        <!-- Sidebar -->
+        <div class="dashboard-sidebar">
+            <!-- Balance Panel -->
+            <div class="dash-panel">
+                <div class="dash-panel-header">Your Balance</div>
+                <div class="dash-panel-content dash-balance">
+                    <h2>$0</h2>
+                    <h3>0 BTC</h3>
+                    <p>Your BTC wallet:</p>
+                    <div class="btc-wallet"><%= btc_wallet %></div>
+                    <p>Minimum withdrawal amount: 10 USD</p>
+                </div>
+            </div>
+
+            <!-- Account Menu Panel -->
+            <div class="dash-panel">
+                <div class="dash-panel-header">Account</div>
+                <ul class="dash-menu">
+                    <li><a href="/partner/dashboard">Home</a></li>
+                    <li><a href="/messages">Support</a></li>
+                    <li><a href="/partner/settings">Change Password</a></li>
+                    <li><a href="/partner/settings">Change Email</a></li>
+                    <li><a href="/partner/settings">Change BTC ADDRESS</a></li>
+                    <li><a href="/logout">LogOut</a></li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="dashboard-main">
+            <% if (success) { %>
+                <div style="background: #dcfce7; color: #166534; padding: 15px; margin-bottom: 20px; border-radius: 6px;">
+                    <%= success %>
+                </div>
+            <% } %>
+            <% if (error) { %>
+                <div style="background: #fee2e2; color: #991b1b; padding: 15px; margin-bottom: 20px; border-radius: 6px;">
+                    <%= error %>
+                </div>
+            <% } %>
+
+            <!-- Change Password Panel -->
+            <div class="dash-panel">
+                <div class="dash-panel-header">Change Password</div>
+                <div class="dash-panel-content">
+                    <form action="/partner/settings/password" method="POST">
+                        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 5px; color: #555;">Current Password</label>
+                            <input type="password" name="current_password" class="dash-input" required style="width: 100%; max-width: 400px;">
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 5px; color: #555;">New Password</label>
+                            <input type="password" name="new_password" class="dash-input" required style="width: 100%; max-width: 400px;">
+                        </div>
+                        <button type="submit" class="dash-btn-blue">Update Password</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Change Email Panel -->
+            <div class="dash-panel">
+                <div class="dash-panel-header">Change Email</div>
+                <div class="dash-panel-content">
+                    <form action="/partner/settings/email" method="POST">
+                        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 5px; color: #555;">New Email Address</label>
+                            <input type="email" name="email" class="dash-input" value="<%= email %>" required style="width: 100%; max-width: 400px;">
+                        </div>
+                        <button type="submit" class="dash-btn-blue">Update Email</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Change BTC Address Panel -->
+            <div class="dash-panel">
+                <div class="dash-panel-header">Change BTC ADDRESS</div>
+                <div class="dash-panel-content">
+                    <form action="/partner/settings/btc" method="POST">
+                        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 5px; color: #555;">Bitcoin Wallet Address</label>
+                            <input type="text" name="btc_wallet" class="dash-input" value="<%= btc_wallet %>" required style="width: 100%; max-width: 400px;">
+                        </div>
+                        <button type="submit" class="dash-btn-blue">Update BTC Address</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="partner-footer" style="margin-top: 40px;">
+        <a href="/" class="partner-logo">
+            <img src="/images/logo.png" alt="TorMart" style="max-height: 30px; margin-right: 5px;"> <span>JOB</span>
+        </a>
+    </div>
+
+</body>
+</html>

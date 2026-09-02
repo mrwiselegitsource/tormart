@@ -511,31 +511,30 @@
                 <!-- The Gate Overlay -->
                 <div class="vip-overlay">
                     <div class="vip-gate-card">
-                        <span class="vip-lock-icon">🔒</span>
-                        <h2>Members-Only Community</h2>
-                        <p>Join thousands of verified buyers discussing deals, sharing strategies, and helping each other succeed. Make a purchase to unlock full access instantly.</p>
-
-                        <div class="vip-btn-row">
-                            <a href="/" class="vip-btn-primary">🛒 Browse & Purchase to Unlock</a>
-                            <a href="/login" class="vip-btn-secondary"><%= user ? 'View My Orders' : 'Login to Check Access' %></a>
+                        <span class="vip-lock-icon"><i data-lucide="lock" style="width: 48px; height: 48px; color: #a855f7;"></i></span>
+                        <h2>Exclusive Access Restricted</h2>
+                        <p>You must make at least one purchase on the marketplace to unlock the ability to post, reply, and view exclusive deals in the forum.</p>
+                        
+                        <div class="vip-action">
+                            <a href="/" class="vip-btn-primary"><i data-lucide="shopping-cart" style="width: 18px; height: 18px;"></i> Browse & Purchase to Unlock</a>
                         </div>
-
+                        
                         <div class="vip-perks">
-                            <div class="vip-perk">
-                                <span class="vip-perk-icon">💬</span>
-                                <span class="vip-perk-text">Post & Reply</span>
+                            <div class="vip-perk-item">
+                                <span class="vip-perk-icon"><i data-lucide="message-square"></i></span>
+                                <span>Create & Reply to Threads</span>
                             </div>
-                            <div class="vip-perk">
-                                <span class="vip-perk-icon">🔥</span>
-                                <span class="vip-perk-text">Exclusive Deals</span>
+                            <div class="vip-perk-item">
+                                <span class="vip-perk-icon"><i data-lucide="flame"></i></span>
+                                <span>Access VIP-Only Guides</span>
                             </div>
-                            <div class="vip-perk">
-                                <span class="vip-perk-icon">👥</span>
-                                <span class="vip-perk-text">Follow Members</span>
+                            <div class="vip-perk-item">
+                                <span class="vip-perk-icon"><i data-lucide="users"></i></span>
+                                <span>Direct Messaging with Vendors</span>
                             </div>
-                            <div class="vip-perk">
-                                <span class="vip-perk-icon">⭐</span>
-                                <span class="vip-perk-text">VIP Badge</span>
+                            <div class="vip-perk-item">
+                                <span class="vip-perk-icon"><i data-lucide="star"></i></span>
+                                <span>VIP Member Badge</span>
                             </div>
                         </div>
                     </div>
@@ -650,15 +649,16 @@ if (onlineEl) onlineEl.textContent = liveBase;
 
 // ---- Simulation toasts ----
 const simData = [
-    { initials: 'D', name: 'D***k', msg: 'Just got my order delivered, works perfectly! 🔥' },
-    { initials: 'M', name: 'M****a', msg: 'Anyone tried the new BIN list? Results are insane' },
-    { initials: 'R', name: 'R**s', msg: 'Northstar Labs never disappoints, 5th order done ✅' },
-    { initials: 'K', name: 'K****y', msg: 'Finally unlocked VIP, this forum is worth it' },
-    { initials: 'T', name: 'T***o', msg: 'The OPSEC guide in Tips section changed my game' },
-    { initials: 'J', name: 'J***e', msg: 'Escrow protected me on a bad order, 10/10 system' },
-    { initials: 'A', name: 'A***x', msg: 'New post up: complete cashout method for 2026 👀' },
-    { initials: 'S', name: 'S****n', msg: 'Who has experience with crypto transfers? DM me' },
-    { initials: 'L', name: 'L***a', msg: 'Just hit 50 successful orders, AMA in General 🎉' },
+    { initials: 'D', name: 'D***k', msg: 'Just got my order delivered, works perfectly!' },
+    { initials: 'T', name: 'T**m', msg: 'Anyone looking for a reliable dropshipper?' },
+    { initials: 'R', name: 'R**s', msg: 'Northstar Labs never disappoints, 5th order done' },
+    { initials: 'P', name: 'P***r', msg: 'Need a mentor for carding, willing to pay %' },
+    { initials: 'S', name: 'S**l', msg: 'Can anyone vouch for GhostVendor?' },
+    { initials: 'K', name: 'K***n', msg: 'Looking for bulk electronics suppliers in EU.' },
+    { initials: 'A', name: 'A***x', msg: 'New post up: complete cashout method for 2026' },
+    { initials: 'W', name: 'W**b', msg: 'Is the new vendor legit?' },
+    { initials: 'L', name: 'L***a', msg: 'Just hit 50 successful orders, AMA in General' },
+    { initials: 'J', name: 'J**n', msg: 'Looking for a good VPN setup for Android.' },
     { initials: 'C', name: 'C***s', msg: 'Vendor Review posted — read before you buy this week' },
     { initials: 'P', name: 'P***l', msg: 'Tips forum saved me $400 this month, no cap' },
     { initials: 'N', name: 'N***i', msg: 'New here, bought first order and unlocked this — wow' },
