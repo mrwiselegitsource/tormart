@@ -3,9 +3,19 @@
 <style>
     .chat-layout { display: flex; height: 600px; background: #fff; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); overflow: hidden; }
     .chat-sidebar { width: 300px; border-right: 1px solid var(--border-color); background: #f8fafc; display: flex; flex-direction: column; }
+    .mobile-back-btn { display: none; }
+    
     @media (max-width: 768px) {
-        .chat-layout { flex-direction: column; height: 80vh; min-height: 500px; }
-        .chat-sidebar { width: 100%; height: 150px; flex-shrink: 0; border-right: none; border-bottom: 1px solid var(--border-color); }
+        .chat-layout { flex-direction: column; height: 85vh; min-height: 500px; }
+        .mobile-back-btn { display: block; margin-right: 10px; }
+        
+        <% if (activePartnerId) { %>
+            .chat-sidebar { display: none; }
+            .chat-main { display: flex !important; flex-grow: 1; width: 100%; height: 100%; }
+        <% } else { %>
+            .chat-sidebar { width: 100%; height: 100%; flex-grow: 1; border-right: none; }
+            .chat-main { display: none !important; }
+        <% } %>
     }
 </style>
 
@@ -43,10 +53,13 @@
         </div>
 
         <!-- Main Chat Area -->
-        <div style="flex-grow: 1; display: flex; flex-direction: column; background: #fff;">
+        <div class="chat-main" style="flex-grow: 1; display: flex; flex-direction: column; background: #fff;">
             <% if (activePartnerId) { %>
                 <div style="padding: 15px; background: #f1f5f9; border-bottom: 1px solid var(--border-color); font-weight: bold; color: #333; display: flex; justify-content: space-between; align-items: center;">
-                    <span>Chatting</span>
+                    <div style="display: flex; align-items: center;">
+                        <a href="/messages" class="mobile-back-btn" style="text-decoration: none; color: #333; font-size: 20px;">←</a>
+                        <span>Chatting</span>
+                    </div>
                 </div>
                 
                 <div id="chatMessages" style="flex-grow: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; background: #fafafa;">

@@ -838,6 +838,10 @@ app.get('/cooperation', (req, res) => {
     res.render('cooperation');
 });
 
+app.get('/job', (req, res) => {
+    res.render('job');
+});
+
 app.post('/support/send', requireAuth, (req, res) => {
     const { subject, department, body } = req.body;
     const finalSubject = department ? `[${department}] ${subject}` : subject;
