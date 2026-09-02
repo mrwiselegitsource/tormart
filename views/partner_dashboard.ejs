@@ -83,17 +83,25 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td style="color: #666;">NO NAME</td>
-                                <td><strong>http://tormartrge7x4244fws34nct54pt5mym2qbj<br>mobunag5rwhirtesgdad.onion/invite/WY5QS2</strong></td>
-                            </tr>
+                            <% if (referral_links && referral_links.length > 0) { %>
+                                <% referral_links.forEach(link => { %>
+                                    <tr>
+                                        <td style="color: #666;"><%= link.link_name %></td>
+                                        <td><strong>http://<%= host %>/invite/<%= link.link_code %></strong></td>
+                                    </tr>
+                                <% }) %>
+                            <% } else { %>
+                                <tr>
+                                    <td colspan="2" style="text-align: center; color: #888;">No links generated yet.</td>
+                                </tr>
+                            <% } %>
                         </tbody>
                     </table>
                     <div class="dash-panel-content">
-                        <div class="dash-form-row">
-                            <input type="text" class="dash-input" placeholder="Specify name for new promo link (not required)">
-                            <button class="dash-btn-add">+ Add</button>
-                        </div>
+                        <form action="/partner/links/add" method="POST" class="dash-form-row">
+                            <input type="text" name="link_name" class="dash-input" placeholder="Specify name for new promo link (not required)">
+                            <button type="submit" class="dash-btn-add">+ Add</button>
+                        </form>
                     </div>
                 </div>
             </div>
@@ -126,12 +134,19 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td style="color: #666;">No Name</td>
-                            <td style="text-align: center;">1</td>
-                            <td style="text-align: center;">0</td>
-                            <td style="text-align: center;">0</td>
-                        </tr>
+                        <% if (referral_links && referral_links.length > 0) { %>
+                            <% referral_links.forEach(link => { %>
+                                <% const conv = conversionsMap[link.link_code] || { registrations: 0, unpaid_orders: 0, paid_orders: 0 }; %>
+                                <tr>
+                                    <td style="color: #666;"><%= link.link_name %></td>
+                                    <td style="text-align: center;"><%= conv.registrations %></td>
+                                    <td style="text-align: center;"><%= conv.unpaid_orders %></td>
+                                    <td style="text-align: center;"><%= conv.paid_orders %></td>
+                                </tr>
+                            <% }) %>
+                        <% } else { %>
+                            <tr><td colspan="4" style="text-align: center; color: #888;">No data available</td></tr>
+                        <% } %>
                     </tbody>
                 </table>
             </div>
@@ -150,12 +165,24 @@
                             </tr>
                         </thead>
                         <tbody>
-                            <tr>
-                                <td></td>
-                                <td style="text-align: center;">WY5QS2</td>
-                                <td style="text-align: center;">ja****23</td>
-                                <td style="text-align: center;">2026/08/11</td>
-                            </tr>
+                            <% if (registrations && registrations.length > 0) { %>
+                                <% registrations.forEach(reg => { %>
+                                    <% 
+                                        const linkName = referral_links.find(l => l.link_code === reg.link_code)?.link_name || ''; 
+                                        const displayUser = reg.username.substring(0, 2) + "****" + reg.username.slice(-2);
+                                        const d = new Date(reg.created_at);
+                                        const dateStr = d.getFullYear() + "/" + String(d.getMonth()+1).padStart(2,'0') + "/" + String(d.getDate()).padStart(2,'0');
+                                    %>
+                                    <tr>
+                                        <td><%= linkName %></td>
+                                        <td style="text-align: center;"><%= reg.link_code %></td>
+                                        <td style="text-align: center;"><%= displayUser %></td>
+                                        <td style="text-align: center;"><%= dateStr %></td>
+                                    </tr>
+                                <% }) %>
+                            <% } else { %>
+                                <tr><td colspan="4" style="text-align: center; color: #888;">No registrations yet.</td></tr>
+                            <% } %>
                         </tbody>
                     </table>
                 </div>

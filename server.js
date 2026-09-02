@@ -140,6 +140,18 @@ function initializeSchema() {
             // Ignore error if column already exists
         });
 
+        // Add referred_by to track referrals
+        db.run(`ALTER TABLE users ADD COLUMN referred_by TEXT`, (err) => {});
+
+        db.run(`CREATE TABLE IF NOT EXISTS referral_links (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            link_name TEXT,
+            link_code TEXT UNIQUE,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )`);
+
         db.run(`CREATE TABLE IF NOT EXISTS products (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             vendor_id INTEGER,
@@ -599,7 +611,57 @@ app.post('/partner/login', (req, res) => {
 
 app.get('/partner/dashboard', requireAuth, (req, res) => {
     db.get("SELECT btc_wallet FROM users WHERE id = ?", [req.session.user.id], (err, user) => {
-        res.render('partner_dashboard', { btc_wallet: user ? user.btc_wallet : 'N/A' });
+        db.all("SELECT * FROM referral_links WHERE user_id = ?", [req.session.user.id], (err, links) => {
+            if (!links) links = [];
+            
+            // Get referral registrations
+            const linkCodes = links.map(l => l.link_code);
+            let regsQuery = "SELECT username, created_at, referred_by as link_code FROM users WHERE referred_by IN (" + linkCodes.map(() => '?').join(',') + ") ORDER BY created_at DESC";
+            
+            if (linkCodes.length === 0) regsQuery = "SELECT 1 WHERE 0"; // Empty result if no links
+            
+            db.all(regsQuery, linkCodes, (err, registrations) => {
+                if (!registrations) registrations = [];
+                
+                // Get orders conversion
+                let ordersQuery = `
+                    SELECT 
+                        u.referred_by as link_code,
+                        COUNT(DISTINCT u.id) as registrations,
+                        SUM(CASE WHEN o.status = 'pending' THEN 1 ELSE 0 END) as unpaid_orders,
+                        SUM(CASE WHEN o.status = 'completed' THEN 1 ELSE 0 END) as paid_orders
+                    FROM users u
+                    LEFT JOIN orders o ON u.id = o.user_id
+                    WHERE u.referred_by IN (` + linkCodes.map(() => '?').join(',') + `)
+                    GROUP BY u.referred_by
+                `;
+                if (linkCodes.length === 0) ordersQuery = "SELECT 1 WHERE 0";
+                
+                db.all(ordersQuery, linkCodes, (err, conversions) => {
+                    if (!conversions) conversions = [];
+                    
+                    // Map conversion data to links
+                    const conversionsMap = {};
+                    conversions.forEach(c => { conversionsMap[c.link_code] = c; });
+                    
+                    res.render('partner_dashboard', { 
+                        btc_wallet: user ? user.btc_wallet : 'N/A',
+                        referral_links: links,
+                        registrations: registrations,
+                        conversionsMap: conversionsMap,
+                        host: req.get('host')
+                    });
+                });
+            });
+        });
+    });
+});
+
+app.post('/partner/links/add', requireAuth, (req, res) => {
+    const linkName = req.body.link_name || 'NO NAME';
+    const linkCode = crypto.randomBytes(3).toString('hex').toUpperCase(); // 6 chars
+    db.run("INSERT INTO referral_links (user_id, link_name, link_code) VALUES (?, ?, ?)", [req.session.user.id, linkName, linkCode], (err) => {
+        res.redirect('/partner/dashboard');
     });
 });
 
@@ -633,6 +695,11 @@ app.get('/register', (req, res) => {
     res.redirect('/login');
 });
 
+app.get('/invite/:code', (req, res) => {
+    req.session.referral_code = req.params.code;
+    res.redirect('/login'); // Redirect to login/register page
+});
+
 app.post('/register', (req, res) => {
     const { username, password, captcha } = req.body;
     if (!captcha || !req.session.captcha || captcha.toLowerCase() !== req.session.captcha.toLowerCase()) {
@@ -642,7 +709,9 @@ app.post('/register', (req, res) => {
     // Wait, the screenshot has only Username and Password for Register. Let's adapt.
     const email = req.body.email || `${username}@user.local`;
     const hash = bcrypt.hashSync(password, 10);
-    db.run("INSERT INTO users (username, email, password) VALUES (?, ?, ?)", [username, email, hash], function(err) {
+    const referredBy = req.session.referral_code || null;
+    
+    db.run("INSERT INTO users (username, email, password, referred_by) VALUES (?, ?, ?, ?)", [username, email, hash, referredBy], function(err) {
         if (err) return res.render('login', { error: 'Username already exists.' });
         req.session.user = { id: this.lastID, username, role: 'client', is_vendor: 0 };
         res.redirect('/dashboard');
