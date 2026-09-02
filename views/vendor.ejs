@@ -12,13 +12,17 @@
             </div>
             <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 10px;">
                 <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-                    <div style="flex: 1; min-width: 200px;">
+                    <div style="flex: 1; min-width: 150px;">
                         <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px;">Vendor Display Name</label>
                         <input type="text" name="vendor_name" value="<%= user.vendor_name || '' %>" class="form-control" placeholder="Your store name">
                     </div>
-                    <div style="flex: 1; min-width: 200px;">
-                        <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px;">Update Logo (Optional)</label>
+                    <div style="flex: 1; min-width: 150px;">
+                        <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px;">Update Logo</label>
                         <input type="file" name="vendor_logo" accept="image/*" class="form-control">
+                    </div>
+                    <div style="flex: 1; min-width: 150px;">
+                        <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px;">Update Banner (Background)</label>
+                        <input type="file" name="vendor_banner" accept="image/*" class="form-control">
                     </div>
                 </div>
                 <div>

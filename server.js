@@ -1082,22 +1082,34 @@ app.post('/vendor/proofs/delete/:id', requireVendor, (req, res) => {
         }
     });
 });
-app.post('/vendor/profile/edit', requireVendor, imageUpload.single('vendor_logo'), (req, res) => {
+app.post('/vendor/profile/edit', requireVendor, imageUpload.fields([{ name: 'vendor_logo', maxCount: 1 }, { name: 'vendor_banner', maxCount: 1 }]), (req, res) => {
     const { vendor_name, vendor_description } = req.body;
     
-    if (req.file) {
-        const logo_url = '/images/' + req.file.filename;
-        db.run("UPDATE users SET vendor_name = ?, vendor_description = ?, vendor_logo = ? WHERE id = ?", [vendor_name, vendor_description, logo_url, req.session.user.id], () => {
-            req.session.user.vendor_name = vendor_name;
+    let updates = ["vendor_name = ?", "vendor_description = ?"];
+    let params = [vendor_name, vendor_description];
+    
+    if (req.files) {
+        if (req.files['vendor_logo']) {
+            const logo_url = '/images/' + req.files['vendor_logo'][0].filename;
+            updates.push("vendor_logo = ?");
+            params.push(logo_url);
             req.session.user.vendor_logo = logo_url;
-            res.redirect('/vendor');
-        });
-    } else {
-        db.run("UPDATE users SET vendor_name = ?, vendor_description = ? WHERE id = ?", [vendor_name, vendor_description, req.session.user.id], () => {
-            req.session.user.vendor_name = vendor_name;
-            res.redirect('/vendor');
-        });
+        }
+        if (req.files['vendor_banner']) {
+            const banner_url = '/images/' + req.files['vendor_banner'][0].filename;
+            updates.push("vendor_banner = ?");
+            params.push(banner_url);
+            req.session.user.vendor_banner = banner_url;
+        }
     }
+    
+    params.push(req.session.user.id);
+    const query = `UPDATE users SET ${updates.join(', ')} WHERE id = ?`;
+    
+    db.run(query, params, () => {
+        req.session.user.vendor_name = vendor_name;
+        res.redirect('/vendor');
+    });
 });
 
 app.post('/vendor/products/edit/:id', requireVendor, imageUpload.single('product_image'), (req, res) => {
