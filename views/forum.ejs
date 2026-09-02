@@ -739,10 +739,18 @@ function showToast() {
     }
 }
 
-// Start toasts after 2s, then every 4-7s
+// Start toasts with truly random intervals
+function scheduleNextToast() {
+    const delay = 3000 + Math.random() * 9000; // Between 3 and 12 seconds
+    setTimeout(() => {
+        showToast();
+        scheduleNextToast();
+    }, delay);
+}
+
 setTimeout(() => {
     showToast();
-    setInterval(showToast, 4000 + Math.random() * 3000);
+    scheduleNextToast();
 }, 2000);
 
 // ---- Vote handler (VIP only) ----
