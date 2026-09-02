@@ -564,7 +564,7 @@ app.get('/download/:orderId', requireAuth, (req, res) => {
 // Auth Routes
 app.get('/partner/auth', (req, res) => {
     if (req.session.user) {
-        return res.redirect('/dashboard');
+        return res.redirect('/partner/dashboard');
     }
     res.render('partner_auth', { error: null });
 });
@@ -579,7 +579,7 @@ app.post('/partner/register', (req, res) => {
     db.run("INSERT INTO users (username, email, password, btc_wallet) VALUES (?, ?, ?, ?)", [username, email, hash, btc_wallet], function(err) {
         if (err) return res.render('partner_auth', { error: 'Email already exists.' });
         req.session.user = { id: this.lastID, username, role: 'client', is_vendor: 0, is_vip: 0 };
-        res.redirect('/dashboard');
+        res.redirect('/partner/dashboard');
     });
 });
 
@@ -591,9 +591,15 @@ app.post('/partner/login', (req, res) => {
     db.get("SELECT * FROM users WHERE email = ? OR username = ?", [email, email], (err, user) => {
         if (user && bcrypt.compareSync(password, user.password)) {
             req.session.user = { id: user.id, username: user.username, role: user.role, is_vendor: user.is_vendor, is_vip: user.is_vip || 0 };
-            return res.redirect('/dashboard');
+            return res.redirect('/partner/dashboard');
         }
         res.render('partner_auth', { error: 'Invalid credentials' });
+    });
+});
+
+app.get('/partner/dashboard', requireAuth, (req, res) => {
+    db.get("SELECT btc_wallet FROM users WHERE id = ?", [req.session.user.id], (err, user) => {
+        res.render('partner_dashboard', { btc_wallet: user ? user.btc_wallet : 'N/A' });
     });
 });
 

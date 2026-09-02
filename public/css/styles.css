@@ -821,3 +821,119 @@ body.menu-open {
     .job-tables { flex-direction: column; align-items: center; }
     .job-table-wrapper { width: 100%; }
 }
+
+/* Partner Dashboard Styles */
+.dashboard-wrapper {
+    max-width: 1200px;
+    margin: 30px auto;
+    padding: 0 15px;
+    display: flex;
+    gap: 30px;
+}
+.dashboard-sidebar {
+    width: 300px;
+    flex-shrink: 0;
+}
+.dashboard-main {
+    flex: 1;
+}
+.dash-panel {
+    background: #fff;
+    margin-bottom: 30px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+.dash-panel-header {
+    background: #2e2a5c;
+    color: white;
+    padding: 15px 20px;
+    font-weight: bold;
+    font-size: 14px;
+}
+.dash-panel-content {
+    padding: 20px;
+}
+.dash-balance {
+    text-align: center;
+    color: #333;
+}
+.dash-balance h2 { font-size: 24px; margin-bottom: 5px; }
+.dash-balance h3 { font-size: 16px; margin-bottom: 15px; color: #666; font-weight: normal; }
+.dash-balance p { font-size: 13px; color: #888; margin-bottom: 10px; }
+.dash-balance .btc-wallet { color: #a0aec0; word-break: break-all; margin-bottom: 15px; }
+
+.dash-menu {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.dash-menu li a {
+    display: block;
+    padding: 12px 20px;
+    color: #888;
+    text-decoration: none;
+    font-size: 14px;
+}
+.dash-menu li a:hover {
+    background: #f8fafc;
+    color: #333;
+}
+
+.partner-data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+.partner-data-table th {
+    background: #4a4a4a;
+    color: white;
+    padding: 10px 15px;
+    text-align: left;
+    font-size: 14px;
+}
+.partner-data-table td {
+    padding: 12px 15px;
+    border-bottom: 1px solid #eee;
+    font-size: 14px;
+    color: #333;
+}
+.partner-data-table tr:last-child td { border-bottom: none; }
+.dash-form-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+}
+.dash-input {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+.dash-btn-add {
+    background: white;
+    color: #28a745;
+    border: 1px solid #28a745;
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+}
+.dash-btn-add:hover { background: #f0fdf4; }
+
+.conversion-filters {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+.dash-btn-blue {
+    background: #007bff;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+@media (max-width: 768px) {
+    .dashboard-wrapper { flex-direction: column; }
+    .dashboard-sidebar { width: 100%; }
+}
