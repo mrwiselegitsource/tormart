@@ -99,6 +99,7 @@
                     </table>
                     <div class="dash-panel-content">
                         <form action="/partner/links/add" method="POST" class="dash-form-row">
+                            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                             <input type="text" name="link_name" class="dash-input" placeholder="Specify name for new promo link (not required)">
                             <button type="submit" class="dash-btn-add">+ Add</button>
                         </form>

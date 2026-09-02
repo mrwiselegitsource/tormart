@@ -201,6 +201,7 @@
             <div class="partner-box-content">
                 <h2>Register a partner account</h2>
                 <form action="/partner/register" method="POST">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                     <div class="partner-input-group">
                         <div class="partner-input-icon">@</div>
                         <input type="email" name="email" class="partner-input" placeholder="Email" required>
@@ -233,6 +234,7 @@
             <div class="partner-box-content">
                 <h2>I am returning partner</h2>
                 <form action="/partner/login" method="POST">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                     <div class="partner-input-group">
                         <div class="partner-input-icon">@</div>
                         <input type="email" name="email" class="partner-input" placeholder="Email" required>
