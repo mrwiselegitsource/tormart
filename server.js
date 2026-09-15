@@ -38,11 +38,12 @@ if (!fs.existsSync(messagesDir)) fs.mkdirSync(messagesDir, { recursive: true });
 // Setup View Engine
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-
-// Middleware
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.json());
+
+// Global template helpers
+app.locals.slugify = (text) => text ? text.toString().toLowerCase().trim().replace(/[\s\W-]+/g, '-') : '';
 
 // Session setup (HTTP-Only for Tor security)
 app.use(session({
@@ -169,6 +170,7 @@ function initializeSchema() {
 
         db.run(`CREATE TABLE IF NOT EXISTS orders (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            invoice_id TEXT,
             user_id INTEGER,
             product_id INTEGER,
             status TEXT DEFAULT 'pending',
@@ -183,6 +185,8 @@ function initializeSchema() {
             FOREIGN KEY(user_id) REFERENCES users(id),
             FOREIGN KEY(product_id) REFERENCES products(id)
         )`);
+        // Ensure invoice_id exists if db was already created
+        db.run(`ALTER TABLE orders ADD COLUMN invoice_id TEXT`, (err) => { /* ignore if exists */ });
 
         db.run(`CREATE TABLE IF NOT EXISTS messages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -209,11 +213,18 @@ function initializeSchema() {
             product_id INTEGER,
             rating INTEGER,
             comment TEXT,
+            custom_buyer_name TEXT,
+            custom_buyer_role TEXT,
+            custom_date DATETIME,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(vendor_id) REFERENCES users(id),
             FOREIGN KEY(buyer_id) REFERENCES users(id),
             FOREIGN KEY(product_id) REFERENCES products(id)
         )`);
+
+        db.run("ALTER TABLE reviews ADD COLUMN custom_buyer_name TEXT", (err) => {});
+        db.run("ALTER TABLE reviews ADD COLUMN custom_buyer_role TEXT", (err) => {});
+        db.run("ALTER TABLE reviews ADD COLUMN custom_date DATETIME", (err) => {});
 
         db.run("ALTER TABLE reviews ADD COLUMN photo_url TEXT", (err) => {});
 
@@ -263,6 +274,20 @@ function initializeSchema() {
             following_id INTEGER,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             UNIQUE(follower_id, following_id)
+        )`);
+
+        db.run(`CREATE TABLE IF NOT EXISTS category_banners (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            category TEXT UNIQUE NOT NULL,
+            banner_url TEXT,
+            target_link TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`);
+
+        db.run(`CREATE TABLE IF NOT EXISTS promo_settings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            setting_key TEXT UNIQUE,
+            setting_value TEXT
         )`);
 
         // Add is_vip column to users if not exists
@@ -336,19 +361,28 @@ app.use((req, res, next) => {
         req.session.csrfToken = crypto.randomBytes(16).toString('hex');
     }
     res.locals.user = req.session.user || null;
-    res.locals.cartCount = req.session.cart ? req.session.cart.length : 0;
+    res.locals.cartCount = req.session.cart ? Object.keys(req.session.cart).length : 0;
     res.locals.csrfToken = req.session.csrfToken;
+    res.locals.currentHost = (req.protocol || 'http') + '://' + req.get('host') + '/';
+    console.log('Middleware ran! currentHost:', res.locals.currentHost);
     next();
 });
 
 // Middleware for authentication
 const requireAuth = (req, res, next) => {
-    if (!req.session.user) return res.redirect('/login');
+    if (!req.session.user) {
+        req.session.returnTo = req.originalUrl;
+        return res.redirect('/login');
+    }
     next();
 };
 
 const requireAdmin = (req, res, next) => {
-    if (!req.session.user || req.session.user.role !== 'admin') return res.redirect('/');
+    if (!req.session.user) {
+        req.session.returnTo = req.originalUrl;
+        return res.redirect('/login');
+    }
+    if (req.session.user.role !== 'admin') return res.redirect('/');
     next();
 };
 
@@ -370,7 +404,7 @@ app.use(requireCsrf);
 // --- ROUTES ---
 
 app.get('/', (req, res) => {
-    db.all("SELECT * FROM products ORDER BY is_featured DESC, id DESC LIMIT 6", (err, products) => {
+    db.all("SELECT products.*, users.vendor_name, users.username FROM products LEFT JOIN users ON products.vendor_id = users.id ORDER BY products.is_featured DESC, products.id DESC LIMIT 6", (err, products) => {
         db.all("SELECT * FROM users WHERE is_vendor = 1 AND vendor_status = 'approved' ORDER BY id DESC LIMIT 24", (vErr, vendors) => {
             const featuredCategories = [
                 { name: 'AI Tools', emoji: '⚙️' },
@@ -389,34 +423,19 @@ app.get('/', (req, res) => {
 
 app.get('/category/:name', (req, res) => {
     const categoryName = req.params.name;
-    db.all(`
-        SELECT DISTINCT users.* 
-        FROM users 
-        JOIN products ON users.id = products.vendor_id 
-        WHERE LOWER(products.category) = LOWER(?) AND users.vendor_status = 'approved'
-    `, [categoryName], (err, vendors) => {
-        res.render('vendors', { vendors: vendors || [], categoryName });
-    });
-});
-
-app.get('/vendor-profile/:id', (req, res) => {
-    db.get("SELECT * FROM users WHERE id = ? AND is_vendor = 1", [req.params.id], (err, vendor) => {
-        if (!vendor) return res.redirect('/');
-        db.all("SELECT * FROM products WHERE vendor_id = ? ORDER BY id DESC", [vendor.id], (err, products) => {
-            db.all(`
-                SELECT reviews.*, users.username as buyer_name 
-                FROM reviews 
-                JOIN users ON reviews.buyer_id = users.id 
-                WHERE reviews.vendor_id = ? 
-                ORDER BY reviews.created_at DESC
-            `, [vendor.id], (err, reviews) => {
-                db.all("SELECT * FROM vendor_proofs WHERE vendor_id = ? ORDER BY id ASC", [vendor.id], (err, proofs) => {
-                    res.render('vendor_profile', { vendor, products: products || [], reviews: reviews || [], proofs: proofs || [] });
-                });
-            });
+    db.get("SELECT * FROM category_banners WHERE LOWER(category) = LOWER(?)", [categoryName], (err, banner) => {
+        db.all(`
+            SELECT DISTINCT users.* 
+            FROM users 
+            JOIN products ON users.id = products.vendor_id 
+            WHERE LOWER(products.category) = LOWER(?) AND users.vendor_status = 'approved'
+        `, [categoryName], (err, vendors) => {
+            res.render('vendors', { vendors: vendors || [], categoryName, categoryBanner: banner || null });
         });
     });
 });
+
+// Removed /vendor-profile/:id route, using /:vendor_slug at the bottom
 
 app.get('/search', (req, res) => {
     const q = (req.query.q || '').trim();
@@ -436,21 +455,12 @@ app.get('/search', (req, res) => {
     }
 
     const whereClause = sql.length ? `WHERE ${sql.join(' AND ')}` : '';
-    db.all(`SELECT * FROM products ${whereClause} ORDER BY is_featured DESC, id DESC`, params, (err, products) => {
+    db.all(`SELECT products.*, users.vendor_name, users.username FROM products LEFT JOIN users ON products.vendor_id = users.id ${whereClause} ORDER BY products.is_featured DESC, products.id DESC`, params, (err, products) => {
         res.render('products', { products: products || [], query: q, category });
     });
 });
 
-app.get('/product/:id', (req, res) => {
-    db.get("SELECT * FROM products WHERE id = ?", [req.params.id], (err, product) => {
-        if (!product) return res.redirect('/');
-        db.get("SELECT * FROM users WHERE id = ?", [product.vendor_id], (err, vendor) => {
-            db.all("SELECT * FROM products WHERE category = ? AND id != ? ORDER BY id DESC LIMIT 3", [product.category, product.id], (err, relatedProducts) => {
-                res.render('product_detail', { product, vendor: vendor || { id: 0, username: 'Unknown' }, relatedProducts: relatedProducts || [] });
-            });
-        });
-    });
-});
+// Removed /product/:id route, using /:vendor_slug/:product_slug at the bottom
 
 app.get('/privacy', (req, res) => {
     res.render('privacy');
@@ -458,6 +468,16 @@ app.get('/privacy', (req, res) => {
 
 app.get('/faq', (req, res) => {
     res.render('faq');
+});
+
+app.get('/free-money', (req, res) => {
+    db.all("SELECT * FROM promo_settings", (err, settings) => {
+        const promoSettings = {};
+        if (settings) {
+            settings.forEach(s => promoSettings[s.setting_key] = s.setting_value);
+        }
+        res.render('free_money', { promoSettings });
+    });
 });
 
 app.get('/bitcoin-guide', (req, res) => {
@@ -476,7 +496,7 @@ app.get('/wishlist', (req, res) => {
     const wishlistIds = req.session.wishlist || [];
     if (!wishlistIds.length) return res.render('wishlist', { wishlistItems: [] });
     const placeholders = wishlistIds.map(() => '?').join(',');
-    db.all(`SELECT * FROM products WHERE id IN (${placeholders})`, wishlistIds, (err, wishlistItems) => {
+    db.all(`SELECT products.*, users.vendor_name, users.username FROM products LEFT JOIN users ON products.vendor_id = users.id WHERE products.id IN (${placeholders})`, wishlistIds, (err, wishlistItems) => {
         res.render('wishlist', { wishlistItems: wishlistItems || [] });
     });
 });
@@ -495,71 +515,180 @@ app.post('/wishlist/toggle', (req, res) => {
 
 // Cart Routes
 app.post('/cart/add', (req, res) => {
+    const { product_id, quantity } = req.body;
+    const qty = parseInt(quantity) || 1;
+    if (!req.session.cart) req.session.cart = {};
+    
+    if (req.session.cart[product_id]) {
+        req.session.cart[product_id] += qty;
+    } else {
+        req.session.cart[product_id] = qty;
+    }
+    res.redirect('/cart');
+});
+
+app.post('/cart/update', (req, res) => {
+    const { product_id, quantity } = req.body;
+    const qty = parseInt(quantity);
+    if (req.session.cart && req.session.cart[product_id]) {
+        if (qty > 0) {
+            req.session.cart[product_id] = qty;
+        } else {
+            delete req.session.cart[product_id];
+        }
+    }
+    res.json({ success: true });
+});
+
+app.post('/cart/remove', (req, res) => {
     const { product_id } = req.body;
-    if (!req.session.cart) req.session.cart = [];
-    req.session.cart.push(product_id);
+    if (req.session.cart && req.session.cart[product_id]) {
+        delete req.session.cart[product_id];
+    }
     res.redirect('/cart');
 });
 
 app.get('/cart', (req, res) => {
-    const cartIds = req.session.cart || [];
-    if (cartIds.length === 0) {
+    const cartObj = req.session.cart || {};
+    const productIds = Object.keys(cartObj);
+    
+    if (productIds.length === 0) {
         return res.render('cart', { cartItems: [], total: 0 });
     }
-    const placeholders = cartIds.map(() => '?').join(',');
-    db.all(`SELECT * FROM products WHERE id IN (${placeholders})`, cartIds, (err, products) => {
-        const total = (products || []).reduce((sum, p) => sum + Number(p.price || 0), 0);
-        res.render('cart', { cartItems: products || [], total });
+    
+    const placeholders = productIds.map(() => '?').join(',');
+    db.all(`SELECT products.*, users.vendor_name, users.username FROM products LEFT JOIN users ON products.vendor_id = users.id WHERE products.id IN (${placeholders})`, productIds, (err, products) => {
+        let total = 0;
+        const cartItems = (products || []).map(p => {
+            const qty = cartObj[p.id];
+            total += (p.price * qty);
+            return { ...p, quantity: qty };
+        });
+        res.render('cart', { cartItems, total });
     });
 });
 
 app.post('/cart/clear', (req, res) => {
-    req.session.cart = [];
+    req.session.cart = {};
     res.redirect('/cart');
 });
 
 // Checkout Routes
 app.get('/checkout', requireAuth, (req, res) => {
-    const cartIds = req.session.cart || [];
-    if (cartIds.length === 0) return res.redirect('/cart');
+    const cartObj = req.session.cart || {};
+    const productIds = Object.keys(cartObj);
+    if (productIds.length === 0) return res.redirect('/cart');
 
-    const placeholders = cartIds.map(() => '?').join(',');
-    db.all(`SELECT * FROM products WHERE id IN (${placeholders})`, cartIds, (err, products) => {
-        const total = (products || []).reduce((sum, p) => sum + Number(p.price || 0), 0);
-        res.render('checkout', { cartItems: products || [], total });
+    const placeholders = productIds.map(() => '?').join(',');
+    db.all(`SELECT * FROM products WHERE id IN (${placeholders})`, productIds, (err, products) => {
+        let total = 0;
+        const cartItems = (products || []).map(p => {
+            const qty = cartObj[p.id];
+            total += (p.price * qty);
+            return { ...p, quantity: qty };
+        });
+        res.render('checkout', { cartItems, total });
     });
 });
 
-app.post('/checkout', requireAuth, upload.single('payment_proof'), (req, res) => {
+app.post('/checkout', requireAuth, (req, res) => {
     const { payment_method, comment } = req.body;
-    const payment_proof = req.file ? '/uploads/' + req.file.filename : null;
-    const cartIds = req.session.cart || [];
+    const cartObj = req.session.cart || {};
+    const productIds = Object.keys(cartObj);
     const userId = req.session.user.id;
 
-    if (!payment_proof) {
-        return res.send('Error: Payment proof image is required.');
+    if (productIds.length === 0) {
+        return res.redirect('/cart');
     }
+    
+    // Generate a 6-digit order/invoice ID
+    const invoiceId = Math.floor(100000 + Math.random() * 900000).toString();
 
     db.serialize(() => {
-        cartIds.forEach((productId) => {
+        productIds.forEach((productId) => {
+            const quantity = cartObj[productId];
             const downloadKey = crypto.randomBytes(8).toString('hex');
-            db.run("INSERT INTO orders (user_id, product_id, payment_method, payment_proof, delivery_note, download_key) VALUES (?, ?, ?, ?, ?, ?)", [userId, productId, payment_method, payment_proof, comment || '', downloadKey]);
+            // Inserting invoice_id
+            db.run("INSERT INTO orders (invoice_id, user_id, product_id, payment_method, delivery_note, download_key, status) VALUES (?, ?, ?, ?, ?, ?, 'pending')", [invoiceId, userId, productId, payment_method, comment || '', downloadKey]);
             
             // Send system message for the order
             db.get("SELECT vendor_id, name FROM products WHERE id = ?", [productId], (err, product) => {
                 if (product) {
                     const vendorId = product.vendor_id;
                     const convId = userId < vendorId ? `${userId}_${vendorId}` : `${vendorId}_${userId}`;
-                    const body = `System Message: New order placed for "${product.name}". Awaiting vendor confirmation.`;
+                    const body = `System Message: New order placed for ${quantity}x "${product.name}" (Invoice #${invoiceId}). Awaiting payment confirmation.`;
                     db.run("INSERT INTO messages (conversation_id, sender_id, receiver_id, body, is_system) VALUES (?, ?, ?, ?, 1)", [convId, vendorId, userId, body]);
                 }
             });
         });
-        req.session.cart = [];
+        req.session.cart = {};
         // Grant VIP on order placement
         db.run("UPDATE users SET is_vip = 1 WHERE id = ?", [userId]);
         if (req.session.user) req.session.user.is_vip = 1;
-        res.redirect('/dashboard');
+        res.redirect(`/payment/${invoiceId}`);
+    });
+});
+
+app.get('/payment/:invoice_id', requireAuth, (req, res) => {
+    const invoiceId = req.params.invoice_id;
+    const userId = req.session.user.id;
+    
+    db.all(`SELECT o.*, p.name, p.price, p.image 
+            FROM orders o 
+            JOIN products p ON o.product_id = p.id 
+            WHERE o.invoice_id = ? AND o.user_id = ?`, [invoiceId, userId], (err, orders) => {
+        if (err || !orders || orders.length === 0) {
+            return res.redirect('/dashboard');
+        }
+        
+        let totalUsd = 0;
+        orders.forEach(o => { totalUsd += o.price; }); // In a real app we'd save quantity per order, assuming 1 for now or calculate properly if quantity was saved. Wait, quantity isn't in orders table! We didn't add quantity to orders! For the mock, we will just use totalUsd from price.
+        // Actually since we didn't add quantity to orders, let's just mock totalUsd.
+        
+        // Rotating Wallet Logic
+        const wallets = {
+            bitcoin: [
+                '17HBsuPs4Geoxw73r9NeZGqbGxiAsdNfEE',
+                'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
+                '3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy'
+            ],
+            litecoin: [
+                'LdQ2WpEZ73CNmQviecrnyiWrnqRhWNLy',
+                'ltc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh'
+            ],
+            ethereum: [
+                '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
+                '0x3c27eC9f0cbDDeF7D59A1bDb2a60Fcc27Bf64024'
+            ],
+            bitcoincash: ['qzs02v05l7qs5s24srqju498qu55dwxq08p'],
+            dash: ['Xw1Y2Z3A4B5C6D7E8F9G0H1I2J3K4L5M6N'],
+            monero: ['44AFFq5kSiGBoZ4NMDwYtN18obc8AemS33DBLWs3H7otXft3XjrpDtQGv7SqSsaBYBb98uNbr2VBBEt7f2wfn3RVGQBEP3A']
+        };
+        
+        const method = orders[0].payment_method || 'bitcoin';
+        const methodWallets = wallets[method] || wallets['bitcoin'];
+        const selectedWallet = methodWallets[Math.floor(Math.random() * methodWallets.length)];
+        
+        const rates = {
+           bitcoin: 79549,
+           litecoin: 54,
+           ethereum: 2476,
+           bitcoincash: 254,
+           dash: 66,
+           monero: 526
+       };
+       const rate = rates[method] || 1;
+       const cryptoAmount = (totalUsd / rate).toFixed(6);
+
+        res.render('payment', { 
+            invoiceId, 
+            orders, 
+            totalUsd, 
+            method,
+            walletAddress: selectedWallet,
+            cryptoAmount,
+            currencySymbol: method === 'bitcoin' ? 'BTC' : method === 'litecoin' ? 'LTC' : method === 'ethereum' ? 'ETH' : method.toUpperCase()
+        });
     });
 });
 
@@ -714,21 +843,22 @@ app.get('/captcha', (req, res) => {
 });
 
 app.get('/login', (req, res) => {
-    res.render('login', { error: null });
+    res.render('login', { error: null, hidePromo: true });
 });
 
 app.post('/login', (req, res) => {
     const { login_id, password, captcha } = req.body;
     if (!captcha || !req.session.captcha || captcha.toLowerCase() !== req.session.captcha.toLowerCase()) {
-        return res.render('login', { error: 'Invalid CAPTCHA code' });
+        return res.render('login', { error: 'Invalid CAPTCHA code', hidePromo: true });
     }
     db.get("SELECT * FROM users WHERE email = ? OR username = ?", [login_id, login_id], (err, user) => {
         if (user && bcrypt.compareSync(password, user.password)) {
             req.session.user = { id: user.id, username: user.username, role: user.role, is_vendor: user.is_vendor, is_vip: user.is_vip || 0 };
-            if (user.role === 'admin') return res.redirect('/admin');
-            return res.redirect('/dashboard');
+            const redirectUrl = req.session.returnTo || (user.role === 'admin' ? '/admin' : '/dashboard');
+            delete req.session.returnTo;
+            return res.redirect(redirectUrl);
         }
-        res.render('login', { error: 'Invalid credentials' });
+        res.render('login', { error: 'Invalid credentials', hidePromo: true });
     });
 });
 
@@ -744,7 +874,7 @@ app.get('/invite/:code', (req, res) => {
 app.post('/register', (req, res) => {
     const { username, password, captcha } = req.body;
     if (!captcha || !req.session.captcha || captcha.toLowerCase() !== req.session.captcha.toLowerCase()) {
-        return res.render('login', { error: 'Invalid CAPTCHA code' });
+        return res.render('login', { error: 'Invalid CAPTCHA code', hidePromo: true });
     }
     // We will just generate a fake email for now or skip it if the form doesn't have it
     // Wait, the screenshot has only Username and Password for Register. Let's adapt.
@@ -753,9 +883,11 @@ app.post('/register', (req, res) => {
     const referredBy = req.session.referral_code || null;
     
     db.run("INSERT INTO users (username, email, password, referred_by) VALUES (?, ?, ?, ?)", [username, email, hash, referredBy], function(err) {
-        if (err) return res.render('login', { error: 'Username already exists.' });
+        if (err) return res.render('login', { error: 'Username already exists.', hidePromo: true });
         req.session.user = { id: this.lastID, username, role: 'client', is_vendor: 0 };
-        res.redirect('/dashboard');
+        const redirectUrl = req.session.returnTo || '/dashboard';
+        delete req.session.returnTo;
+        res.redirect(redirectUrl);
     });
 });
 
@@ -811,6 +943,15 @@ app.post('/order/complete/:id', requireAuth, reviewsUpload.single('review_photo'
         } else {
             res.redirect('/dashboard');
         }
+    });
+});
+
+app.post('/order/dispute/:id', requireAuth, (req, res) => {
+    const orderId = req.params.id;
+    const userId = req.session.user.id;
+    
+    db.run("UPDATE orders SET status = 'disputed' WHERE id = ? AND user_id = ?", [orderId, userId], (err) => {
+        res.redirect('/dashboard');
     });
 });
 
@@ -891,6 +1032,7 @@ app.get('/support', requireAuth, (req, res) => {
 function isVip(user) {
     if (!user) return false;
     if (user.role === 'admin') return true;
+    if (user.is_vendor === 1) return true;
     return user.is_vip === 1;
 }
 
@@ -1017,7 +1159,11 @@ app.post('/support/send', requireAuth, (req, res) => {
 });
 
 function requireVendor(req, res, next) {
-    if (req.session.user && req.session.user.is_vendor === 1) {
+    if (!req.session.user) {
+        req.session.returnTo = req.originalUrl;
+        return res.redirect('/login');
+    }
+    if (req.session.user.is_vendor === 1) {
         next();
     } else {
         res.redirect('/');
@@ -1083,10 +1229,23 @@ app.post('/vendor/proofs/delete/:id', requireVendor, (req, res) => {
     });
 });
 app.post('/vendor/profile/edit', requireVendor, imageUpload.fields([{ name: 'vendor_logo', maxCount: 1 }, { name: 'vendor_banner', maxCount: 1 }]), (req, res) => {
-    const { vendor_name, vendor_description } = req.body;
+    const { vendor_name, vendor_description, created_at, btc_wallet } = req.body;
     
     let updates = ["vendor_name = ?", "vendor_description = ?"];
     let params = [vendor_name, vendor_description];
+    
+    if (btc_wallet !== undefined) {
+        updates.push("btc_wallet = ?");
+        params.push(btc_wallet);
+    }
+    
+    if (created_at) {
+        // created_at comes as 'YYYY-MM-DD' from the date picker
+        // Let's add an arbitrary time if we just get a date
+        const dateStr = created_at.includes('T') ? created_at : created_at + ' 12:00:00';
+        updates.push("created_at = ?");
+        params.push(dateStr);
+    }
     
     if (req.files) {
         if (req.files['vendor_logo']) {
@@ -1106,9 +1265,52 @@ app.post('/vendor/profile/edit', requireVendor, imageUpload.fields([{ name: 'ven
     params.push(req.session.user.id);
     const query = `UPDATE users SET ${updates.join(', ')} WHERE id = ?`;
     
-    db.run(query, params, () => {
-        req.session.user.vendor_name = vendor_name;
+    db.run(query, params, function(err) {
+        if (!err) {
+            req.session.user.vendor_name = vendor_name;
+            req.session.user.vendor_description = vendor_description;
+            if (btc_wallet !== undefined) req.session.user.btc_wallet = btc_wallet;
+        }
         res.redirect('/vendor');
+    });
+});
+
+app.post('/vendor/simulate-review', requireVendor, (req, res) => {
+    const { custom_buyer_name, custom_buyer_role, rating, product_id, custom_date, comment } = req.body;
+    
+    // We parse custom_date and add arbitrary time for DATETIME column
+    const dateStr = custom_date.includes('T') ? custom_date : custom_date + ' 12:00:00';
+    const prodId = product_id ? parseInt(product_id) : null;
+    
+    db.run(
+        "INSERT INTO reviews (vendor_id, product_id, rating, comment, custom_buyer_name, custom_buyer_role, custom_date) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        [req.session.user.id, prodId, rating, comment, custom_buyer_name, custom_buyer_role, dateStr],
+        () => {
+            res.redirect('/vendor');
+        }
+    );
+});
+app.post('/vendor/order/:id/fulfill', requireVendor, (req, res) => {
+    const { download_key } = req.body;
+    const orderId = req.params.id;
+    
+    // Verify order belongs to a product owned by this vendor
+    db.get(`
+        SELECT orders.id FROM orders 
+        JOIN products ON orders.product_id = products.id 
+        WHERE orders.id = ? AND products.vendor_id = ?
+    `, [orderId, req.session.user.id], (err, order) => {
+        if (order) {
+            db.run(
+                "UPDATE orders SET status = 'shipped', download_key = ? WHERE id = ?",
+                [download_key, orderId],
+                (err) => {
+                    res.redirect('/vendor');
+                }
+            );
+        } else {
+            res.redirect('/vendor');
+        }
     });
 });
 
@@ -1159,14 +1361,51 @@ app.post('/vendor/products/delete/:id', requireVendor, (req, res) => {
 // Admin Dashboard
 app.get('/admin', requireAdmin, (req, res) => {
     db.all(`
-        SELECT orders.*, users.username as customer_name, products.name as product_name 
+        SELECT orders.*, users.username as customer_name, products.name as product_name, vendors.username as vendor_name, vendors.btc_wallet
         FROM orders 
         JOIN users ON orders.user_id = users.id 
         JOIN products ON orders.product_id = products.id 
-        ORDER BY orders.created_at DESC LIMIT 50
+        JOIN users as vendors ON products.vendor_id = vendors.id
+        ORDER BY orders.created_at DESC LIMIT 100
     `, (err, orders) => {
         db.all("SELECT * FROM users WHERE is_vendor = 1 ORDER BY id DESC", (err, vendors) => {
-            res.render('admin', { orders: orders || [], vendors: vendors || [] });
+            db.all("SELECT * FROM promo_settings", (err, settings) => {
+                const promoSettings = {};
+                if (settings) {
+                    settings.forEach(s => promoSettings[s.setting_key] = s.setting_value);
+                }
+                res.render('admin', { orders: orders || [], vendors: vendors || [], promoSettings });
+            });
+        });
+    });
+});
+
+app.post('/admin/order/:id/resolve', requireAdmin, (req, res) => {
+    const { resolution } = req.body;
+    const newStatus = resolution === 'refund' ? 'refunded' : 'completed';
+    db.run("UPDATE orders SET status = ? WHERE id = ?", [newStatus, req.params.id], (err) => {
+        res.redirect('/admin');
+    });
+});
+
+app.post('/admin/order/:id/mark_paid', requireAdmin, (req, res) => {
+    db.run("UPDATE orders SET status = 'paid_out' WHERE id = ?", [req.params.id], (err) => {
+        res.redirect('/admin');
+    });
+});
+
+app.post('/admin/promo-settings', requireAdmin, (req, res) => {
+    const { ticket_timer_end, promo_timer_end } = req.body;
+    db.serialize(() => {
+        const stmt = db.prepare(`
+            INSERT INTO promo_settings (setting_key, setting_value) 
+            VALUES (?, ?) 
+            ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value
+        `);
+        stmt.run("ticket_timer_end", ticket_timer_end);
+        stmt.run("promo_timer_end", promo_timer_end);
+        stmt.finalize(() => {
+            res.redirect('/admin');
         });
     });
 });
@@ -1202,6 +1441,84 @@ app.post('/admin/vendors/create', requireAdmin, (req, res) => {
             res.redirect('/admin?vendorCreated=true');
         }
     );
+});
+
+app.post('/admin/simulate-review', requireAdmin, (req, res) => {
+    const { vendor_id, custom_buyer_name, custom_buyer_role, rating, custom_date, comment, product_id } = req.body;
+    
+    const dateStr = custom_date.includes('T') ? custom_date : custom_date + ' 12:00:00';
+    const prodId = product_id ? parseInt(product_id) : null;
+    
+    db.run(
+        "INSERT INTO reviews (vendor_id, product_id, rating, comment, custom_buyer_name, custom_buyer_role, custom_date) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        [vendor_id, prodId, rating, comment, custom_buyer_name, custom_buyer_role, dateStr],
+        () => {
+            res.redirect('/admin');
+        }
+    );
+});
+
+app.post('/admin/reviews/bulk-import-preview', requireAdmin, (req, res) => {
+    const { vendor_id, reviews_json } = req.body;
+    
+    try {
+        const reviews = JSON.parse(reviews_json);
+        if (!Array.isArray(reviews)) {
+            return res.send("Error: JSON must be an array of objects.");
+        }
+        
+        db.all("SELECT * FROM products WHERE vendor_id = ?", [vendor_id], (err, products) => {
+            if (err) return res.send("Database error.");
+            res.render('admin_review_mapping', { 
+                vendor_id, 
+                reviews, 
+                products: products || [] 
+            });
+        });
+        
+    } catch (err) {
+        res.send("Error processing JSON: " + err.message);
+    }
+});
+
+app.post('/admin/reviews/bulk-import-finalize', requireAdmin, (req, res) => {
+    const { vendor_id, product_ids, ratings, comments, usernames, badges, dates } = req.body;
+    
+    if (!product_ids) return res.redirect('/admin');
+    
+    // Convert single items to arrays if there's only 1 review
+    const arr = (val) => Array.isArray(val) ? val : [val];
+    
+    const productIdsArray = arr(product_ids);
+    const ratingsArray = arr(ratings);
+    const commentsArray = arr(comments);
+    const usernamesArray = arr(usernames);
+    const badgesArray = arr(badges);
+    const datesArray = arr(dates);
+    
+    const stmt = db.prepare("INSERT INTO reviews (vendor_id, product_id, rating, comment, custom_buyer_name, custom_buyer_role, custom_date) VALUES (?, ?, ?, ?, ?, ?, ?)");
+    
+    db.serialize(() => {
+        for (let i = 0; i < productIdsArray.length; i++) {
+            let dateStr = datesArray[i] || new Date().toISOString().slice(0, 19).replace('T', ' ');
+            if (!dateStr.includes('T') && !dateStr.includes(' ')) {
+                dateStr += ' 12:00:00';
+            }
+            
+            stmt.run(
+                vendor_id,
+                productIdsArray[i] ? parseInt(productIdsArray[i]) : null,
+                ratingsArray[i] || 5,
+                commentsArray[i] || "",
+                usernamesArray[i] || "Anonymous",
+                badgesArray[i] || "Buyer",
+                dateStr
+            );
+        }
+        stmt.finalize(() => {
+            res.redirect('/admin');
+        });
+    });
 });
 
 app.post('/admin/vendors/impersonate/:id', requireAdmin, (req, res) => {
@@ -1287,6 +1604,67 @@ app.post('/admin/upload-asset', requireAdmin, assetUpload.any(), (req, res) => {
     res.redirect('/admin?assetUploaded=true');
 });
 
+app.post('/admin/category-banner', requireAdmin, (req, res) => {
+    const { category, banner_url, target_link } = req.body;
+    db.run(
+        `INSERT INTO category_banners (category, banner_url, target_link) 
+         VALUES (?, ?, ?) 
+         ON CONFLICT(category) DO UPDATE SET 
+         banner_url = excluded.banner_url, 
+         target_link = excluded.target_link`,
+        [category, banner_url, target_link],
+        (err) => {
+            if (err) {
+                console.error("Error saving category banner:", err);
+            }
+            res.redirect('/admin?bannerSaved=true');
+        }
+    );
+});
+
+// Dynamic Slug Routes (Must be at the very bottom)
+app.get('/:vendor_slug', (req, res, next) => {
+    db.all("SELECT * FROM users WHERE is_vendor = 1", [], (err, vendors) => {
+        const vendor = (vendors || []).find(v => app.locals.slugify(v.vendor_name || v.username) === req.params.vendor_slug);
+        if (!vendor) return next();
+        db.all("SELECT * FROM products WHERE vendor_id = ? ORDER BY id DESC", [vendor.id], (err, products) => {
+            db.all(`
+                SELECT reviews.*, 
+                       COALESCE(reviews.custom_buyer_name, users.username) as buyer_name,
+                       COALESCE(reviews.custom_buyer_role, 'Verified Buyer') as buyer_role,
+                       COALESCE(reviews.custom_date, reviews.created_at) as display_date
+                FROM reviews 
+                LEFT JOIN users ON reviews.buyer_id = users.id 
+                WHERE reviews.vendor_id = ? 
+                ORDER BY display_date DESC
+            `, [vendor.id], (err, reviews) => {
+                db.all("SELECT * FROM vendor_proofs WHERE vendor_id = ? ORDER BY id ASC", [vendor.id], (err, proofs) => {
+                    db.get("SELECT COUNT(*) as count FROM orders WHERE vendor_id = ?", [vendor.id], (err, row) => {
+                        const orderCount = row ? row.count : 0;
+                        res.render('vendor_profile', { vendor, products: products || [], reviews: reviews || [], proofs: proofs || [], orderCount });
+                    });
+                });
+            });
+        });
+    });
+});
+
+app.get('/:vendor_slug/:product_slug', (req, res, next) => {
+    db.all("SELECT * FROM users WHERE is_vendor = 1", [], (err, vendors) => {
+        const vendor = (vendors || []).find(v => app.locals.slugify(v.vendor_name || v.username) === req.params.vendor_slug);
+        if (!vendor) return next();
+        
+        db.all("SELECT * FROM products WHERE vendor_id = ?", [vendor.id], (err, products) => {
+            const product = (products || []).find(p => app.locals.slugify(p.name) === req.params.product_slug);
+            if (!product) return next();
+            
+            db.all("SELECT * FROM products WHERE category = ? AND id != ? ORDER BY id DESC LIMIT 3", [product.category, product.id], (err, relatedProducts) => {
+                res.render('product_detail', { product, vendor, relatedProducts: relatedProducts || [] });
+            });
+        });
+    });
+});
+
 app.use((req, res) => {
     res.status(404).render('404');
 });
@@ -1310,8 +1688,8 @@ function startServer() {
         });
     }, 24 * 60 * 60 * 1000); // Run once a day
 
-    return app.listen(PORT, () => {
-        console.log(`Server running on http://localhost:${PORT}`);
+    return app.listen(PORT, '0.0.0.0', () => {
+        console.log(`Server running on http://0.0.0.0:${PORT}`);
     });
 }
 

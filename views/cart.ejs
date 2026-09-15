@@ -1,7 +1,7 @@
 <%- include('header') %>
 
-<div class="container">
-    <h2 style="text-align: center; margin: 30px 0 20px 0; font-size: 24px; color: #111;">Shopping Cart</h2>
+<div class="container" style="max-width: 1000px; margin: 40px auto; padding: 20px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px;">
+    <h2 style="text-align: center; margin-bottom: 30px; font-size: 26px; color: #333; font-weight: bold;">Shopping Cart</h2>
 
     <% if (cartItems.length === 0) { %>
         <div style="background: #fff; padding: 40px; text-align: center; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
@@ -9,53 +9,113 @@
             <a href="/" class="btn btn-purple">Browse Cards</a>
         </div>
     <% } else { %>
-        <table>
-            <thead>
-                <tr>
-                    <th>Image</th>
-                    <th>Product Name</th>
-                    <th>Price</th>
-                    <th>Quantity</th>
-                    <th>Shipping</th>
-                    <th>Total</th>
-                </tr>
-            </thead>
-            <tbody>
-                <% cartItems.forEach(item => { %>
-                    <tr>
-                        <td style="width: 80px;">
-                            <img src="<%= item.image %>" alt="" style="width: 60px; height: 40px; object-fit: cover; border-radius: 4px;">
-                        </td>
-                        <td style="font-weight: bold;"><%= item.name %></td>
-                        <td style="font-weight: bold;">$<%= item.price.toFixed(2) %></td>
-                        <td>
-                            <div style="display: flex; background: #e5e7eb; width: max-content; border-radius: 4px; overflow: hidden;">
-                                <div style="padding: 5px 10px; cursor: pointer; color: #6b7280; font-weight: bold;">-</div>
-                                <div style="padding: 5px 15px; background: #fff; border-left: 1px solid #d1d5db; border-right: 1px solid #d1d5db;">1</div>
-                                <div style="padding: 5px 10px; cursor: pointer; color: #6b7280; font-weight: bold;">+</div>
-                            </div>
-                        </td>
-                        <td style="color: var(--primary-green); font-weight: bold;">INSTANT</td>
-                        <td style="font-weight: bold;">$<%= item.price.toFixed(2) %></td>
+        <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 4px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: #271842; color: #fff; text-align: left;">
+                        <th style="padding: 15px; font-weight: bold; font-size: 14px;">Image</th>
+                        <th style="padding: 15px; font-weight: bold; font-size: 14px;">Product Name</th>
+                        <th style="padding: 15px; font-weight: bold; font-size: 14px;">Price</th>
+                        <th style="padding: 15px; font-weight: bold; font-size: 14px;">Quantity</th>
+                        <th style="padding: 15px; font-weight: bold; font-size: 14px;">Shipping</th>
+                        <th style="padding: 15px; font-weight: bold; font-size: 14px;">Total</th>
+                        <th style="padding: 15px;"></th>
                     </tr>
-                <% }) %>
-            </tbody>
-        </table>
-
-        <div style="background: #fff; padding: 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-            <div style="font-size: 18px; font-weight: bold; color: #111;">
-                TOTAL $<%= total.toFixed(2) %>
-            </div>
+                </thead>
+                <tbody>
+                    <% cartItems.forEach(item => { %>
+                        <tr style="border-bottom: 1px solid #f1f5f9; background: #fff;" id="row-<%= item.id %>">
+                            <td style="padding: 15px; width: 80px;">
+                                <div style="position: relative; width: 60px;">
+                                    <img src="<%= item.image %>" alt="" style="width: 60px; height: 40px; object-fit: cover; border: 1px solid #e2e8f0; border-radius: 2px;">
+                                    <div style="position: absolute; top: -5px; right: -5px; background: #22c55e; color: white; font-size: 8px; font-weight: bold; padding: 2px 4px; border-radius: 2px;">NEW</div>
+                                </div>
+                            </td>
+                            <td style="padding: 15px; font-weight: bold; font-size: 14px; color: #333; max-width: 200px;">
+                                <%= item.name %>
+                            </td>
+                            <td style="padding: 15px; font-weight: bold; font-size: 14px; color: #333;" id="price-<%= item.id %>" data-price="<%= item.price %>">
+                                $<%= item.price.toFixed(2) %>
+                            </td>
+                            <td style="padding: 15px;">
+                                <div style="display: flex; align-items: center; background: #fff; overflow: hidden; border: 1px solid #cbd5e1; width: max-content; border-radius: 2px;">
+                                    <button type="button" onclick="updateCartQty('<%= item.id %>', -1)" style="border: none; background: #94a3b8; color: white; width: 25px; height: 25px; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center;">-</button>
+                                    <input type="text" id="qty-<%= item.id %>" value="<%= item.quantity %>" readonly style="width: 35px; height: 25px; border: none; text-align: center; font-size: 14px; font-weight: bold; color: #111; background: #fff; padding: 0;">
+                                    <button type="button" onclick="updateCartQty('<%= item.id %>', 1)" style="border: none; background: #94a3b8; color: white; width: 25px; height: 25px; font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center;">+</button>
+                                </div>
+                            </td>
+                            <td style="padding: 15px; color: #22c55e; font-weight: bold; font-size: 13px;">
+                                INSTANT
+                            </td>
+                            <td style="padding: 15px; font-weight: bold; font-size: 14px; color: #333;" id="item-total-<%= item.id %>">
+                                $<%= (item.price * item.quantity).toFixed(2) %>
+                            </td>
+                            <td style="padding: 15px; text-align: right;">
+                                <form action="/cart/remove" method="POST" style="margin: 0; display: inline;">
+                                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                                    <input type="hidden" name="product_id" value="<%= item.id %>">
+                                    <button type="submit" style="background: none; border: none; cursor: pointer; padding: 0;">
+                                        <svg width="24" height="24" viewBox="0 0 24 24" fill="red">
+                                            <circle cx="12" cy="12" r="10" />
+                                            <path d="M15 9l-6 6M9 9l6 6" stroke="white" stroke-width="2" stroke-linecap="round"/>
+                                        </svg>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
             
-            <div style="display: flex; gap: 15px;">
-                <form action="/cart/clear" method="POST">
-                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                    <button type="submit" class="btn" style="background: #ef4444;">Clear Cart</button>
-                </form>
-                <a href="/checkout" class="btn btn-green" style="padding: 10px 30px; font-size: 16px;">Checkout</a>
+            <div style="background: #fafafa; padding: 20px 30px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #e2e8f0;">
+                <div style="font-size: 18px; font-weight: bold; color: #333;">
+                    TOTAL $<span id="grand-total"><%= total.toFixed(2) %></span>
+                </div>
+                
+                <a href="/checkout" style="background: #22c55e; color: white; padding: 12px 30px; border-radius: 4px; font-size: 16px; font-weight: bold; text-decoration: none; display: inline-block;">Checkout</a>
             </div>
         </div>
     <% } %>
 </div>
+
+<script>
+    function updateCartQty(productId, change) {
+        const qtyInput = document.getElementById('qty-' + productId);
+        let currentQty = parseInt(qtyInput.value);
+        let newQty = currentQty + change;
+        
+        if (newQty < 1) return;
+        
+        // Update DOM optimistically
+        qtyInput.value = newQty;
+        
+        const priceElement = document.getElementById('price-' + productId);
+        const itemPrice = parseFloat(priceElement.getAttribute('data-price'));
+        const itemTotalElement = document.getElementById('item-total-' + productId);
+        
+        itemTotalElement.innerText = '$' + (itemPrice * newQty).toFixed(2);
+        
+        // Recalculate grand total
+        let newGrandTotal = 0;
+        document.querySelectorAll('[id^="item-total-"]').forEach(el => {
+            newGrandTotal += parseFloat(el.innerText.replace('$', ''));
+        });
+        document.getElementById('grand-total').innerText = newGrandTotal.toFixed(2);
+        
+        // Update session in background
+        fetch('/cart/update', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'CSRF-Token': '<%= csrfToken %>'
+            },
+            body: JSON.stringify({
+                product_id: productId,
+                quantity: newQty,
+                _csrf: '<%= csrfToken %>'
+            })
+        }).catch(err => console.error('Error updating cart:', err));
+    }
+</script>
 
 <%- include('footer') %>

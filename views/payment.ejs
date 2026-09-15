@@ -1,0 +1,124 @@
+<%- include('header') %>
+
+<div class="container" style="max-width: 1000px; margin: 40px auto; background: #fff; border: 1px solid #e2e8f0; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); padding-bottom: 20px;">
+    
+    <div style="text-align: center; margin: 30px 0; font-size: 24px; font-weight: bold; color: #333;">
+        <%= method.charAt(0).toUpperCase() + method.slice(1) %> Payment
+    </div>
+    
+    <div style="background: #f8fafc; padding: 20px; font-size: 18px; color: #333; margin-bottom: 30px;">
+        Order #<%= invoiceId %>
+    </div>
+    
+    <div style="display: flex; gap: 30px; padding: 0 20px;">
+        
+        <!-- Left Column: Payment Details & QR -->
+        <div style="width: 350px; flex-shrink: 0;">
+            <div style="background: #f8fafc; border-radius: 4px; padding: 20px; text-align: center; margin-bottom: 20px;">
+                <div style="font-weight: bold; font-size: 16px; margin-bottom: 15px;">Payment details</div>
+                
+                <div style="margin-bottom: 15px;">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=<%= method %>:<%= walletAddress %>?amount=<%= cryptoAmount %>" alt="QR Code" style="width: 200px; height: 200px; border-radius: 4px;">
+                </div>
+                
+                <div style="font-size: 14px; color: #333; margin-bottom: 15px;">
+                    To pay send exactly<br>
+                    <strong><%= cryptoAmount %> <%= currencySymbol %></strong> to
+                </div>
+                
+                <input type="text" value="<%= walletAddress %>" readonly style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px; text-align: center; margin-bottom: 10px;">
+            </div>
+
+            <!-- Blue Info Box -->
+            <div style="background: #3b82f6; color: white; border-radius: 4px; padding: 20px; font-size: 12px; line-height: 1.5;">
+                <div style="display: flex; gap: 10px; font-weight: bold; font-size: 13px; margin-bottom: 15px;">
+                    <div style="width: 18px; height: 18px; background: white; color: #3b82f6; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px;">i</div>
+                    What to do if the crypto exchange/platform asks for the recipient's personal details?
+                </div>
+                <p style="margin-bottom: 15px;">Use a non-custodial hot wallet like <a href="#" style="color: white; text-decoration: underline;">Trust Wallet</a> or <a href="#" style="color: white; text-decoration: underline;">others</a>. We recommend the wallet mobile app.</p>
+                <p style="margin-bottom: 15px;">You can enter your own personal details (Name, Country, etc) on the exchange first, then transfer coins to this wallet for storage.</p>
+                <p>This allows you to complete the payment securely without further restrictions.</p>
+            </div>
+        </div>
+        
+        <!-- Right Column: Order Details & Escrow Warning -->
+        <div style="flex-grow: 1;">
+            <div style="font-size: 20px; font-weight: bold; margin-bottom: 20px; color: #333;">Order details:</div>
+            
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                <tbody>
+                    <% orders.forEach(order => { %>
+                        <tr style="background: #f8fafc; border-bottom: 1px solid #fff;">
+                            <td style="padding: 15px; font-size: 14px; color: #333;"><%= order.name %></td>
+                            <td style="padding: 15px; font-size: 14px; color: #333; text-align: center; width: 60px;">x1</td>
+                            <td style="padding: 15px; font-size: 14px; color: #333; text-align: right; width: 80px;">$<%= order.price.toFixed(2) %></td>
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+            
+            <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 16px; margin-bottom: 20px; border-bottom: 2px solid #333; padding-bottom: 15px;">
+                <div>Total</div>
+                <div>$<%= totalUsd.toFixed(2) %></div>
+            </div>
+            
+            <div style="font-size: 18px; color: #d1d5db; margin-bottom: 30px;">
+                $<%= totalUsd.toFixed(2) %> <-> <%= cryptoAmount %> <%= currencySymbol %>
+            </div>
+            
+            <p style="font-size: 12px; color: #94a3b8; margin-bottom: 30px; line-height: 1.5;">
+                To complete payment you must transfer full order amount to specified address. After the transaction appears in the blockchain, the payment will be considered complete and page will be refreshed. Then, after 3 confirmations seller will start processing your order.
+            </p>
+            
+            <div style="background: #f8fafc; border-radius: 4px; padding: 20px; font-size: 12px; color: #94a3b8; line-height: 1.5; display: flex; gap: 15px;">
+                <div style="width: 16px; height: 16px; background: #111; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: bold; flex-shrink: 0; margin-top: 2px;">!</div>
+                <div>
+                    <p style="margin-bottom: 15px;">All transactions on this platform are protected by an escrow system. The seller will not receive the funds you transfer until you confirm receipt of the order and/or the completion of the service. If any issues arise with the order, you have the right to open a dispute and receive a full refund.</p>
+                    <p>Note! After payment, digital goods will be sent to the provided email address or the chat with the seller automatically as soon as the transaction is confirmed. Goods that require shipping will be collected and dispatched by the seller(s) within 24 hours to the specified address. After payment, the seller(s) will contact you before shipping the item. Once the item is shipped, a tracking number will appear in your profile. This number will also be sent to the provided email address and the chat with the seller. If you are purchasing a service, the seller(s) will contact you after payment to confirm the order details.</p>
+                </div>
+            </div>
+            
+        </div>
+        
+    </div>
+    
+    <!-- Bottom Timer Bar -->
+    <div style="margin: 40px 20px 20px 20px; display: flex; align-items: center; gap: 20px;">
+        <div style="flex-grow: 1; background: #f1f5f9; height: 15px; border-radius: 10px; overflow: hidden; position: relative;">
+            <div id="progressBar" style="width: 100%; height: 100%; background: #22c55e; transition: width 1s linear;"></div>
+        </div>
+        <div style="font-size: 14px; color: #475569; width: 120px;" id="timeLeftDisplay">Time Left 59:59</div>
+    </div>
+    
+    <div style="text-align: center; margin-top: 20px;">
+        <a href="#" style="color: #3b82f6; text-decoration: none; font-size: 14px;">How to buy <%= method %>?</a>
+    </div>
+
+</div>
+
+<script>
+    // 60 minute countdown timer
+    let timeRemaining = 60 * 60; // 60 minutes in seconds
+    const totalTime = 60 * 60;
+    
+    const progressBar = document.getElementById('progressBar');
+    const timeLeftDisplay = document.getElementById('timeLeftDisplay');
+    
+    setInterval(() => {
+        if (timeRemaining <= 0) return;
+        timeRemaining--;
+        
+        const minutes = Math.floor(timeRemaining / 60);
+        const seconds = timeRemaining % 60;
+        
+        timeLeftDisplay.innerText = 'Time Left ' + 
+            minutes.toString().padStart(2, '0') + ':' + 
+            seconds.toString().padStart(2, '0');
+            
+        const percentage = (timeRemaining / totalTime) * 100;
+        progressBar.style.width = percentage + '%';
+        
+    }, 1000);
+</script>
+
+<%- include('footer') %>

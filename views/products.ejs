@@ -8,7 +8,7 @@
             <div class="product-card">
                 <img src="<%= product.image %>" class="product-image" alt="<%= product.name %>">
                 <div class="product-details">
-                    <div class="product-title"><%= product.name %></div>
+                    <div class="product-title"><%= product.name %> <span style="font-size: 12px; color: #888;">(ID: #<%= product.id %>)</span></div>
                     <div class="product-desc"><%= product.description %></div>
                     
                     <div class="stat-row">
@@ -40,7 +40,7 @@
                         $<%= product.price.toFixed(2) %>
                     </div>
                     
-                    <a href="/product/<%= product.id %>" class="btn btn-purple btn-block" style="margin-top: 15px;">View Vendor</a>
+                    <a href="/<%= slugify(product.vendor_name || product.username) %>/<%= slugify(product.name) %>" class="btn btn-purple btn-block" style="margin-top: 15px;">View Vendor</a>
                 </div>
             </div>
         <% }) %>

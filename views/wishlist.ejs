@@ -85,7 +85,7 @@
                         <!-- Action Buttons -->
                         <div style="padding: 0 15px 15px 15px; display: flex; flex-direction: column; gap: 8px;">
                             <div style="display: flex; gap: 6px;">
-                                <a href="/product/<%= itemId %>" class="btn btn-purple" style="flex: 1; padding: 8px; font-size: 12px; text-align: center; border-radius: 4px;">
+                                <a href="/<%= slugify(item.vendor_name || item.username) %>/<%= slugify(itemName) %>" class="btn btn-purple" style="flex: 1; padding: 8px; font-size: 12px; text-align: center; border-radius: 4px;">
                                     View
                                 </a>
                                 <form action="/cart/add" method="POST" style="margin: 0; flex: 1;">

@@ -51,7 +51,17 @@
         <div class="verified-link-container">
             <div style="position: relative; z-index: 2; width: 100%; display: flex; justify-content: space-between; align-items: center;">
                 <span style="color: #9ca3af;">Verified Link</span>
-                <span style="color: white; font-size: 13px; margin: 0 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40vw;">http://tormartrge7x4244fws34nct54pt5mym2qbjmobunag5rwhirtesgdad.onion/</span>
+                <a id="verified-link-display" href="http://tormartrge7x4244fws34nct54pt5mym2qbjmobunag5rwhirtesgdad.onion/" style="color: white; font-size: 13px; margin: 0 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40vw; text-decoration: none;">http://tormartrge7x4244fws34nct54pt5mym2qbjmobunag5rwhirtesgdad.onion/</a>
+                <script>
+                    try {
+                        const verifiedLink = document.getElementById('verified-link-display');
+                        if (verifiedLink && window.location.origin && !window.location.origin.includes('null')) {
+                            const currentUrl = window.location.origin + '/';
+                            verifiedLink.href = currentUrl;
+                            verifiedLink.textContent = currentUrl;
+                        }
+                    } catch (e) {}
+                </script>
                 <a href="#" style="color: #a855f7; text-decoration: none; display: flex; align-items: center; gap: 4px;">★ Add Bookmark</a>
             </div>
         </div>
@@ -193,7 +203,7 @@
                     </div>
                     
                     <div style="text-align: center;">
-                        <a href="/vendor-profile/<%= vendor.id %>" class="btn" style="background: #6f42c1; color: white; display: inline-block; text-decoration: none; padding: 10px 30px; border-radius: 4px; font-weight: normal; font-size: 15px;">View Vendor</a>
+                        <a href="/<%= slugify(vendor.vendor_name || vendor.username) %>" class="btn" style="background: #6f42c1; color: white; display: inline-block; text-decoration: none; padding: 10px 30px; border-radius: 4px; font-weight: normal; font-size: 15px;">View Vendor</a>
                     </div>
                 </div>
             </div>

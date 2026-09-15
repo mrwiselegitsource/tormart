@@ -1,6 +1,18 @@
 <%- include('header') %>
 
 <div class="container" style="max-width: 1000px; margin-top: 30px; margin-bottom: 50px;">
+    <% if (typeof categoryBanner !== 'undefined' && categoryBanner && categoryBanner.banner_url) { %>
+        <div class="category-banner" style="margin-bottom: 30px; width: 100%;">
+            <% if (categoryBanner.target_link) { %>
+                <a href="<%= categoryBanner.target_link %>">
+                    <img src="<%= categoryBanner.banner_url %>" alt="<%= categoryName %> Banner" style="width: 100%; height: auto; border-radius: 4px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                </a>
+            <% } else { %>
+                <img src="<%= categoryBanner.banner_url %>" alt="<%= categoryName %> Banner" style="width: 100%; height: auto; border-radius: 4px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+            <% } %>
+        </div>
+    <% } %>
+
     <h2 style="color: #111; margin-bottom: 20px;"><%= categoryName %></h2>
 
     <% if (vendors.length === 0) { %>
@@ -54,7 +66,7 @@
                         </div>
                         
                         <div style="text-align: center;">
-                            <a href="/vendor-profile/<%= vendor.id %>" class="btn" style="background: #6f42c1; color: white; display: inline-block; text-decoration: none; padding: 10px 30px; border-radius: 4px; font-weight: normal; font-size: 15px;">View Vendor</a>
+                            <a href="/<%= slugify(vendor.vendor_name || vendor.username) %>" class="btn" style="background: #6f42c1; color: white; display: inline-block; text-decoration: none; padding: 10px 30px; border-radius: 4px; font-weight: normal; font-size: 15px;">View Vendor</a>
                         </div>
                     </div>
                 </div>

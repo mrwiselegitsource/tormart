@@ -34,6 +34,6 @@
             <span class="stars"><% for(let s=0; s<5; s++) { %>★<% } %></span>
         </div>
 
-        <a href="/vendor-profile/<%= vendor.id %>" class="btn btn-purple btn-block vendor-card-btn">View Vendor</a>
+        <a href="/<%= slugify(vendor.vendor_name || vendor.username) %>" class="btn btn-purple btn-block vendor-card-btn">View Vendor</a>
     </div>
 </div>

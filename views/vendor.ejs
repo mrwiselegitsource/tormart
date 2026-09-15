@@ -1,201 +1,331 @@
 <%- include('header') %>
+<link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
+<script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
 
+<style>
+.ql-editor { min-height: 120px; background: #fff; }
+details.tidy-panel {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+details.tidy-panel > summary {
+    padding: 15px 20px;
+    font-size: 16px;
+    font-weight: bold;
+    color: #1e293b;
+    cursor: pointer;
+    list-style: none;
+    border-bottom: 1px solid transparent;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+details.tidy-panel > summary::-webkit-details-marker {
+    display: none;
+}
+details.tidy-panel > summary::after {
+    content: '▼';
+    font-size: 12px;
+    color: #64748b;
+    transition: transform 0.2s;
+}
+details.tidy-panel[open] > summary {
+    border-bottom: 1px solid #e2e8f0;
+}
+details.tidy-panel[open] > summary::after {
+    transform: rotate(180deg);
+}
+.tidy-content {
+    padding: 20px;
+}
+</style>
 <div class="container" style="max-width: 900px; margin-top: 30px; margin-bottom: 50px;">
     <h2 style="text-align: center; color: #333; margin-bottom: 30px;">Vendor Dashboard</h2>
     
-    <div style="background: #fff; padding: 20px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 30px;">
-        <h3 style="margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 10px;">My Vendor Profile</h3>
-        <form action="/vendor/profile/edit" method="POST" enctype="multipart/form-data" style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
-            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-            <div style="width: 100px; height: 100px; border-radius: 50%; background: #eee; overflow: hidden; border: 2px solid var(--primary-purple); flex-shrink: 0;">
-                <img src="<%= user.vendor_logo || '/images/default-vendor-logo.png' %>" alt="Vendor Logo" style="width: 100%; height: 100%; object-fit: cover;">
-            </div>
-            <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 10px;">
-                <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-                    <div style="flex: 1; min-width: 150px;">
-                        <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px;">Vendor Display Name</label>
-                        <input type="text" name="vendor_name" value="<%= user.vendor_name || '' %>" class="form-control" placeholder="Your store name">
+    <details class="tidy-panel">
+        <summary>My Vendor Profile</summary>
+        <div class="tidy-content">
+            <form action="/vendor/profile/edit" method="POST" enctype="multipart/form-data" style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <div style="width: 100px; height: 100px; border-radius: 50%; background: #eee; overflow: hidden; border: 2px solid var(--primary-purple); flex-shrink: 0;">
+                    <img src="<%= user.vendor_logo || '/images/default-vendor-logo.png' %>" alt="Vendor Logo" style="width: 100%; height: 100%; object-fit: cover;">
+                </div>
+                <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 10px;">
+                    <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 150px;">
+                            <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px;">Vendor Display Name</label>
+                            <input type="text" name="vendor_name" value="<%= user.vendor_name || '' %>" class="form-control" placeholder="Your store name">
+                        </div>
+                        <div style="flex: 1; min-width: 150px;">
+                            <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px;">Member Since (Override)</label>
+                            <input type="date" name="created_at" value="<%= user.created_at ? (() => { try { return new Date(user.created_at).toISOString().split('T')[0] } catch(e) { return '' } })() : '' %>" class="form-control">
+                        </div>
+                        <div style="flex: 1; min-width: 150px;">
+                            <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px;">Update Logo</label>
+                            <input type="file" name="vendor_logo" accept="image/*" class="form-control">
+                        </div>
+                        <div style="flex: 1; min-width: 150px;">
+                            <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px;">Update Banner</label>
+                            <input type="file" name="vendor_banner" accept="image/*" class="form-control">
+                        </div>
                     </div>
-                    <div style="flex: 1; min-width: 150px;">
-                        <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px;">Update Logo</label>
-                        <input type="file" name="vendor_logo" accept="image/*" class="form-control">
+                    <div>
+                        <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px;">Store Description</label>
+                        <textarea name="vendor_description" id="vendor_description_hidden" style="display:none;"><%= user.vendor_description || '' %></textarea>
+                        <div id="vendor_description_editor"><%- user.vendor_description || '' %></div>
                     </div>
-                    <div style="flex: 1; min-width: 150px;">
-                        <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px;">Update Banner (Background)</label>
-                        <input type="file" name="vendor_banner" accept="image/*" class="form-control">
+                    <div>
+                        <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px;">Bitcoin Payout Address (For Escrow)</label>
+                        <input type="text" name="btc_wallet" value="<%= user.btc_wallet || '' %>" class="form-control" placeholder="Your BTC Wallet Address" style="margin-bottom: 15px;">
+                    </div>
+                    <div>
+                        <button type="submit" class="btn btn-purple" style="padding: 8px 20px;">Save Profile</button>
                     </div>
                 </div>
-                <div>
-                    <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px;">Store Description</label>
-                    <textarea name="vendor_description" class="form-control" rows="2" placeholder="Tell buyers about your store..."><%= user.vendor_description || '' %></textarea>
-                </div>
-                <div>
-                    <button type="submit" class="btn btn-purple" style="padding: 8px 20px;">Save Profile</button>
-                </div>
-            </div>
-        </form>
-    </div>
+            </form>
+        </div>
+    </details>
 
-    <div style="background: #fff; padding: 20px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 30px;">
-        <h3 style="margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 10px;">Store Analytics</h3>
-        <div style="display: flex; gap: 20px; text-align: center;">
-            <div style="flex: 1; padding: 15px; background: #f8fafc; border-radius: 4px;">
-                <div style="font-size: 24px; font-weight: bold; color: var(--primary-purple);"><%= orders.length %></div>
-                <div style="font-size: 12px; color: #666; text-transform: uppercase;">Total Orders</div>
-            </div>
-            <div style="flex: 1; padding: 15px; background: #f8fafc; border-radius: 4px;">
-                <div style="font-size: 24px; font-weight: bold; color: var(--primary-purple);"><%= products.length %></div>
-                <div style="font-size: 12px; color: #666; text-transform: uppercase;">Active Listings</div>
-            </div>
-            <div style="flex: 1; padding: 15px; background: #f8fafc; border-radius: 4px;">
-                <div style="font-size: 24px; font-weight: bold; color: var(--primary-purple);"><%= user.vendor_status %></div>
-                <div style="font-size: 12px; color: #666; text-transform: uppercase;">Status</div>
+    <details class="tidy-panel" open>
+        <summary>Store Analytics</summary>
+        <div class="tidy-content">
+            <div style="display: flex; gap: 20px; text-align: center;">
+                <div style="flex: 1; padding: 15px; background: #f8fafc; border-radius: 4px;">
+                    <div style="font-size: 24px; font-weight: bold; color: var(--primary-purple);"><%= orders.length %></div>
+                    <div style="font-size: 12px; color: #666; text-transform: uppercase;">Total Orders</div>
+                </div>
+                <div style="flex: 1; padding: 15px; background: #f8fafc; border-radius: 4px;">
+                    <div style="font-size: 24px; font-weight: bold; color: var(--primary-purple);"><%= products.length %></div>
+                    <div style="font-size: 12px; color: #666; text-transform: uppercase;">Active Listings</div>
+                </div>
+                <div style="flex: 1; padding: 15px; background: #f8fafc; border-radius: 4px;">
+                    <div style="font-size: 24px; font-weight: bold; color: var(--primary-purple);"><%= user.vendor_status %></div>
+                    <div style="font-size: 12px; color: #666; text-transform: uppercase;">Status</div>
+                </div>
             </div>
         </div>
-    </div>
+    </details>
 
-    <div style="background: #fff; padding: 20px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 30px;">
-        <h3 style="margin-top: 0; border-bottom: 1px solid #eee; padding-bottom: 10px;">My Proofs (Images & Videos)</h3>
-        
-        <div style="display: flex; gap: 15px; overflow-x: auto; padding-bottom: 15px; margin-bottom: 20px;">
-            <% if (proofs && proofs.length > 0) { %>
-                <% proofs.forEach(proof => { %>
-                    <div style="position: relative; width: 120px; height: 160px; background: #eee; border-radius: 4px; flex-shrink: 0; overflow: hidden;">
-                        <% if (proof.type === 'video') { %>
-                            <video src="<%= proof.file_url %>" style="width: 100%; height: 100%; object-fit: cover;"></video>
-                            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #ffcc00; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #333; font-size: 20px;">▶</div>
-                        <% } else { %>
-                            <img src="<%= proof.file_url %>" style="width: 100%; height: 100%; object-fit: cover;">
-                        <% } %>
-                        <form action="/vendor/proofs/delete/<%= proof.id %>" method="POST" style="position: absolute; top: 5px; right: 5px; margin: 0;">
-                            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                            <button type="submit" style="background: rgba(255,0,0,0.8); color: white; border: none; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center;">✕</button>
-                        </form>
+    <details class="tidy-panel">
+        <summary>My Proofs (Images & Videos)</summary>
+        <div class="tidy-content">
+            <div style="display: flex; gap: 15px; overflow-x: auto; padding-bottom: 15px; margin-bottom: 20px;">
+                <% if (proofs && proofs.length > 0) { %>
+                    <% proofs.forEach(proof => { %>
+                        <div style="position: relative; width: 120px; height: 160px; background: #eee; border-radius: 4px; flex-shrink: 0; overflow: hidden;">
+                            <% if (proof.type === 'video') { %>
+                                <video src="<%= proof.file_url %>" style="width: 100%; height: 100%; object-fit: cover;"></video>
+                                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #ffcc00; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #333; font-size: 20px;">▶</div>
+                            <% } else { %>
+                                <img src="<%= proof.file_url %>" style="width: 100%; height: 100%; object-fit: cover;">
+                            <% } %>
+                            <form action="/vendor/proofs/delete/<%= proof.id %>" method="POST" style="position: absolute; top: 5px; right: 5px; margin: 0;">
+                                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                                <button type="submit" style="background: rgba(255,0,0,0.8); color: white; border: none; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center;">✕</button>
+                            </form>
+                        </div>
+                    <% }) %>
+                <% } else { %>
+                    <div style="color: #888; font-size: 13px;">No proofs uploaded yet.</div>
+                <% } %>
+            </div>
+            
+            <form action="/vendor/proofs/add" method="POST" enctype="multipart/form-data" style="display: flex; align-items: center; gap: 10px;">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <input type="file" name="proof_file" accept="image/*,video/*" required style="border: 1px solid #ccc; padding: 8px; border-radius: 4px;">
+                <button type="submit" class="btn btn-purple">Upload Proof</button>
+            </form>
+        </div>
+    </details>
+
+    <details class="tidy-panel">
+        <summary>Listings Management (My Listings & Add New)</summary>
+        <div class="tidy-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin: 0; color: #333;">My Listings</h3>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; margin-bottom: 40px;">
+                <% products.forEach(product => { %>
+                    <div class="product-card">
+                        <div class="product-image">
+                            <img src="<%= product.image %>" alt="<%= product.name %>">
+                        </div>
+                        <div class="product-info">
+                            <h3 class="product-title"><%= product.name %> <span style="font-size: 12px; color: #888;">(ID: #<%= product.id %>)</span></h3>
+                            <div style="font-size: 11px; color: #888; margin-bottom: 5px;"><%= product.category %></div>
+                            <div class="product-price">$<%= product.price.toFixed(2) %></div>
+                            <div style="display: flex; gap: 8px; margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px;">
+                                <button onclick='openEditModal(<%- JSON.stringify(product) %>)' style="flex: 1; background: #f8fafc; border: 1px solid #cbd5e1; color: #334155; padding: 6px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">Edit</button>
+                                <form action="/vendor/products/delete/<%= product.id %>" method="POST" style="flex: 1; margin: 0;" onsubmit="return confirm('Are you sure you want to delete this listing?');">
+                                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                                    <button type="submit" style="width: 100%; background: #fee2e2; border: 1px solid #f87171; color: #b91c1c; padding: 6px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">Delete</button>
+                                </form>
+                            </div>
+                        </div>
                     </div>
                 <% }) %>
-            <% } else { %>
-                <div style="color: #888; font-size: 13px;">No proofs uploaded yet.</div>
-            <% } %>
-        </div>
-
-        <form action="/vendor/proofs/add" method="POST" enctype="multipart/form-data" style="display: flex; align-items: center; gap: 10px;">
-            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-            <input type="file" name="proof_file" accept="image/*,video/*" required style="border: 1px solid #ccc; padding: 8px; border-radius: 4px;">
-            <button type="submit" class="btn btn-purple">Upload Proof</button>
-        </form>
-    </div>
-
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <h3 style="margin: 0; color: #333;">My Listings</h3>
-    </div>
-
-    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; margin-bottom: 40px;">
-        <% products.forEach(product => { %>
-            <div class="product-card">
-                <div class="product-image">
-                    <img src="<%= product.image %>" alt="<%= product.name %>">
-                </div>
-                <div class="product-info">
-                    <h3 class="product-title"><%= product.name %></h3>
-                    <div style="font-size: 11px; color: #888; margin-bottom: 5px;"><%= product.category %></div>
-                    <div class="product-price">$<%= product.price.toFixed(2) %></div>
-                    <div style="display: flex; gap: 8px; margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px;">
-                        <button onclick='openEditModal(<%- JSON.stringify(product) %>)' style="flex: 1; background: #f8fafc; border: 1px solid #cbd5e1; color: #334155; padding: 6px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">Edit</button>
-                        <form action="/vendor/products/delete/<%= product.id %>" method="POST" style="flex: 1; margin: 0;" onsubmit="return confirm('Are you sure you want to delete this listing?');">
-                            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                            <button type="submit" style="width: 100%; background: #fee2e2; border: 1px solid #f87171; color: #b91c1c; padding: 6px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">Delete</button>
-                        </form>
+            </div>
+            
+            <div class="form-panel">
+                <h3 style="margin-top: 0;">Add New Listing</h3>
+                <form action="/vendor/products/add" method="POST" enctype="multipart/form-data">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <div style="display: flex; gap: 15px;">
+                        <div class="form-group" style="flex: 1;">
+                            <label>Product Name</label>
+                            <input type="text" name="name" class="form-control" required>
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label>Category</label>
+                            <select name="category" class="form-control" required style="border: 1px solid #ccc; padding: 8px; border-radius: 2px;">
+                                <option value="Carding">Carding</option>
+                                <option value="Money Transfers">Money Transfers</option>
+                                <option value="Gift Cards">Gift Cards</option>
+                                <option value="Cryptocurrency">Cryptocurrency</option>
+                                <option value="Fake money">Fake money</option>
+                                <option value="Hacking">Hacking</option>
+                                <option value="Documents">Documents</option>
+                                <option value="Electronics">Electronics</option>
+                            </select>
+                        </div>
                     </div>
-                </div>
-            </div>
-        <% }) %>
-    </div>
-    
-    <div class="form-panel">
-        <h3 style="margin-top: 0;">Add New Listing</h3>
-        <form action="/vendor/products/add" method="POST" enctype="multipart/form-data">
-            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-            <div style="display: flex; gap: 15px;">
-                <div class="form-group" style="flex: 1;">
-                    <label>Product Name</label>
-                    <input type="text" name="name" class="form-control" required>
-                </div>
-                <div class="form-group" style="flex: 1;">
-                    <label>Category</label>
-                    <select name="category" class="form-control" required style="border: 1px solid #ccc; padding: 8px; border-radius: 2px;">
-                        <option value="Carding">Carding</option>
-                        <option value="Money Transfers">Money Transfers</option>
-                        <option value="Gift Cards">Gift Cards</option>
-                        <option value="Cryptocurrency">Cryptocurrency</option>
-                        <option value="Fake money">Fake money</option>
-                        <option value="Hacking">Hacking</option>
-                        <option value="Documents">Documents</option>
-                        <option value="Electronics">Electronics</option>
-                    </select>
-                </div>
-            </div>
-            
-            <div style="display: flex; gap: 15px;">
-                <div class="form-group" style="flex: 1;">
-                    <label>Price (USD)</label>
-                    <input type="number" step="0.01" name="price" class="form-control" required>
-                </div>
-                <div class="form-group" style="flex: 1;">
-                    <label>Limit/Value Amount</label>
-                    <input type="number" step="0.01" name="limit_amount" class="form-control" required>
-                </div>
-            </div>
+                    
+                    <div style="display: flex; gap: 15px;">
+                        <div class="form-group" style="flex: 1;">
+                            <label>Price (USD)</label>
+                            <input type="number" step="0.01" name="price" class="form-control" required>
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label>Limit/Value Amount</label>
+                            <input type="number" step="0.01" name="limit_amount" class="form-control" required>
+                        </div>
+                    </div>
 
-            <div class="form-group">
-                <label>Description</label>
-                <textarea name="description" class="form-control" rows="3" required></textarea>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <textarea name="description" id="add_description_hidden" style="display:none;" required></textarea>
+                        <div id="add_description_editor"></div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Product Image</label>
+                        <input type="file" name="product_image" class="form-control">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Tier/Type</label>
+                        <input type="text" name="tier" class="form-control" placeholder="e.g. Standard, Premium">
+                    </div>
+                    
+                    <button type="submit" class="btn btn-purple">Add Listing</button>
+                </form>
             </div>
-            
-            <div class="form-group">
-                <label>Product Image</label>
-                <input type="file" name="product_image" class="form-control">
-            </div>
-            
-            <div class="form-group">
-                <label>Tier/Type</label>
-                <input type="text" name="tier" class="form-control" placeholder="e.g. Standard, Premium">
-            </div>
-            
-            <button type="submit" class="btn btn-purple">Add Listing</button>
-        </form>
-    </div>
+        </div>
+    </details>
 
-    <h3 style="margin-top: 40px; margin-bottom: 20px;">Incoming Orders</h3>
-    <table class="table" style="background: #fff; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); width: 100%; text-align: left; border-collapse: collapse;">
-        <thead>
-            <tr style="background: var(--bg-header); color: #fff;">
-                <th style="padding: 10px;">ID</th>
-                <th style="padding: 10px;">Product</th>
-                <th style="padding: 10px;">Customer</th>
-                <th style="padding: 10px;">Status</th>
-                <th style="padding: 10px;">Date</th>
-            </tr>
-        </thead>
-        <tbody>
-            <% if (orders.length === 0) { %>
-                <tr><td colspan="5" style="text-align: center; padding: 20px; color: #888;">No orders yet.</td></tr>
-            <% } else { %>
-                <% orders.forEach(order => { %>
-                    <tr style="border-bottom: 1px solid #eee;">
-                        <td style="padding: 10px;">#<%= order.id %></td>
-                        <td style="padding: 10px;"><%= order.product_name %></td>
-                        <td style="padding: 10px;"><%= order.customer_name %></td>
-                        <td style="padding: 10px;">
-                            <span style="background: <%= order.status === 'completed' ? '#28a745' : (order.status === 'active' ? '#007bff' : '#ffc107') %>; color: <%= order.status === 'pending' ? '#333' : '#fff' %>; padding: 2px 6px; border-radius: 2px; font-size: 11px; text-transform: uppercase; font-weight: bold;">
-                                <%= order.status %>
-                            </span>
-                        </td>
-                        <td style="padding: 10px;"><%= new Date(order.created_at).toLocaleDateString() %></td>
+    <details class="tidy-panel" open>
+        <summary>Incoming Orders</summary>
+        <div class="tidy-content">
+            <table class="table" style="background: #fff; border-radius: 4px; width: 100%; text-align: left; border-collapse: collapse;">
+                <thead>
+                    <tr style="background: var(--bg-header); color: #fff;">
+                        <th style="padding: 10px;">ID</th>
+                        <th style="padding: 10px;">Product</th>
+                        <th style="padding: 10px;">Customer</th>
+                        <th style="padding: 10px;">Status</th>
+                        <th style="padding: 10px;">Date</th>
+                        <th style="padding: 10px;">Action</th>
                     </tr>
-                <% }) %>
-            <% } %>
-        </tbody>
-    </table>
+                </thead>
+                <tbody>
+                    <% if (orders.length === 0) { %>
+                        <tr><td colspan="5" style="text-align: center; padding: 20px; color: #888;">No orders yet.</td></tr>
+                    <% } else { %>
+                        <% orders.forEach(order => { %>
+                            <tr style="border-bottom: 1px solid #eee;">
+                                <td style="padding: 10px;">#<%= order.id %></td>
+                                <td style="padding: 10px;"><%= order.product_name %></td>
+                                <td style="padding: 10px;"><%= order.customer_name %></td>
+                                <td style="padding: 10px;">
+                                    <span style="background: <%= order.status === 'completed' ? '#28a745' : (order.status === 'active' ? '#007bff' : '#ffc107') %>; color: <%= order.status === 'pending' ? '#333' : '#fff' %>; padding: 2px 6px; border-radius: 2px; font-size: 11px; text-transform: uppercase; font-weight: bold;">
+                                        <%= order.status %>
+                                    </span>
+                                </td>
+                                <td style="padding: 10px;"><%= new Date(order.created_at).toLocaleDateString() %></td>
+                                <td style="padding: 10px;">
+                                    <% if (order.status === 'pending') { %>
+                                        <form action="/vendor/order/<%= order.id %>/fulfill" method="POST" style="display:flex; flex-direction:column; gap:5px; min-width: 150px;">
+                                            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                                            <input type="text" name="download_key" placeholder="Digital Key or Tracking #" required style="font-size: 11px; padding: 4px; border: 1px solid #ccc; border-radius: 2px;">
+                                            <button type="submit" class="btn btn-green" style="font-size: 11px; padding: 4px 8px;">Fulfill</button>
+                                        </form>
+                                    <% } else if (order.status === 'shipped') { %>
+                                        <span style="font-size: 11px; color: #888;">Waiting on Buyer</span>
+                                    <% } else if (order.status === 'disputed') { %>
+                                        <span style="font-size: 11px; color: red;">In Dispute</span>
+                                    <% } else { %>
+                                        <span style="font-size: 11px; color: green;">✔</span>
+                                    <% } %>
+                                </td>
+                            </tr>
+                        <% }) %>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+    </details>
+
+    <!-- Simulate Review Form -->
+    <details class="tidy-panel">
+        <summary>★ Add Simulated Review (Admin/Vendor Tool)</summary>
+        <div class="tidy-content">
+            <p style="font-size: 13px; color: #666; margin-bottom: 20px;">Use this tool to inject custom reviews onto your public profile to build initial reputation.</p>
+            <form action="/vendor/simulate-review" method="POST">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label>Reviewer Username</label>
+                        <input type="text" name="custom_buyer_name" class="form-control" placeholder="e.g. CryptoKing99" required>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Reviewer Badge</label>
+                        <input type="text" name="custom_buyer_role" class="form-control" value="Buyer/User" required>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Star Rating (1-5)</label>
+                        <input type="number" name="rating" min="1" max="5" value="5" class="form-control" required>
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label>Associated Product (Optional)</label>
+                        <select name="product_id" class="form-control" style="border: 1px solid #ccc; padding: 8px; border-radius: 2px;">
+                            <option value="">-- None --</option>
+                            <% products.forEach(product => { %>
+                                <option value="<%= product.id %>"><%= product.name %> (ID: #<%= product.id %>)</option>
+                            <% }) %>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Review Date (Backdate)</label>
+                        <input type="date" name="custom_date" class="form-control" value="<%= new Date().toISOString().split('T')[0] %>" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Review Comment</label>
+                    <textarea name="comment" class="form-control" rows="3" placeholder="This product is amazing!" required></textarea>
+                </div>
+                
+                <button type="submit" class="btn" style="background: #d97706; color: white; border: none; padding: 10px 20px; font-weight: bold; border-radius: 2px; cursor: pointer;">Inject Review</button>
+            </form>
+        </div>
+    </details>
 </div>
 
 <!-- Edit Product Modal -->
@@ -239,7 +369,8 @@
 
             <div class="form-group">
                 <label>Description</label>
-                <textarea name="description" id="edit_description" class="form-control" rows="3" required></textarea>
+                <textarea name="description" id="edit_description_hidden" style="display:none;" required></textarea>
+                <div id="edit_description_editor"></div>
             </div>
             
             <div class="form-group">
@@ -261,12 +392,50 @@
 </div>
 
 <script>
+var quillOptions = {
+    theme: 'snow',
+    modules: {
+        toolbar: [
+            ['bold', 'italic', 'underline', 'strike'],
+            [{ 'color': [] }, { 'background': [] }],
+            [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+            ['clean']
+        ]
+    }
+};
+
+var vendorDescQuill = new Quill('#vendor_description_editor', quillOptions);
+var addDescQuill = new Quill('#add_description_editor', quillOptions);
+var editDescQuill = new Quill('#edit_description_editor', quillOptions);
+
+// Sync Quill to hidden textarea on profile form submit
+document.querySelector('form[action="/vendor/profile/edit"]').addEventListener('submit', function() {
+    document.getElementById('vendor_description_hidden').value = vendorDescQuill.root.innerHTML;
+});
+
+// Sync Quill to hidden textarea on add product form submit
+document.querySelector('form[action="/vendor/products/add"]').addEventListener('submit', function() {
+    var content = addDescQuill.root.innerHTML;
+    if (content === '<p><br></p>') content = '';
+    document.getElementById('add_description_hidden').value = content;
+});
+
+// Sync Quill to hidden textarea on edit product form submit
+document.getElementById('editProductForm').addEventListener('submit', function() {
+    var content = editDescQuill.root.innerHTML;
+    if (content === '<p><br></p>') content = '';
+    document.getElementById('edit_description_hidden').value = content;
+});
+
 function openEditModal(product) {
     document.getElementById('edit_name').value = product.name;
     document.getElementById('edit_category').value = product.category;
     document.getElementById('edit_price').value = product.price;
     document.getElementById('edit_limit').value = product.limit_amount;
-    document.getElementById('edit_description').value = product.description;
+    
+    // Set Quill content safely
+    editDescQuill.clipboard.dangerouslyPasteHTML(product.description || '');
+    
     document.getElementById('edit_tier').value = product.tier || '';
     
     document.getElementById('editProductForm').action = '/vendor/products/edit/' + product.id;

@@ -1,83 +1,172 @@
 <%- include('header') %>
 
-<div class="container" style="max-width: 900px;">
-    <div style="background: var(--bg-header); color: #fff; padding: 15px 20px; font-weight: bold; border-radius: 4px 4px 0 0;">
+<div class="container" style="max-width: 900px; margin: 40px auto; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+    <div style="background: #271842; color: #fff; padding: 15px 20px; font-weight: bold; font-size: 14px;">
         Checkout
     </div>
     
-    <div style="background: #fff; padding: 30px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border-radius: 0 0 4px 4px;">
+    <div style="padding: 30px;">
         
         <!-- Cart Summary Box -->
-        <div style="display: flex; gap: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 20px; margin-bottom: 30px;">
-            <img src="<%= cartItems[0].image %>" style="width: 80px; height: 60px; object-fit: cover; border-radius: 4px;">
+        <div style="display: flex; gap: 15px; margin-bottom: 20px;">
+            <div style="position: relative; width: 60px;">
+                <img src="<%= cartItems[0].image %>" style="width: 60px; height: 40px; object-fit: cover; border: 1px solid #e2e8f0; border-radius: 2px;">
+                <div style="position: absolute; top: -5px; right: -5px; background: #22c55e; color: white; font-size: 8px; font-weight: bold; padding: 2px 4px; border-radius: 2px;">NEW</div>
+            </div>
             <div>
-                <div style="font-weight: bold; font-size: 16px; color: #3b82f6;"><%= cartItems.map(i=>i.name).join(', ') %></div>
-                <div style="font-size: 12px; color: var(--text-muted); margin-top: 5px;">by ASIA</div>
+                <div style="font-weight: bold; font-size: 14px; color: #0ea5e9;">
+                    <%= cartItems.map(i=>i.name).join(', ') %> x<%= cartItems.reduce((acc, curr) => acc + curr.quantity, 0) %>
+                </div>
+                <div style="font-size: 10px; color: #94a3b8; margin-top: 2px; text-transform: uppercase;">by PLATINUM CARDS</div>
             </div>
         </div>
 
-        <form action="/checkout" method="POST" enctype="multipart/form-data">
+        <form action="/checkout" method="POST" id="checkoutForm">
             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
             
-            <div class="form-group">
-                <input type="email" name="email" class="form-control" placeholder="Email" required>
+            <div style="margin-bottom: 10px;">
+                <input type="email" name="email" style="width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px;" placeholder="Email:" required>
             </div>
-            <div class="form-group">
-                <input type="text" name="name" class="form-control" placeholder="Name" required>
-            </div>
-            <div class="form-group">
-                <input type="text" name="country" class="form-control" placeholder="Country" required>
-            </div>
-            <div class="form-group">
-                <input type="text" name="city" class="form-control" placeholder="City" required>
-            </div>
-            <div class="form-group">
-                <input type="text" name="street" class="form-control" placeholder="Street Address" required>
-            </div>
-            <div class="form-group">
-                <input type="text" name="zip" class="form-control" placeholder="ZIP" required>
-            </div>
-            <div class="form-group">
-                <textarea name="comment" class="form-control" rows="4" placeholder="Comment"></textarea>
+            <div style="margin-bottom: 20px;">
+                <textarea name="comment" rows="4" style="width: 100%; padding: 12px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px; font-family: inherit;" placeholder="Comment:"></textarea>
             </div>
 
-            <div style="font-weight: bold; margin: 20px 0;">Price: $<%= total.toFixed(2) %></div>
+            <div style="font-weight: bold; font-size: 13px; color: #111; margin-bottom: 25px;">Price: $<%= total.toFixed(2) %></div>
 
             <!-- Cashback Banner -->
-            <div style="background: linear-gradient(135deg, #ec4899, #8b5cf6); border-radius: 8px; padding: 20px; color: white; margin-bottom: 30px;">
-                <div style="font-size: 12px; margin-bottom: 5px;">Available Time <span style="background: #fff; color: #111; padding: 2px 4px; border-radius: 2px;">2</span> <span style="background: #fff; color: #111; padding: 2px 4px; border-radius: 2px;">3</span> : <span style="background: #fff; color: #111; padding: 2px 4px; border-radius: 2px;">5</span> <span style="background: #fff; color: #111; padding: 2px 4px; border-radius: 2px;">9</span></div>
-                <div style="font-size: 16px; font-weight: bold;">$10</div>
-                <div style="font-size: 12px;">Spend $10 (You can pay 30% with bonuses)</div>
+            <div style="font-size: 13px; color: #333; margin-bottom: 10px;">Your Cashback Balance</div>
+            <div style="background: linear-gradient(135deg, #ec4899, #8b5cf6); border-radius: 8px; padding: 15px 20px; color: white; margin-bottom: 30px; display: flex; align-items: center; gap: 20px;">
+                <label style="display: flex; align-items: center; cursor: pointer; gap: 15px; width: 100%;">
+                    <input type="radio" name="use_cashback" id="cashbackRadio" style="width: 18px; height: 18px; accent-color: #ec4899;">
+                    <div style="flex-grow: 1;">
+                        <div style="font-size: 11px; margin-bottom: 5px; opacity: 0.9;">
+                            Available Time: 
+                            <span id="timer-h1" style="background: #fff; color: #ec4899; padding: 2px 4px; border-radius: 2px; font-weight: bold;">2</span>
+                            <span id="timer-h2" style="background: #fff; color: #ec4899; padding: 2px 4px; border-radius: 2px; font-weight: bold;">3</span> : 
+                            <span id="timer-m1" style="background: #fff; color: #ec4899; padding: 2px 4px; border-radius: 2px; font-weight: bold;">5</span>
+                            <span id="timer-m2" style="background: #fff; color: #ec4899; padding: 2px 4px; border-radius: 2px; font-weight: bold;">9</span> : 
+                            <span id="timer-s1" style="background: #fff; color: #ec4899; padding: 2px 4px; border-radius: 2px; font-weight: bold;">5</span>
+                            <span id="timer-s2" style="background: #fff; color: #ec4899; padding: 2px 4px; border-radius: 2px; font-weight: bold;">9</span>
+                        </div>
+                        <div style="font-size: 16px; font-weight: bold; margin-bottom: 2px;">$10</div>
+                        <div style="font-size: 13px;">Spend $10 (You can pay 30% with bonuses)</div>
+                    </div>
+                </label>
             </div>
 
-            <div style="font-weight: bold; font-size: 16px; margin-bottom: 5px;">Total Price: &nbsp; $<%= total.toFixed(2) %></div>
-            <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px;">Payment method:</div>
+            <div style="font-weight: bold; font-size: 16px; color: #111; margin-bottom: 5px; display: flex; align-items: center; gap: 10px;">
+                Total Price: &nbsp; <span id="finalTotalDisplay">$<%= total.toFixed(2) %></span>
+            </div>
+            
+            <div style="font-size: 13px; color: #475569; margin-bottom: 15px;">Payment method:</div>
+
+            <% 
+               const rates = {
+                   bitcoin: 79549,
+                   litecoin: 54,
+                   ethereum: 2476,
+                   bitcoincash: 254,
+                   dash: 66,
+                   monero: 526
+               };
+            %>
 
             <!-- Payment Methods -->
-            <label class="payment-method">
-                <input type="radio" name="payment_method" value="bitcoin" required checked>
-                <span style="color: #f59e0b; font-weight: bold; font-size: 16px;">₿</span>
-                <span style="font-size: 12px;">Bitcoin | <strong>0.005126 BTC</strong></span>
-            </label>
-            <label class="payment-method">
-                <input type="radio" name="payment_method" value="litecoin" required>
-                <span style="color: #94a3b8; font-weight: bold; font-size: 16px;">Ł</span>
-                <span style="font-size: 12px;">Litecoin | <strong>7.44186 LTC</strong></span>
-            </label>
-            <label class="payment-method">
-                <input type="radio" name="payment_method" value="ethereum" required>
-                <span style="color: #6366f1; font-weight: bold; font-size: 16px;">⟠</span>
-                <span style="font-size: 12px;">Ethereum | <strong>0.174482 ETH</strong></span>
-            </label>
-            
-            <div class="form-group" style="margin-top: 20px;">
-                <label>Upload Payment Proof</label>
-                <input type="file" name="payment_proof" class="form-control" accept="image/*" required>
+            <div style="border: 1px solid #e2e8f0; border-radius: 4px; overflow: hidden; margin-bottom: 30px;">
+                
+                <label style="display: flex; align-items: center; padding: 15px; border-bottom: 1px solid #e2e8f0; cursor: pointer; background: #fff;">
+                    <div style="width: 30px; height: 30px; border-radius: 50%; background: #f7931a; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 10px;">₿</div>
+                    <span style="font-size: 12px; color: #333; flex-grow: 1;">Bitcoin | <strong><span class="crypto-amt" data-rate="<%= rates.bitcoin %>"><%= (total / rates.bitcoin).toFixed(6) %></span> BTC</strong></span>
+                    <input type="radio" name="payment_method" value="bitcoin" required checked style="width: 18px; height: 18px; accent-color: #111;">
+                </label>
+
+                <label style="display: flex; align-items: center; padding: 15px; border-bottom: 1px solid #e2e8f0; cursor: pointer; background: #fff;">
+                    <div style="width: 30px; height: 30px; border-radius: 50%; background: #bfbbbb; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 10px;">Ł</div>
+                    <span style="font-size: 12px; color: #333; flex-grow: 1;">Litecoin | <strong><span class="crypto-amt" data-rate="<%= rates.litecoin %>"><%= (total / rates.litecoin).toFixed(6) %></span> LTC</strong></span>
+                    <input type="radio" name="payment_method" value="litecoin" required style="width: 18px; height: 18px; accent-color: #111;">
+                </label>
+
+                <label style="display: flex; align-items: center; padding: 15px; border-bottom: 1px solid #e2e8f0; cursor: pointer; background: #fff;">
+                    <div style="width: 30px; height: 30px; border-radius: 50%; background: #627eea; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 10px;">⟠</div>
+                    <span style="font-size: 12px; color: #333; flex-grow: 1;">Ethereum | <strong><span class="crypto-amt" data-rate="<%= rates.ethereum %>"><%= (total / rates.ethereum).toFixed(6) %></span> ETH</strong></span>
+                    <input type="radio" name="payment_method" value="ethereum" required style="width: 18px; height: 18px; accent-color: #111;">
+                </label>
+                
+                <label style="display: flex; align-items: center; padding: 15px; border-bottom: 1px solid #e2e8f0; cursor: pointer; background: #fff;">
+                    <div style="width: 30px; height: 30px; border-radius: 50%; background: #0ac18e; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 10px;">B</div>
+                    <span style="font-size: 12px; color: #333; flex-grow: 1;">Bitcoin Cash | <strong><span class="crypto-amt" data-rate="<%= rates.bitcoincash %>"><%= (total / rates.bitcoincash).toFixed(6) %></span> BCH</strong></span>
+                    <input type="radio" name="payment_method" value="bitcoincash" required style="width: 18px; height: 18px; accent-color: #111;">
+                </label>
+
+                <label style="display: flex; align-items: center; padding: 15px; border-bottom: 1px solid #e2e8f0; cursor: pointer; background: #fff;">
+                    <div style="width: 30px; height: 30px; border-radius: 50%; background: #008de4; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 10px;">D</div>
+                    <span style="font-size: 12px; color: #333; flex-grow: 1;">Dash | <strong><span class="crypto-amt" data-rate="<%= rates.dash %>"><%= (total / rates.dash).toFixed(6) %></span> DASH</strong></span>
+                    <input type="radio" name="payment_method" value="dash" required style="width: 18px; height: 18px; accent-color: #111;">
+                </label>
+
+                <label style="display: flex; align-items: center; padding: 15px; cursor: pointer; background: #fff;">
+                    <div style="width: 30px; height: 30px; border-radius: 50%; background: #ff6600; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 10px;">M</div>
+                    <span style="font-size: 12px; color: #333; flex-grow: 1;">Monero | <strong><span class="crypto-amt" data-rate="<%= rates.monero %>"><%= (total / rates.monero).toFixed(6) %></span> XMR</strong></span>
+                    <input type="radio" name="payment_method" value="monero" required style="width: 18px; height: 18px; accent-color: #111;">
+                </label>
+
             </div>
 
-            <button type="submit" class="btn btn-green" style="margin-top: 20px; padding: 12px 30px;">Payment</button>
+            <button type="submit" style="background: #22c55e; color: white; border: none; padding: 12px 30px; border-radius: 4px; font-size: 14px; cursor: pointer;">Payment</button>
         </form>
     </div>
 </div>
+
+<script>
+    const baseTotal = <%= total %>;
+    const cashbackDiscount = 10;
+    let currentTotal = baseTotal;
+
+    const cashbackRadio = document.getElementById('cashbackRadio');
+    const finalTotalDisplay = document.getElementById('finalTotalDisplay');
+    const cryptoAmts = document.querySelectorAll('.crypto-amt');
+
+    cashbackRadio.addEventListener('change', () => {
+        if (cashbackRadio.checked) {
+            currentTotal = Math.max(0, baseTotal - cashbackDiscount);
+            finalTotalDisplay.innerText = '$' + currentTotal.toFixed(2);
+            
+            // Update all crypto prices
+            cryptoAmts.forEach(el => {
+                const rate = parseFloat(el.getAttribute('data-rate'));
+                el.innerText = (currentTotal / rate).toFixed(6);
+            });
+        }
+    });
+
+    // 24 Hour Countdown Timer Logic
+    function startTimer() {
+        // Set fixed end time to 23 hours, 59 mins, 59 secs from now
+        let timeRemaining = (23 * 3600) + (59 * 60) + 59; 
+        
+        setInterval(() => {
+            if (timeRemaining <= 0) return;
+            timeRemaining--;
+            
+            const hours = Math.floor(timeRemaining / 3600);
+            const minutes = Math.floor((timeRemaining % 3600) / 60);
+            const seconds = timeRemaining % 60;
+            
+            const hStr = hours.toString().padStart(2, '0');
+            const mStr = minutes.toString().padStart(2, '0');
+            const sStr = seconds.toString().padStart(2, '0');
+            
+            document.getElementById('timer-h1').innerText = hStr[0];
+            document.getElementById('timer-h2').innerText = hStr[1];
+            document.getElementById('timer-m1').innerText = mStr[0];
+            document.getElementById('timer-m2').innerText = mStr[1];
+            document.getElementById('timer-s1').innerText = sStr[0];
+            document.getElementById('timer-s2').innerText = sStr[1];
+            
+        }, 1000);
+    }
+    
+    startTimer();
+</script>
 
 <%- include('footer') %>
