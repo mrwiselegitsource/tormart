@@ -28,9 +28,10 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Setup directories
-const uploadsDir = path.join(__dirname, 'public', 'uploads');
-const imagesDir = path.join(__dirname, 'public', 'images');
-const messagesDir = path.join(__dirname, 'public', 'images', 'messages');
+const isVercel = process.env.VERCEL;
+const uploadsDir = isVercel ? '/tmp/uploads' : path.join(__dirname, 'public', 'uploads');
+const imagesDir = isVercel ? '/tmp/images' : path.join(__dirname, 'public', 'images');
+const messagesDir = isVercel ? '/tmp/messages' : path.join(__dirname, 'public', 'images', 'messages');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 if (!fs.existsSync(imagesDir)) fs.mkdirSync(imagesDir, { recursive: true });
 if (!fs.existsSync(messagesDir)) fs.mkdirSync(messagesDir, { recursive: true });
@@ -39,6 +40,10 @@ if (!fs.existsSync(messagesDir)) fs.mkdirSync(messagesDir, { recursive: true });
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 app.use(express.static(path.join(__dirname, 'public')));
+if (isVercel) {
+    app.use('/uploads', express.static('/tmp/uploads'));
+    app.use('/images', express.static('/tmp/images'));
+}
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
@@ -88,7 +93,7 @@ const messageImageStorage = multer.diskStorage({
 });
 const messageImageUpload = multer({ storage: messageImageStorage });
 
-const proofsDir = path.join(__dirname, 'public', 'images', 'proofs');
+const proofsDir = isVercel ? '/tmp/proofs' : path.join(__dirname, 'public', 'images', 'proofs');
 if (!fs.existsSync(proofsDir)) fs.mkdirSync(proofsDir, { recursive: true });
 const proofsStorage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -100,7 +105,7 @@ const proofsStorage = multer.diskStorage({
 });
 const proofsUpload = multer({ storage: proofsStorage });
 
-const reviewsDir = path.join(__dirname, 'public', 'images', 'reviews');
+const reviewsDir = isVercel ? '/tmp/reviews' : path.join(__dirname, 'public', 'images', 'reviews');
 if (!fs.existsSync(reviewsDir)) fs.mkdirSync(reviewsDir, { recursive: true });
 const reviewsStorage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -113,7 +118,11 @@ const reviewsStorage = multer.diskStorage({
 const reviewsUpload = multer({ storage: reviewsStorage });
 
 // Database Initialization
-const db = new sqlite3.Database('./neobyte.db', (err) => {
+const dbPath = isVercel ? '/tmp/neobyte.db' : './neobyte.db';
+if (isVercel && !fs.existsSync('/tmp/neobyte.db')) {
+    try { fs.copyFileSync(path.join(__dirname, 'neobyte.db'), '/tmp/neobyte.db'); } catch (e) {}
+}
+const db = new sqlite3.Database(dbPath, (err) => {
     if (err) console.error('Database connection error:', err);
     else console.log('Connected to SQLite database.');
 });
