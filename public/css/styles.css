@@ -920,8 +920,13 @@ body.menu-open {
 
 .conversion-filters {
     display: flex;
+    flex-wrap: wrap;
     gap: 15px;
     margin-bottom: 15px;
+}
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
 }
 .dash-btn-blue {
     background: #007bff;

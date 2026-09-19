@@ -1,0 +1,70 @@
+<%- include('header') %>
+
+<div class="container" style="max-width: 700px; margin: 40px auto;">
+    <% if (user.vendor_status === 'pending') { %>
+        <div class="form-panel" style="text-align: center; padding: 40px;">
+            <div style="font-size: 48px; color: #f59e0b; margin-bottom: 20px;">⏳</div>
+            <h2 style="color: #111; margin-bottom: 15px;">Application Under Review</h2>
+            <p style="color: #555; line-height: 1.6; font-size: 16px;">
+                Thank you for applying to join the Tormart partnership family, <strong><%= user.vendor_name %></strong>!<br>
+                Our administration team is currently verifying your application and reviewing your payment proof. 
+                This process usually takes a little bit of time, so please hang tight. We will notify you as soon as you're approved!
+            </p>
+            <div style="margin-top: 30px;">
+                <a href="/profile" class="btn" style="background: var(--primary-color); color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; font-weight: bold;">Return to Profile</a>
+            </div>
+        </div>
+    <% } else { %>
+        <div class="form-panel" style="padding: 30px;">
+            <h2 style="color: #111; border-bottom: 2px solid var(--border-color); padding-bottom: 15px; margin-bottom: 20px;">Become a Tormart Partner</h2>
+            
+            <p style="color: #444; line-height: 1.6; font-size: 15px; margin-bottom: 25px;">
+                Welcome! We're absolutely thrilled that you want to grow your business with Tormart. 
+                Becoming a verified vendor allows you to list your own products, advertise directly to our active community, and build a trusted reputation.
+                <br><br>
+                To ensure a high-quality marketplace and protect our community, we require all new partners to complete a brief application and pay a one-time verification fee of <strong><%= siteSettings.partnership_fee %></strong>.
+            </p>
+
+            <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 20px; text-align: center; margin-bottom: 30px;">
+                <h3 style="color: #0f172a; margin-bottom: 10px; font-size: 16px;">Payment Verification</h3>
+                <p style="color: #475569; font-size: 14px; margin-bottom: 15px;">Please send your <strong><%= siteSettings.partnership_fee %></strong> payment to the official wallet address below.</p>
+                
+                <img src="https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=<%= encodeURIComponent(siteSettings.partnership_address) %>" alt="QR Code" style="background: white; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 15px;">
+                
+                <div style="background: white; border: 1px dashed #cbd5e1; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 15px; color: #1e293b; user-select: all; word-break: break-all;">
+                    <%= siteSettings.partnership_address %>
+                </div>
+            </div>
+
+            <form action="/apply-vendor" method="POST">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 5px; color: #333;">Your Proposed Shop Name</label>
+                    <input type="text" name="vendor_name" class="form-control" placeholder="e.g. Elite Digital Goods" required style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 5px; color: #333;">What will you be selling?</label>
+                    <textarea name="vendor_short_description" class="form-control" rows="3" placeholder="A brief description of your products..." required style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;"></textarea>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 5px; color: #333;">Contact Info (Telegram/Jabber/Email)</label>
+                    <input type="text" name="application_contact" class="form-control" placeholder="How can the admin reach you?" required style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 25px;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 5px; color: #333;">Payment Transaction ID (TXID)</label>
+                    <input type="text" name="application_txid" class="form-control" placeholder="Paste the TXID of your payment here as proof" required style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box;">
+                </div>
+
+                <button type="submit" class="btn" style="width: 100%; background: var(--primary-color); color: white; border: none; padding: 14px; font-weight: bold; border-radius: 4px; font-size: 16px; cursor: pointer;">
+                    Submit Application
+                </button>
+            </form>
+        </div>
+    <% } %>
+</div>
+
+<%- include('footer') %>

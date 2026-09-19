@@ -7,7 +7,7 @@
             <img src="<%= vendor.vendor_logo || '/images/default-vendor-logo.png' %>" alt="<%= vendor.vendor_name %> logo" onerror="this.src='/images/default-vendor-logo.png'">
         </div>
         <h3 class="vendor-card-title"><%= vendor.vendor_name %></h3>
-        <p class="vendor-card-desc"><%= vendor.vendor_description || 'A verified vendor on TorMart.' %></p>
+        <p class="vendor-card-desc"><%= vendor.vendor_short_description || 'A verified vendor on TorMart.' %></p>
 
         <div class="stat-row">
             <span>Category</span>

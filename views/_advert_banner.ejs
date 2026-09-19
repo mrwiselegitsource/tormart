@@ -1,0 +1,8 @@
+<% if (typeof smart_adverts !== 'undefined' && smart_adverts.length > 0) { %>
+    <% const randomAdvert = smart_adverts[Math.floor(Math.random() * smart_adverts.length)]; %>
+    <div style="margin: 20px 0; width: 100%; border-radius: 6px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+        <a href="<%= randomAdvert.target_url %>" style="display: block;">
+            <img src="<%= randomAdvert.image_url %>" alt="Advert" style="width: 100%; height: auto; max-height: 160px; object-fit: cover; display: block;">
+        </a>
+    </div>
+<% } %>

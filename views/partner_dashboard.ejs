@@ -16,7 +16,7 @@
         * { box-sizing: border-box; }
         .partner-header, .partner-footer {
             background-color: #1e1b4b; /* Dark purple */
-            padding: 20px 40px;
+            padding: 15px 20px;
             display: flex;
             align-items: center;
         }
@@ -33,10 +33,22 @@
 <body>
 
     <!-- Header -->
-    <div class="partner-header">
+    <div class="partner-header" style="justify-content: space-between;">
         <a href="/" class="partner-logo">
             <img src="/images/logo.png" alt="TorMart" style="max-height: 30px; margin-right: 5px;"> <span>JOB</span>
         </a>
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <div style="display: flex; flex-direction: column; align-items: center; color: white;">
+                <div style="width: 32px; height: 32px; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 4px;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #ddd;">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                </div>
+                <span style="font-size: 12px; font-weight: bold; max-width: 80px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"><%= typeof user !== 'undefined' && user ? user.username : 'Unknown' %></span>
+            </div>
+            <a href="/logout" style="color: white; background: rgba(255, 71, 87, 0.9); padding: 8px 14px; border-radius: 4px; font-size: 13px; text-decoration: none; font-weight: bold; transition: background 0.2s;">Logout</a>
+        </div>
     </div>
 
     <!-- Dashboard Content -->
@@ -125,67 +137,71 @@
                         <button class="dash-btn-blue">Apply Filter</button>
                     </div>
                 </div>
-                <table class="partner-data-table">
-                    <thead>
-                        <tr>
-                            <th>Link Name</th>
-                            <th style="text-align: center;">Registrations</th>
-                            <th style="text-align: center;">Unpaid Orders</th>
-                            <th style="text-align: center;">Paid Orders</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <% if (referral_links && referral_links.length > 0) { %>
-                            <% referral_links.forEach(link => { %>
-                                <% const conv = conversionsMap[link.link_code] || { registrations: 0, unpaid_orders: 0, paid_orders: 0 }; %>
-                                <tr>
-                                    <td style="color: #666;"><%= link.link_name %></td>
-                                    <td style="text-align: center;"><%= conv.registrations %></td>
-                                    <td style="text-align: center;"><%= conv.unpaid_orders %></td>
-                                    <td style="text-align: center;"><%= conv.paid_orders %></td>
-                                </tr>
-                            <% }) %>
-                        <% } else { %>
-                            <tr><td colspan="4" style="text-align: center; color: #888;">No data available</td></tr>
-                        <% } %>
-                    </tbody>
-                </table>
+                <div class="table-responsive">
+                    <table class="partner-data-table">
+                        <thead>
+                            <tr>
+                                <th>Link Name</th>
+                                <th style="text-align: center;">Registrations</th>
+                                <th style="text-align: center;">Unpaid Orders</th>
+                                <th style="text-align: center;">Paid Orders</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <% if (referral_links && referral_links.length > 0) { %>
+                                <% referral_links.forEach(link => { %>
+                                    <% const conv = conversionsMap[link.link_code] || { registrations: 0, unpaid_orders: 0, paid_orders: 0 }; %>
+                                    <tr>
+                                        <td style="color: #666;"><%= link.link_name %></td>
+                                        <td style="text-align: center;"><%= conv.registrations %></td>
+                                        <td style="text-align: center;"><%= conv.unpaid_orders %></td>
+                                        <td style="text-align: center;"><%= conv.paid_orders %></td>
+                                    </tr>
+                                <% }) %>
+                            <% } else { %>
+                                <tr><td colspan="4" style="text-align: center; color: #888;">No data available</td></tr>
+                            <% } %>
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             <!-- Referral Registrations Panel -->
             <div class="dash-panel">
                 <div class="dash-panel-header">Refferal Registrations</div>
                 <div class="dash-panel-content" style="padding: 0;">
-                    <table class="partner-data-table">
-                        <thead>
-                            <tr>
-                                <th>Link Name</th>
-                                <th style="text-align: center;">Link Code</th>
-                                <th style="text-align: center;">Customer</th>
-                                <th style="text-align: center;">Join Date</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <% if (registrations && registrations.length > 0) { %>
-                                <% registrations.forEach(reg => { %>
-                                    <% 
-                                        const linkName = referral_links.find(l => l.link_code === reg.link_code)?.link_name || ''; 
-                                        const displayUser = reg.username.substring(0, 2) + "****" + reg.username.slice(-2);
-                                        const d = new Date(reg.created_at);
-                                        const dateStr = d.getFullYear() + "/" + String(d.getMonth()+1).padStart(2,'0') + "/" + String(d.getDate()).padStart(2,'0');
-                                    %>
-                                    <tr>
-                                        <td><%= linkName %></td>
-                                        <td style="text-align: center;"><%= reg.link_code %></td>
-                                        <td style="text-align: center;"><%= displayUser %></td>
-                                        <td style="text-align: center;"><%= dateStr %></td>
-                                    </tr>
-                                <% }) %>
-                            <% } else { %>
-                                <tr><td colspan="4" style="text-align: center; color: #888;">No registrations yet.</td></tr>
-                            <% } %>
-                        </tbody>
-                    </table>
+                    <div class="table-responsive">
+                        <table class="partner-data-table">
+                            <thead>
+                                <tr>
+                                    <th>Link Name</th>
+                                    <th style="text-align: center;">Link Code</th>
+                                    <th style="text-align: center;">Customer</th>
+                                    <th style="text-align: center;">Join Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% if (registrations && registrations.length > 0) { %>
+                                    <% registrations.forEach(reg => { %>
+                                        <% 
+                                            const linkName = referral_links.find(l => l.link_code === reg.link_code)?.link_name || ''; 
+                                            const displayUser = reg.username.substring(0, 2) + "****" + reg.username.slice(-2);
+                                            const d = new Date(reg.created_at);
+                                            const dateStr = d.getFullYear() + "/" + String(d.getMonth()+1).padStart(2,'0') + "/" + String(d.getDate()).padStart(2,'0');
+                                        %>
+                                        <tr>
+                                            <td><%= linkName %></td>
+                                            <td style="text-align: center;"><%= reg.link_code %></td>
+                                            <td style="text-align: center;"><%= displayUser %></td>
+                                            <td style="text-align: center;"><%= dateStr %></td>
+                                        </tr>
+                                    <% }) %>
+                                <% } else { %>
+                                    <tr><td colspan="4" style="text-align: center; color: #888;">No registrations yet.</td></tr>
+                                <% } %>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>

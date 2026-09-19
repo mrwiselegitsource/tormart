@@ -138,10 +138,12 @@ function initializeSchema() {
             is_vendor INTEGER DEFAULT 0,
             vendor_name TEXT,
             vendor_description TEXT,
+            vendor_short_description TEXT,
             vendor_logo TEXT,
             vendor_banner TEXT,
             vendor_status TEXT DEFAULT 'pending',
             btc_wallet TEXT,
+            vendor_video TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )`);
 
@@ -150,8 +152,24 @@ function initializeSchema() {
             // Ignore error if column already exists
         });
 
+        // Add vendor_video if missing
+        db.run(`ALTER TABLE users ADD COLUMN vendor_video TEXT`, (err) => {
+            // Ignore error if column already exists
+        });
+
+        // Add admin_chat_unlocked for Support messaging
+        db.run(`ALTER TABLE users ADD COLUMN admin_chat_unlocked INTEGER DEFAULT 0`, (err) => {});
+
         // Add referred_by to track referrals
         db.run(`ALTER TABLE users ADD COLUMN referred_by TEXT`, (err) => {});
+        
+        // Add vendor_short_description if missing
+        db.run(`ALTER TABLE users ADD COLUMN vendor_short_description TEXT`, (err) => {});
+
+        // Add application fields for vendor partnership
+        db.run(`ALTER TABLE users ADD COLUMN application_txid TEXT`, (err) => {});
+        db.run(`ALTER TABLE users ADD COLUMN application_contact TEXT`, (err) => {});
+        db.run(`ALTER TABLE users ADD COLUMN application_date DATETIME`, (err) => {});
 
         db.run(`CREATE TABLE IF NOT EXISTS referral_links (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -194,9 +212,9 @@ function initializeSchema() {
             FOREIGN KEY(user_id) REFERENCES users(id),
             FOREIGN KEY(product_id) REFERENCES products(id)
         )`);
-        // Ensure invoice_id exists if db was already created
+        // Ensure columns exist if db was already created
         db.run(`ALTER TABLE orders ADD COLUMN invoice_id TEXT`, (err) => { /* ignore if exists */ });
-
+        db.run(`ALTER TABLE orders ADD COLUMN download_key TEXT`, (err) => { /* ignore if exists */ });
         db.run(`CREATE TABLE IF NOT EXISTS messages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             conversation_id TEXT,
@@ -299,6 +317,27 @@ function initializeSchema() {
             setting_value TEXT
         )`);
 
+        db.run(`CREATE TABLE IF NOT EXISTS site_settings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            setting_key TEXT UNIQUE,
+            setting_value TEXT
+        )`, (err) => {
+            if (!err) {
+                db.run(`INSERT OR IGNORE INTO site_settings (setting_key, setting_value) VALUES ('partnership_fee', '$150 in BTC')`);
+                db.run(`INSERT OR IGNORE INTO site_settings (setting_key, setting_value) VALUES ('partnership_address', 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh')`);
+            }
+        });
+
+        db.run(`CREATE TABLE IF NOT EXISTS adverts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            vendor_id INTEGER NOT NULL,
+            image_url TEXT,
+            target_url TEXT,
+            is_active INTEGER DEFAULT 1,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (vendor_id) REFERENCES users(id)
+        )`);
+
         // Add is_vip column to users if not exists
         db.run("ALTER TABLE users ADD COLUMN is_vip INTEGER DEFAULT 0", (err) => {});
 
@@ -342,8 +381,8 @@ function initializeSchema() {
             if (!vendorRow) {
                 const hash = bcrypt.hashSync('vendor123', 10);
                 db.run(
-                    "INSERT INTO users (username, email, password, role, is_vendor, vendor_name, vendor_description, vendor_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                    ['northstar', 'northstar@globalmarket.onion', hash, 'seller', 1, 'Northstar Labs', 'Trusted digital storefront for premium AI assets and automation kits.', 'approved'],
+                    "INSERT INTO users (username, email, password, role, is_vendor, vendor_name, vendor_description, vendor_short_description, vendor_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    ['northstar', 'northstar@globalmarket.onion', hash, 'seller', 1, 'Northstar Labs', 'Trusted digital storefront for premium AI assets and automation kits.', 'Trusted digital storefront for premium AI assets and automation kits.', 'approved'],
                     function(err) {
                         const vendorId = this.lastID;
                         db.get("SELECT COUNT(*) AS count FROM products", (err, row) => {
@@ -373,13 +412,30 @@ app.use((req, res, next) => {
     res.locals.cartCount = req.session.cart ? Object.keys(req.session.cart).length : 0;
     res.locals.csrfToken = req.session.csrfToken;
     res.locals.currentHost = (req.protocol || 'http') + '://' + req.get('host') + '/';
-    console.log('Middleware ran! currentHost:', res.locals.currentHost);
-    next();
+    
+    // Fetch active adverts and user purchase history
+    db.all("SELECT * FROM adverts WHERE is_active = 1", (err, adverts) => {
+        res.locals.smart_adverts = adverts || [];
+        
+        if (req.session.user) {
+            db.get("SELECT COUNT(*) AS count FROM orders WHERE user_id = ?", [req.session.user.id], (err, row) => {
+                res.locals.hasPurchased = row && row.count > 0;
+                next();
+            });
+        } else {
+            res.locals.hasPurchased = false;
+            next();
+        }
+    });
 });
 
 // Middleware for authentication
 const requireAuth = (req, res, next) => {
     if (!req.session.user) {
+        // For API requests, return JSON error instead of redirect
+        if (req.path.startsWith('/api/') || (req.headers.accept && req.headers.accept.includes('application/json'))) {
+            return res.status(401).json({ error: 'Not authenticated. Please log in.' });
+        }
         req.session.returnTo = req.originalUrl;
         return res.redirect('/login');
     }
@@ -495,6 +551,10 @@ app.get('/bitcoin-guide', (req, res) => {
 
 app.get('/terms', (req, res) => {
     res.render('terms');
+});
+
+app.get('/escrow', (req, res) => {
+    res.render('escrow');
 });
 
 app.get('/refunds', (req, res) => {
@@ -712,6 +772,7 @@ app.get('/download/:orderId', requireAuth, (req, res) => {
 });
 
 // Auth Routes
+
 app.get('/partner/auth', (req, res) => {
     if (req.session.user) {
         return res.redirect('/partner/dashboard');
@@ -893,7 +954,19 @@ app.post('/register', (req, res) => {
     
     db.run("INSERT INTO users (username, email, password, referred_by) VALUES (?, ?, ?, ?)", [username, email, hash, referredBy], function(err) {
         if (err) return res.render('login', { error: 'Username already exists.', hidePromo: true });
-        req.session.user = { id: this.lastID, username, role: 'client', is_vendor: 0 };
+        
+        const newUserId = this.lastID;
+        
+        // Send automated welcome message from Admin
+        db.get("SELECT id FROM users WHERE role = 'admin' LIMIT 1", (err, adminUser) => {
+            if (adminUser) {
+                const welcomeMessage = "Welcome to Tormart! You have a 10% discount on your first order.";
+                const conversationId = adminUser.id < newUserId ? `${adminUser.id}-${newUserId}` : `${newUserId}-${adminUser.id}`;
+                db.run("INSERT INTO messages (sender_id, receiver_id, body, conversation_id, is_read) VALUES (?, ?, ?, ?, 0)", [adminUser.id, newUserId, welcomeMessage, conversationId]);
+            }
+        });
+
+        req.session.user = { id: newUserId, username, role: 'client', is_vendor: 0 };
         const redirectUrl = req.session.returnTo || '/dashboard';
         delete req.session.returnTo;
         res.redirect(redirectUrl);
@@ -976,14 +1049,29 @@ app.get('/seller-dashboard', requireAuth, (req, res) => {
 app.get('/messages', requireAuth, (req, res) => {
     const userId = req.session.user.id;
     db.all(`
-        SELECT DISTINCT u.id, u.username, u.vendor_logo, u.is_vendor
+        SELECT u.id, u.username, u.vendor_logo, u.is_vendor, u.role,
+               (SELECT body FROM messages WHERE (sender_id = u.id AND receiver_id = ?) OR (sender_id = ? AND receiver_id = u.id) ORDER BY created_at DESC LIMIT 1) as last_message,
+               (SELECT created_at FROM messages WHERE (sender_id = u.id AND receiver_id = ?) OR (sender_id = ? AND receiver_id = u.id) ORDER BY created_at DESC LIMIT 1) as last_message_time,
+               (SELECT COUNT(*) FROM messages WHERE sender_id = u.id AND receiver_id = ? AND is_read = 0) as unread_count
         FROM users u
         JOIN messages m ON (m.sender_id = u.id OR m.receiver_id = u.id)
         WHERE (m.sender_id = ? OR m.receiver_id = ?) AND u.id != ?
-    `, [userId, userId, userId], (err, conversations) => {
+        GROUP BY u.id
+        ORDER BY last_message_time DESC
+    `, [userId, userId, userId, userId, userId, userId, userId, userId], (err, conversations) => {
         db.get("SELECT id, username FROM users WHERE role = 'admin' LIMIT 1", (err, admin) => {
-            const partnerId = req.query.chat || null;
-            res.render('messages', { conversations: conversations || [], activePartnerId: partnerId, admin });
+            db.get("SELECT admin_chat_unlocked FROM users WHERE id = ?", [userId], (err, currentUserRow) => {
+                let partnerId = null;
+                if (req.query.chat && !isNaN(parseInt(req.query.chat, 10))) {
+                    partnerId = parseInt(req.query.chat, 10);
+                }
+                res.render('messages', { 
+                    conversations: conversations || [], 
+                    activePartnerId: partnerId, 
+                    admin,
+                    admin_chat_unlocked: currentUserRow ? currentUserRow.admin_chat_unlocked : 0
+                });
+            });
         });
     });
 });
@@ -1001,34 +1089,131 @@ app.get('/api/messages/:partnerId', requireAuth, (req, res) => {
     });
 });
 
-app.post('/api/messages/send', requireAuth, messageImageUpload.single('image'), (req, res) => {
+app.get('/api/conversations', requireAuth, (req, res) => {
+    const userId = req.session.user.id;
+    db.all(`
+        SELECT u.id, u.username, u.vendor_logo, u.is_vendor, u.role,
+               (SELECT body FROM messages WHERE (sender_id = u.id AND receiver_id = ?) OR (sender_id = ? AND receiver_id = u.id) ORDER BY created_at DESC LIMIT 1) as last_message,
+               (SELECT created_at FROM messages WHERE (sender_id = u.id AND receiver_id = ?) OR (sender_id = ? AND receiver_id = u.id) ORDER BY created_at DESC LIMIT 1) as last_message_time,
+               (SELECT COUNT(*) FROM messages WHERE sender_id = u.id AND receiver_id = ? AND is_read = 0) as unread_count
+        FROM users u
+        JOIN messages m ON (m.sender_id = u.id OR m.receiver_id = u.id)
+        WHERE (m.sender_id = ? OR m.receiver_id = ?) AND u.id != ?
+        GROUP BY u.id
+        ORDER BY last_message_time DESC
+    `, [userId, userId, userId, userId, userId, userId, userId, userId], (err, conversations) => {
+        if (err) return res.status(500).json({error: err.message});
+        res.json(conversations || []);
+    });
+});
+
+app.post('/api/messages/:partnerId/read', requireAuth, (req, res) => {
+    const userId = req.session.user.id;
+    const partnerId = req.params.partnerId;
+    db.run(`UPDATE messages SET is_read = 1 WHERE sender_id = ? AND receiver_id = ? AND is_read = 0`, [partnerId, userId], function(err) {
+        if (err) return res.status(500).json({error: err.message});
+        res.json({ success: true, updated: this.changes });
+    });
+});
+
+
+app.post('/api/messages/send', requireAuth, function (req, res, next) {
+    messageImageUpload.single('image')(req, res, function (err) {
+        if (err) {
+            console.error("MULTER UPLOAD ERROR:", err);
+            return res.status(500).json({ error: "File upload error: " + err.message });
+        }
+        next();
+    });
+}, (req, res) => {
     const senderId = req.session.user.id;
-    const receiverId = req.body.receiver_id;
-    const body = req.body.body || '';
+    let rawReceiverId = req.body.receiver_id;
+    // Handle case where FormData sends an array (duplicate hidden fields)
+    if (Array.isArray(rawReceiverId)) rawReceiverId = rawReceiverId[0];
+    const receiverId = parseInt(rawReceiverId, 10);
+    const body = (req.body.body || '').trim();
     
     let imageUrl = null;
     if (req.file) {
         imageUrl = '/images/messages/' + req.file.filename;
     }
     
-    if (!receiverId || (!body && !imageUrl)) {
-        return res.status(400).json({ error: 'Missing required fields' });
+    console.log("SEND MESSAGE ATTEMPT:", { senderId, receiverId, body: body.substring(0, 50), imageUrl, rawReceiverId: req.body.receiver_id });
+
+    
+    if (!receiverId || isNaN(receiverId) || (!body && !imageUrl)) {
+        console.error("SEND MESSAGE REJECTED:", { receiverId, hasBody: !!body, hasImage: !!imageUrl });
+        return res.status(400).json({ error: 'Missing required fields (receiver_id=' + receiverId + ')' });
     }
     
-    const convId = senderId < receiverId ? `${senderId}_${receiverId}` : `${receiverId}_${senderId}`;
+    const convId = senderId < receiverId ? senderId + '_' + receiverId : receiverId + '_' + senderId;
 
-    db.run(`
-        INSERT INTO messages (conversation_id, sender_id, receiver_id, body, image_url) 
-        VALUES (?, ?, ?, ?, ?)
-    `, [convId, senderId, receiverId, body, imageUrl], function(err) {
-        if (err) return res.status(500).json({error: err.message});
-        db.get("SELECT * FROM messages WHERE id = ?", [this.lastID], (err, msg) => {
-            res.json(msg);
+    const insertMessage = () => {
+        db.run(`
+            INSERT INTO messages (conversation_id, sender_id, receiver_id, body, image_url) 
+            VALUES (?, ?, ?, ?, ?)
+        `, [convId, senderId, receiverId, body, imageUrl], function(err) {
+            if (err) {
+                console.error("DB INSERT ERROR:", err.message);
+                return res.status(500).json({error: err.message});
+            }
+            console.log("DB INSERT SUCCESS! ID:", this.lastID);
+            db.get("SELECT * FROM messages WHERE id = ?", [this.lastID], (err, msg) => {
+                res.json(msg);
+            });
         });
+    };
+
+    // Check if trying to message admin
+    db.get("SELECT role FROM users WHERE id = ?", [receiverId], (err, receiverUser) => {
+        if (err || !receiverUser) return res.status(404).json({error: "Receiver not found"});
+        
+        if (receiverUser.role === 'admin' && req.session.user.role !== 'admin') {
+            db.get("SELECT admin_chat_unlocked FROM users WHERE id = ?", [senderId], (err, senderUser) => {
+                if (err || !senderUser || senderUser.admin_chat_unlocked !== 1) {
+                    return res.status(403).json({error: "You cannot reply to this conversation unless the Admin allows it."});
+                }
+                insertMessage();
+            });
+        } else {
+            insertMessage();
+        }
     });
 });
 
 app.get('/support', requireAuth, (req, res) => {
+    res.render('support');
+});
+
+// Vendor Application System
+app.get('/apply-vendor', requireAuth, (req, res) => {
+    db.all("SELECT * FROM site_settings", (err, sSettings) => {
+        const siteSettings = {};
+        if (sSettings) sSettings.forEach(s => siteSettings[s.setting_key] = s.setting_value);
+        
+        // Ensure default settings exist if DB hasn't flushed yet
+        if (!siteSettings.partnership_fee) siteSettings.partnership_fee = "$150 in BTC";
+        if (!siteSettings.partnership_address) siteSettings.partnership_address = "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh";
+
+        res.render('vendor-apply', { user: req.session.user, siteSettings });
+    });
+});
+
+app.post('/apply-vendor', requireAuth, (req, res) => {
+    const { vendor_name, vendor_short_description, application_contact, application_txid } = req.body;
+    db.run(`
+        UPDATE users 
+        SET vendor_name = ?, vendor_short_description = ?, application_contact = ?, application_txid = ?, application_date = CURRENT_TIMESTAMP, vendor_status = 'pending' 
+        WHERE id = ?
+    `, [vendor_name, vendor_short_description, application_contact, application_txid, req.session.user.id], (err) => {
+        // Update session so UI reflects pending status
+        req.session.user.vendor_status = 'pending';
+        req.session.user.vendor_name = vendor_name;
+        res.redirect('/apply-vendor');
+    });
+});
+
+app.get('/chat', requireAuth, (req, res) => {
     res.render('support');
 });
 
@@ -1147,7 +1332,59 @@ app.get('/cooperation', (req, res) => {
 });
 
 app.get('/job', (req, res) => {
-    res.render('job');
+    // Generate dynamic consistent top partners using seeded PRNG
+    function mulberry32(a) {
+        return function() {
+          var t = a += 0x6D2B79F5;
+          t = Math.imul(t ^ t >>> 15, t | 1);
+          t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+          return ((t ^ t >>> 14) >>> 0) / 4294967296;
+        }
+    }
+    
+    function generateTopPartners(seedStr, count, minUsd, maxUsd) {
+        let seed = 0;
+        for(let i = 0; i < seedStr.length; i++) seed += (seedStr.charCodeAt(i) * (i + 1));
+        const prng = mulberry32(seed);
+        
+        const prefixes = ["Slis", "Wayz", "Blak", "Thr0", "Grab", "Trgo", "Mork", "Rash", "Hall", "Conn", "Vect", "Zork", "Nixx", "Flex", "Bane", "Kilo", "Jaxx"];
+        
+        let availablePrefixes = [...prefixes];
+        // Fisher-Yates shuffle with PRNG
+        for (let i = availablePrefixes.length - 1; i > 0; i--) {
+            const j = Math.floor(prng() * (i + 1));
+            [availablePrefixes[i], availablePrefixes[j]] = [availablePrefixes[j], availablePrefixes[i]];
+        }
+        
+        let partners = [];
+        let currentUsd = maxUsd;
+        for (let i = 0; i < count; i++) {
+            let drop = Math.floor(prng() * ((maxUsd - minUsd) / (count - 1)) * 1.5);
+            if (i === 0) drop = 0; 
+            currentUsd -= drop;
+            if (currentUsd < minUsd) currentUsd = minUsd;
+            
+            partners.push({
+                name: availablePrefixes[i] + "*****",
+                usd: Math.round(currentUsd)
+            });
+        }
+        return partners;
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Get ISO week string for weekly seed
+    const d = new Date();
+    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7));
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+    const weekNo = Math.ceil(( ( (d - yearStart) / 86400000) + 1)/7);
+    const weekStr = d.getUTCFullYear() + "-W" + weekNo;
+
+    const topDailyPartners = generateTopPartners("daily" + today, 10, 40, 280);
+    const topWeeklyPartners = generateTopPartners("weekly" + weekStr, 10, 400, 2500);
+
+    res.render('job', { topDailyPartners, topWeeklyPartners });
 });
 
 app.post('/support/send', requireAuth, (req, res) => {
@@ -1156,10 +1393,18 @@ app.post('/support/send', requireAuth, (req, res) => {
 
     db.get("SELECT id FROM users WHERE role = 'admin' LIMIT 1", (err, admin) => {
         if (admin) {
-            db.run("INSERT INTO messages (sender_id, receiver_id, subject, body) VALUES (?, ?, ?, ?)",
-                [req.session.user.id, admin.id, finalSubject, body],
+            const senderId = req.session.user.id;
+            const receiverId = admin.id;
+            const convId = senderId < receiverId ? `${senderId}_${receiverId}` : `${receiverId}_${senderId}`;
+            db.run("INSERT INTO messages (conversation_id, sender_id, receiver_id, subject, body) VALUES (?, ?, ?, ?, ?)",
+                [convId, senderId, receiverId, finalSubject, body],
                 (err) => {
-                    res.redirect('/messages');
+                    if (err) {
+                        console.error("SUPPORT SEND DB INSERT ERROR:", err.message);
+                    } else {
+                        console.log("SUPPORT SEND DB INSERT SUCCESS!");
+                    }
+                    res.redirect('/messages?chat=' + admin.id);
                 });
         } else {
             res.redirect('/messages');
@@ -1175,7 +1420,11 @@ function requireVendor(req, res, next) {
     if (req.session.user.is_vendor === 1) {
         next();
     } else {
-        res.redirect('/');
+        if (req.session.user.vendor_status === 'pending') {
+            res.redirect('/apply-vendor');
+        } else {
+            res.redirect('/seller-dashboard');
+        }
     }
 }
 
@@ -1191,7 +1440,9 @@ app.get('/vendor', requireVendor, (req, res) => {
             ORDER BY orders.created_at DESC
         `, [req.session.user.id], (err, orders) => {
             db.all('SELECT * FROM vendor_proofs WHERE vendor_id = ? ORDER BY id DESC', [req.session.user.id], (err, proofs) => {
-                res.render('vendor', { products: products || [], orders: orders || [], proofs: proofs || [] });
+                db.all('SELECT * FROM adverts WHERE vendor_id = ? ORDER BY id DESC', [req.session.user.id], (err, adverts) => {
+                    res.render('vendor', { products: products || [], orders: orders || [], proofs: proofs || [], adverts: adverts || [] });
+                });
             });
         });
     });
@@ -1237,11 +1488,40 @@ app.post('/vendor/proofs/delete/:id', requireVendor, (req, res) => {
         }
     });
 });
-app.post('/vendor/profile/edit', requireVendor, imageUpload.fields([{ name: 'vendor_logo', maxCount: 1 }, { name: 'vendor_banner', maxCount: 1 }]), (req, res) => {
-    const { vendor_name, vendor_description, created_at, btc_wallet } = req.body;
+
+app.post('/vendor/adverts/add', requireVendor, imageUpload.single('advert_image'), (req, res) => {
+    if (!req.file) return res.redirect('/vendor');
     
-    let updates = ["vendor_name = ?", "vendor_description = ?"];
-    let params = [vendor_name, vendor_description];
+    const target_url = req.body.target_url || '#';
+    const image_url = '/images/' + req.file.filename;
+
+    db.run(
+        "INSERT INTO adverts (vendor_id, image_url, target_url) VALUES (?, ?, ?)",
+        [req.session.user.id, image_url, target_url],
+        (err) => {
+            res.redirect('/vendor');
+        }
+    );
+});
+
+app.post('/vendor/adverts/delete/:id', requireVendor, (req, res) => {
+    db.get("SELECT image_url FROM adverts WHERE id = ? AND vendor_id = ?", [req.params.id, req.session.user.id], (err, advert) => {
+        if (advert) {
+            const filePath = path.join(__dirname, 'public', advert.image_url);
+            fs.unlink(filePath, () => {});
+            db.run("DELETE FROM adverts WHERE id = ?", [req.params.id], () => {
+                res.redirect('/vendor');
+            });
+        } else {
+            res.redirect('/vendor');
+        }
+    });
+});
+app.post('/vendor/profile/edit', requireVendor, imageUpload.fields([{ name: 'vendor_logo', maxCount: 1 }, { name: 'vendor_banner', maxCount: 1 }, { name: 'vendor_video', maxCount: 1 }]), (req, res) => {
+    const { vendor_name, vendor_description, vendor_short_description, created_at, btc_wallet } = req.body;
+    
+    let updates = ["vendor_name = ?", "vendor_description = ?", "vendor_short_description = ?"];
+    let params = [vendor_name, vendor_description, vendor_short_description];
     
     if (btc_wallet !== undefined) {
         updates.push("btc_wallet = ?");
@@ -1268,6 +1548,12 @@ app.post('/vendor/profile/edit', requireVendor, imageUpload.fields([{ name: 'ven
             updates.push("vendor_banner = ?");
             params.push(banner_url);
             req.session.user.vendor_banner = banner_url;
+        }
+        if (req.files['vendor_video']) {
+            const video_url = '/images/' + req.files['vendor_video'][0].filename;
+            updates.push("vendor_video = ?");
+            params.push(video_url);
+            req.session.user.vendor_video = video_url;
         }
     }
     
@@ -1367,6 +1653,18 @@ app.post('/vendor/products/delete/:id', requireVendor, (req, res) => {
     });
 });
 
+app.post('/admin/support/toggle-lock', requireAdmin, (req, res) => {
+    const userId = req.body.user_id;
+    const unlockStatus = req.body.unlocked === '1' ? 1 : 0;
+    
+    if (!userId) return res.status(400).json({error: "Missing user_id"});
+
+    db.run("UPDATE users SET admin_chat_unlocked = ? WHERE id = ?", [unlockStatus, userId], function(err) {
+        if (err) return res.status(500).json({error: err.message});
+        res.json({success: true, unlocked: unlockStatus});
+    });
+});
+
 // Admin Dashboard
 app.get('/admin', requireAdmin, (req, res) => {
     db.all(`
@@ -1383,7 +1681,32 @@ app.get('/admin', requireAdmin, (req, res) => {
                 if (settings) {
                     settings.forEach(s => promoSettings[s.setting_key] = s.setting_value);
                 }
-                res.render('admin', { orders: orders || [], vendors: vendors || [], promoSettings });
+                
+                db.all("SELECT * FROM site_settings", (err, sSettings) => {
+                    const siteSettings = {};
+                    if (sSettings) sSettings.forEach(s => siteSettings[s.setting_key] = s.setting_value);
+                    
+                    db.all("SELECT * FROM users WHERE vendor_status = 'pending' AND application_txid IS NOT NULL ORDER BY id DESC", (err, vendorApplications) => {
+                        db.all(`
+                            SELECT u.id, u.username, u.admin_chat_unlocked, 
+                                   MAX(m.created_at) as last_contact,
+                                   (SELECT body FROM messages WHERE sender_id = u.id AND receiver_id = ? ORDER BY created_at DESC LIMIT 1) as last_message
+                            FROM users u
+                            JOIN messages m ON (m.sender_id = u.id AND m.receiver_id = ?)
+                            GROUP BY u.id
+                            ORDER BY last_contact DESC
+                        `, [req.session.user.id, req.session.user.id], (err, supportUsers) => {
+                            res.render('admin', { 
+                                orders: orders || [], 
+                                vendors: vendors || [], 
+                                promoSettings, 
+                                siteSettings, 
+                                vendorApplications: vendorApplications || [], 
+                                supportUsers: supportUsers || [] 
+                            });
+                        });
+                    });
+                });
             });
         });
     });
@@ -1399,6 +1722,34 @@ app.post('/admin/order/:id/resolve', requireAdmin, (req, res) => {
 
 app.post('/admin/order/:id/mark_paid', requireAdmin, (req, res) => {
     db.run("UPDATE orders SET status = 'paid_out' WHERE id = ?", [req.params.id], (err) => {
+        res.redirect('/admin');
+    });
+});
+
+app.post('/admin/site-settings', requireAdmin, (req, res) => {
+    const { partnership_fee, partnership_address } = req.body;
+    db.serialize(() => {
+        const stmt = db.prepare(`
+            INSERT INTO site_settings (setting_key, setting_value) 
+            VALUES (?, ?) 
+            ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value
+        `);
+        stmt.run('partnership_fee', partnership_fee);
+        stmt.run('partnership_address', partnership_address, (err) => {
+            res.redirect('/admin');
+        });
+        stmt.finalize();
+    });
+});
+
+app.post('/admin/vendor/approve/:id', requireAdmin, (req, res) => {
+    db.run("UPDATE users SET is_vendor = 1, vendor_status = 'approved' WHERE id = ?", [req.params.id], (err) => {
+        res.redirect('/admin');
+    });
+});
+
+app.post('/admin/vendor/reject/:id', requireAdmin, (req, res) => {
+    db.run("UPDATE users SET vendor_status = 'rejected', application_txid = NULL WHERE id = ?", [req.params.id], (err) => {
         res.redirect('/admin');
     });
 });
@@ -1439,13 +1790,13 @@ app.post('/admin/broadcast', requireAdmin, (req, res) => {
 });
 
 app.post('/admin/vendors/create', requireAdmin, (req, res) => {
-    const { username, password, vendor_name, vendor_description } = req.body;
+    const { username, password, vendor_name, vendor_description, vendor_short_description } = req.body;
     const email = `${username}@vendor.local`;
     const hash = bcrypt.hashSync(password, 10);
     
     db.run(
-        "INSERT INTO users (username, email, password, role, is_vendor, vendor_name, vendor_description, vendor_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        [username, email, hash, 'seller', 1, vendor_name, vendor_description, 'approved'],
+        "INSERT INTO users (username, email, password, role, is_vendor, vendor_name, vendor_description, vendor_short_description, vendor_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        [username, email, hash, 'seller', 1, vendor_name, vendor_description, vendor_short_description, 'approved'],
         function(err) {
             res.redirect('/admin?vendorCreated=true');
         }

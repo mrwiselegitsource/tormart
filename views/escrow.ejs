@@ -1,0 +1,140 @@
+<%- include('header') %>
+<div class="container" style="max-width: 1000px; margin: 40px auto; background: #fff; box-shadow: 0 0 10px rgba(0,0,0,0.1); padding: 0;">
+    <!-- Banner -->
+    <div style="width: 100%; height: auto;">
+        <img src="/images/escrow_banner.png" alt="TorMart ESCROW" style="width: 100%; display: block;">
+    </div>
+    
+    <div style="padding: 40px;">
+        <h1 style="text-align: center; font-size: 24px; font-weight: bold; margin-bottom: 20px; color: #333;">ESCROW | MONEY BACK GUARANTEE</h1>
+        <p style="text-align: center; color: #555; font-size: 14px; max-width: 800px; margin: 0 auto 40px auto; line-height: 1.6;">
+            We promise your money back if the item you received is not as described, or if your item is not delivered within the Buyer Protection period. You can get a refund 2-5 Business days after the claim process finishes.
+        </p>
+        
+        <style>
+            .escrow-step { text-align: center; width: 15%; }
+            .escrow-icon { font-size: 30px; margin-bottom: 10px; position: relative; display: inline-block; }
+            .escrow-icon.success { color: #00796b; }
+            .escrow-icon.neutral { color: #475569; }
+            .escrow-icon.error { color: #dc2626; }
+            .escrow-icon.final { color: #22c55e; }
+            .escrow-badge { position: absolute; bottom: -5px; right: -5px; background: #22c55e; color: white; border-radius: 50%; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; font-size: 10px; border: 2px solid white;}
+            .escrow-text { font-size: 12px; font-weight: bold; color: #333; }
+            .escrow-arrow { color: #999; font-weight: bold; letter-spacing: 2px; }
+            
+            @media (max-width: 768px) {
+                .escrow-flow { flex-direction: column; gap: 15px; border-radius: 10px !important; padding: 30px !important; }
+                .escrow-step { width: 100%; }
+                .escrow-arrow { transform: rotate(90deg); }
+                .info-cols { flex-direction: column; gap: 30px; }
+                .info-col { width: 100% !important; }
+            }
+        </style>
+
+        <!-- Success Flow -->
+        <div class="escrow-flow" style="background: #e6f7ef; border-radius: 50px; padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+            <div class="escrow-step">
+                <div class="escrow-icon success"><i data-lucide="handshake"></i></div>
+                <div class="escrow-text">Buyer and Seller agree to terms</div>
+            </div>
+            <div class="escrow-arrow">.......</div>
+            <div class="escrow-step">
+                <div class="escrow-icon success">
+                    <i data-lucide="smartphone"></i>
+                    <div class="escrow-badge"><i data-lucide="lock"></i></div>
+                </div>
+                <div class="escrow-text">Buyer submits payment to TorMart</div>
+            </div>
+            <div class="escrow-arrow">.......</div>
+            <div class="escrow-step">
+                <div class="escrow-icon success"><i data-lucide="package"></i></div>
+                <div class="escrow-text">Seller delivers goods or service to buyer</div>
+            </div>
+            <div class="escrow-arrow">.......</div>
+            <div class="escrow-step">
+                <div class="escrow-icon success"><i data-lucide="user-check"></i></div>
+                <div class="escrow-text">Buyer approves goods or services</div>
+            </div>
+            <div class="escrow-arrow">.......</div>
+            <div class="escrow-step">
+                <div class="escrow-icon success">
+                    <i data-lucide="banknote"></i>
+                    <div class="escrow-badge"><i data-lucide="unlock"></i></div>
+                </div>
+                <div class="escrow-text">TorMart releases payment to seller</div>
+            </div>
+        </div>
+
+        <!-- Failure Flow -->
+        <div class="escrow-flow" style="background: #fdf2f2; border-radius: 50px; padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 50px;">
+            <div class="escrow-step">
+                <div class="escrow-icon neutral"><i data-lucide="handshake"></i></div>
+                <div class="escrow-text">Buyer and Seller agree to terms</div>
+            </div>
+            <div class="escrow-arrow">.......</div>
+            <div class="escrow-step">
+                <div class="escrow-icon neutral">
+                    <i data-lucide="smartphone"></i>
+                    <div class="escrow-badge"><i data-lucide="lock"></i></div>
+                </div>
+                <div class="escrow-text">Buyer submits payment to TorMart</div>
+            </div>
+            <div class="escrow-arrow">.......</div>
+            <div class="escrow-step">
+                <div class="escrow-icon error"><i data-lucide="package-x"></i></div>
+                <div class="escrow-text">Seller no delivers goods or service to buyer</div>
+            </div>
+            <div class="escrow-arrow">.......</div>
+            <div class="escrow-step">
+                <div class="escrow-icon neutral"><i data-lucide="user-x"></i></div>
+                <div class="escrow-text">Buyer no approves goods or services</div>
+            </div>
+            <div class="escrow-arrow">.......</div>
+            <div class="escrow-step">
+                <div class="escrow-icon final">
+                    <i data-lucide="banknote"></i>
+                    <div class="escrow-badge"><i data-lucide="unlock"></i></div>
+                </div>
+                <div class="escrow-text">TorMart releases payment to Buyer</div>
+            </div>
+        </div>
+
+        <!-- 3 Columns -->
+        <div class="info-cols" style="display: flex; justify-content: space-between; margin-bottom: 50px; text-align: center;">
+            <div class="info-col" style="width: 30%;">
+                <h3 style="font-size: 14px; font-weight: bold; color: #333; margin-bottom: 10px;">1. Contact Seller</h3>
+                <p style="font-size: 12px; color: #555; line-height: 1.5;">Go to your order history and select the item. Discuss the issue with the seller and see possible solutions.</p>
+            </div>
+            <div class="info-col" style="width: 30%;">
+                <h3 style="font-size: 14px; font-weight: bold; color: #333; margin-bottom: 10px;">2. Apply for Refund</h3>
+                <p style="font-size: 12px; color: #555; line-height: 1.5;">If you can't come to an amicable agreement after contacting the seller, simply raise a claim by opening a dispute within 15 days following the delivery of your order or the end of the package receipt confirmation period (as listed in your order details).</p>
+            </div>
+            <div class="info-col" style="width: 30%;">
+                <h3 style="font-size: 14px; font-weight: bold; color: #333; margin-bottom: 10px;">3. Get Money Back in 2-5 Business Days</h3>
+                <p style="font-size: 12px; color: #555; line-height: 1.5;">Most sellers will return your money in 48 hours, however, if it's not resolved, you can contact TorMart from the order detail page to escalate your dispute.</p>
+            </div>
+        </div>
+
+        <!-- Policy -->
+        <div style="background: #f8fafc; padding: 30px; border-radius: 8px; margin-bottom: 40px; text-align: left;">
+            <h2 style="font-size: 18px; font-weight: bold; color: #333; margin-bottom: 20px;">Escrow policy</h2>
+            <p style="font-size: 13px; color: #444; line-height: 1.8; margin-bottom: 15px;">
+                1) All purchases are handled through the Multisig Escrow System of the marketplace. Once you submit your purchase, the money will be held in TorMart Multisig Escrow System until you acknowledge satisfactory receipt of the goods. When you receive your item and everything is all right, the vendor will receive payment.
+            </p>
+            <p style="font-size: 13px; color: #444; line-height: 1.8; margin-bottom: 15px;">
+                2) If the received good are not satisfactory, you can choose to dispute the transaction and a moderator will look into it. Please dispute only if you have a good reason; changing your mind is not considered an acceptable reason.
+            </p>
+            <p style="font-size: 13px; color: #444; line-height: 1.8;">
+                3) Please report the TorMart Support if the vendor asks for money outside of marketplace, and do not send coins. If you send coins outside our Escrow system, it is entirely at your own risk.
+            </p>
+        </div>
+
+        <div style="text-align: center;">
+            <h3 style="font-size: 16px; font-weight: bold; color: #333; margin-bottom: 20px;">If you have any questions please contact our support</h3>
+            <a href="/" style="display: inline-block; background: #22c55e; color: white; text-decoration: none; padding: 12px 30px; font-weight: bold; border-radius: 4px; transition: background 0.2s;">Start Shopping</a>
+        </div>
+
+    </div>
+</div>
+<script>lucide.createIcons();</script>
+<%- include('footer') %>

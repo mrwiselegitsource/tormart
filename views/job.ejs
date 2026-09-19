@@ -86,31 +86,37 @@
             <div class="job-table-wrapper">
                 <div class="job-table-header">BY THE DAY</div>
                 <table class="job-table">
-                    <tr><td><span class="rank-badge red-badge">1</span> slis*****</td><td class="amount">275 USD</td></tr>
-                    <tr><td>2. Wayz*****</td><td class="amount">249 USD</td></tr>
-                    <tr><td>3. Blak*****</td><td class="amount">218 USD</td></tr>
-                    <tr><td>4. Thr0*****</td><td class="amount">185 USD</td></tr>
-                    <tr><td>5. Grab*****</td><td class="amount">179 USD</td></tr>
-                    <tr><td>6. Trgo*****</td><td class="amount">156 USD</td></tr>
-                    <tr><td>7. Mork*****</td><td class="amount">195 USD</td></tr>
-                    <tr><td>8. Rash*****</td><td class="amount">114 USD</td></tr>
-                    <tr><td>9. Hall*****</td><td class="amount">93 USD</td></tr>
-                    <tr><td>10. Conn*****</td><td class="amount">45 USD</td></tr>
+                    <% topDailyPartners.forEach((partner, index) => { %>
+                        <tr>
+                            <td>
+                                <% if (index === 0) { %>
+                                    <span class="rank-badge red-badge">1</span>
+                                <% } else { %>
+                                    <%= index + 1 %>. 
+                                <% } %>
+                                <%= partner.name %>
+                            </td>
+                            <td class="amount"><%= partner.usd.toLocaleString() %> USD</td>
+                        </tr>
+                    <% }) %>
                 </table>
             </div>
             <div class="job-table-wrapper">
                 <div class="job-table-header">BY THE WEEK</div>
                 <table class="job-table">
-                    <tr><td><span class="rank-badge red-badge">1</span> slis*****</td><td class="amount">2 293 USD</td></tr>
-                    <tr><td>2. Blak*****</td><td class="amount">1 392 USD</td></tr>
-                    <tr><td>3. Rash*****</td><td class="amount">1 214 USD</td></tr>
-                    <tr><td>4. Mork*****</td><td class="amount">1 130 USD</td></tr>
-                    <tr><td>5. Wayz*****</td><td class="amount">910 USD</td></tr>
-                    <tr><td>6. Greb*****</td><td class="amount">883 USD</td></tr>
-                    <tr><td>7. Trgo*****</td><td class="amount">810 USD</td></tr>
-                    <tr><td>8. Thr0*****</td><td class="amount">630 USD</td></tr>
-                    <tr><td>9. Rash*****</td><td class="amount">530 USD</td></tr>
-                    <tr><td>10. Conn*****</td><td class="amount">493 USD</td></tr>
+                    <% topWeeklyPartners.forEach((partner, index) => { %>
+                        <tr>
+                            <td>
+                                <% if (index === 0) { %>
+                                    <span class="rank-badge red-badge">1</span>
+                                <% } else { %>
+                                    <%= index + 1 %>. 
+                                <% } %>
+                                <%= partner.name %>
+                            </td>
+                            <td class="amount"><%= partner.usd.toLocaleString().replace(/,/g, ' ') %> USD</td>
+                        </tr>
+                    <% }) %>
                 </table>
             </div>
         </div>

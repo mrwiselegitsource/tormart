@@ -45,7 +45,7 @@ details.tidy-panel[open] > summary::after {
 <div class="container" style="max-width: 900px; margin-top: 30px; margin-bottom: 50px;">
     <h2 style="text-align: center; color: #333; margin-bottom: 30px;">Vendor Dashboard</h2>
     
-    <details class="tidy-panel">
+    <details class="tidy-panel" open>
         <summary>My Vendor Profile</summary>
         <div class="tidy-content">
             <form action="/vendor/profile/edit" method="POST" enctype="multipart/form-data" style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
@@ -72,10 +72,25 @@ details.tidy-panel[open] > summary::after {
                             <input type="file" name="vendor_banner" accept="image/*" class="form-control">
                         </div>
                     </div>
+                    <div style="margin-bottom: 15px; display: flex; gap: 15px; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 250px;">
+                            <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px;">Quick Description / Tagline (Appears on Directory Cards)</label>
+                            <input type="text" name="vendor_short_description" value="<%= user.vendor_short_description || '' %>" class="form-control" placeholder="e.g. Large selection of Amazon gift cards..." maxlength="120" style="margin-bottom: 5px;">
+                        </div>
+                        <div style="flex: 1; min-width: 250px;">
+                            <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px;">Promo Video (.mp4)</label>
+                            <input type="file" name="vendor_video" accept="video/mp4" class="form-control" style="margin-bottom: 5px;">
+                            <% if (user.vendor_video) { %>
+                                <span style="font-size: 12px; color: #28a745; font-weight: bold;">✔ Active Video Uploaded</span>
+                            <% } else { %>
+                                <span style="font-size: 12px; color: #888;">No promo video uploaded yet.</span>
+                            <% } %>
+                        </div>
+                    </div>
                     <div>
                         <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px;">Store Description</label>
                         <textarea name="vendor_description" id="vendor_description_hidden" style="display:none;"><%= user.vendor_description || '' %></textarea>
-                        <div id="vendor_description_editor"><%- user.vendor_description || '' %></div>
+                        <div id="vendor_description_editor" style="min-height: 300px;"><%- user.vendor_description || '' %></div>
                     </div>
                     <div>
                         <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px;">Bitcoin Payout Address (For Escrow)</label>
@@ -137,6 +152,38 @@ details.tidy-panel[open] > summary::after {
                 <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                 <input type="file" name="proof_file" accept="image/*,video/*" required style="border: 1px solid #ccc; padding: 8px; border-radius: 4px;">
                 <button type="submit" class="btn btn-purple">Upload Proof</button>
+            </form>
+        </div>
+    </details>
+
+    <details class="tidy-panel">
+        <summary>Smart Adverts (Horizontal Banners)</summary>
+        <div class="tidy-content">
+            <p style="font-size: 13px; color: #666; margin-top: 0; margin-bottom: 15px;">Upload horizontal images or GIFs. These will be smartly distributed across the platform (categories, user pages, products) to drive traffic to your store.</p>
+            <div style="display: flex; gap: 15px; overflow-x: auto; padding-bottom: 15px; margin-bottom: 20px;">
+                <% if (typeof adverts !== 'undefined' && adverts.length > 0) { %>
+                    <% adverts.forEach(advert => { %>
+                        <div style="position: relative; width: 250px; height: 80px; background: #eee; border-radius: 4px; flex-shrink: 0; overflow: hidden; border: 1px solid #ddd;">
+                            <img src="<%= advert.image_url %>" style="width: 100%; height: 100%; object-fit: cover;">
+                            <form action="/vendor/adverts/delete/<%= advert.id %>" method="POST" style="position: absolute; top: 5px; right: 5px; margin: 0;">
+                                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                                <button type="submit" style="background: rgba(255,0,0,0.8); color: white; border: none; width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center;">✕</button>
+                            </form>
+                            <div style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.7); color: white; font-size: 11px; padding: 4px; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; text-align: center;">
+                                <%= advert.target_url %>
+                            </div>
+                        </div>
+                    <% }) %>
+                <% } else { %>
+                    <div style="color: #888; font-size: 13px;">No adverts uploaded yet.</div>
+                <% } %>
+            </div>
+            
+            <form action="/vendor/adverts/add" method="POST" enctype="multipart/form-data" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <input type="file" name="advert_image" accept="image/*" required style="border: 1px solid #ccc; padding: 8px; border-radius: 4px;">
+                <input type="text" name="target_url" placeholder="Target Link (e.g. /VendorName)" required style="border: 1px solid #ccc; padding: 8px; border-radius: 4px; flex: 1; min-width: 200px;">
+                <button type="submit" class="btn btn-purple">Upload Advert</button>
             </form>
         </div>
     </details>
@@ -396,9 +443,12 @@ var quillOptions = {
     theme: 'snow',
     modules: {
         toolbar: [
+            [{ 'header': [1, 2, 3, false] }],
             ['bold', 'italic', 'underline', 'strike'],
             [{ 'color': [] }, { 'background': [] }],
+            [{ 'align': [] }],
             [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+            ['link', 'image'],
             ['clean']
         ]
     }

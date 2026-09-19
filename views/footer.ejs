@@ -93,6 +93,42 @@
     </script>
     <% } %>
 
+    <% if (typeof user !== 'undefined' && user && !user.is_vendor && !user.is_partner && typeof cartCount !== 'undefined' && cartCount === 0 && typeof hasPurchased !== 'undefined' && !hasPurchased) { %>
+    <!-- Job Promo Popup Modal -->
+    <div class="promo-overlay" id="jobPromoModal">
+        <div class="promo-modal">
+            <button class="promo-close" onclick="closeJobPromoModal()">×</button>
+            <div class="promo-image-container" style="background: #fdf2f8;">
+                <img src="/images/btc-wallet.png" alt="Start Earning" style="max-height: 120px;" onerror="this.src='/images/ai-asset.svg'">
+            </div>
+            <h2>START EARNING BTC</h2>
+            <p class="promo-subtitle"><strong>Become a TorMart Partner</strong></p>
+            <p class="promo-text">Get paid directly to your Bitcoin wallet.<br>No purchases or experience required!</p>
+            <div class="promo-buttons">
+                <a href="/job" class="promo-btn promo-btn-register" style="width: 100%;">View Job Details</a>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function closeJobPromoModal() {
+            document.getElementById('jobPromoModal').classList.remove('active');
+            localStorage.setItem('job_popup_last_shown', Date.now());
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            const lastShown = localStorage.getItem('job_popup_last_shown');
+            const cooldownMs = 24 * 60 * 60 * 1000; // 24 hours
+            
+            if (!lastShown || (Date.now() - parseInt(lastShown) > cooldownMs)) {
+                setTimeout(() => {
+                    document.getElementById('jobPromoModal').classList.add('active');
+                    localStorage.setItem('job_popup_last_shown', Date.now());
+                }, 20000); // 20 seconds delay
+            }
+        });
+    </script>
+    <% } %>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script>
       document.addEventListener('DOMContentLoaded', function() {

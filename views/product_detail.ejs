@@ -1,14 +1,57 @@
 <%- include('header') %>
 
-<div class="container product-detail-layout" style="max-width: 1000px; display: grid; grid-template-columns: 3fr 1fr; gap: 30px; padding-top: 20px;">
+<style>
+    .product-detail-grid {
+        display: grid;
+        grid-template-columns: 3fr 1fr;
+        gap: 30px;
+        padding-top: 20px;
+    }
+    .product-top-flex {
+        display: flex;
+        gap: 30px;
+        margin-bottom: 40px;
+    }
+    .product-image-container {
+        width: 250px;
+        position: relative;
+    }
+    .buyer-protection-flex {
+        display: flex;
+        align-items: flex-start;
+        gap: 20px;
+        border-top: 1px solid #f1f5f9;
+        border-bottom: 1px solid #f1f5f9;
+        padding: 25px 0;
+        margin-bottom: 30px;
+    }
+    .total-price-flex {
+        background: #f5f5f5;
+        padding: 15px;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+    }
+    @media (max-width: 768px) {
+        .product-detail-grid { grid-template-columns: 1fr; gap: 20px; }
+        .product-top-flex { flex-direction: column; align-items: center; }
+        .product-image-container { width: 100%; max-width: 300px; margin: 0 auto; }
+        .buyer-protection-flex { flex-direction: column; align-items: center; text-align: center; }
+        .total-price-flex { flex-direction: column; align-items: center; gap: 15px; text-align: center; }
+        #addToCartForm { width: 100%; }
+        #addToCartForm button { width: 100%; }
+    }
+</style>
+
+<div class="container product-detail-grid" style="max-width: 1000px;">
     
     <!-- Main Content Left Side -->
     <div style="background: #fff; border-radius: 8px; padding: 30px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
         
         <!-- Top Section -->
-        <div style="display: flex; gap: 30px; margin-bottom: 40px;">
+        <div class="product-top-flex">
             <!-- Product Image -->
-            <div style="width: 250px; position: relative;">
+            <div class="product-image-container">
                 <img src="<%= product.image %>" alt="<%= product.name %>" style="width: 100%; height: auto; border: 1px solid #e2e8f0; border-radius: 4px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
             </div>
             
@@ -42,7 +85,7 @@
                 <!-- Total Price & Action -->
                 <div>
                     <div style="font-size: 14px; color: #94a3b8; margin-bottom: 8px;">Total price</div>
-                    <div style="background: #f5f5f5; padding: 15px; display: flex; justify-content: space-between; align-items: flex-end;">
+                    <div class="total-price-flex">
                         <div>
                             <div id="totalUsd" style="font-size: 28px; font-weight: bold; color: #111;">$<%= product.price.toFixed(2) %></div>
                             <!-- Assuming approx 1 BTC = $80000 for calculation mockup -->
@@ -60,7 +103,7 @@
         </div>
         
         <!-- Buyer Protection -->
-        <div style="display: flex; align-items: flex-start; gap: 20px; border-top: 1px solid #f1f5f9; border-bottom: 1px solid #f1f5f9; padding: 25px 0; margin-bottom: 30px;">
+        <div class="buyer-protection-flex">
             <div style="flex-shrink: 0; width: 60px;">
                 <img src="/images/buyer-protection.png" alt="Buyer Protection Shield" style="width: 100%; height: auto;">
             </div>
@@ -111,6 +154,9 @@
                 <img src="/images/sidebar-ad.jpg" alt="Vendor Ad" style="width: 100%; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
             </a>
         </div>
+        
+        <!-- Smart Advert System -->
+        <%- include('_advert_banner') %>
     </div>
 </div>
 

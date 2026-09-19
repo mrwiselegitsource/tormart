@@ -19,6 +19,47 @@
     @media (max-width: 480px) {
         .vp-products-grid { grid-template-columns: 1fr; }
     }
+    
+    /* Ensure user-pasted images are responsive */
+    .ql-editor img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 4px; /* Optional: Makes pasted images look a bit nicer */
+    }
+    
+    /* Video Modal Styles */
+    .video-modal-overlay {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.85);
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;
+        backdrop-filter: blur(5px);
+    }
+    .video-modal-content {
+        position: relative;
+        width: 90%;
+        max-width: 800px;
+        background: #000;
+        border-radius: 8px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        overflow: hidden;
+    }
+    .video-close-btn {
+        position: absolute;
+        top: 10px; right: 10px;
+        background: rgba(255,0,0,0.8);
+        color: white;
+        border: none;
+        width: 30px; height: 30px;
+        border-radius: 50%;
+        font-size: 16px;
+        cursor: pointer;
+        z-index: 10;
+        display: flex; align-items: center; justify-content: center;
+    }
 </style>
 
 <!-- Top Banner -->
@@ -39,6 +80,11 @@
                 <% } %>
             </div>
             <a href="/messages?chat=<%= vendor.id %>" class="btn" style="background: #28a745; color: white; padding: 12px 20px; width: 100%; text-decoration: none; text-align: center; border-radius: 4px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">Message</a>
+            <% if (vendor.vendor_video) { %>
+                <button onclick="openVideoModal('<%= vendor.vendor_video %>')" class="btn" style="background: #ff4757; color: white; padding: 10px 20px; width: 100%; border: none; cursor: pointer; border-radius: 4px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    ▶ Watch Promo
+                </button>
+            <% } %>
         </div>
         
         <!-- Right: Info & Stats -->
@@ -115,10 +161,7 @@
         <h3 style="margin-top: 0; color: #111; font-size: 22px; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; margin-bottom: 20px;">About Vendor</h3>
         
         <div style="font-size: 15px; color: #333; line-height: 1.6;">
-            <p style="text-align: center; font-weight: bold; color: #111;">WELCOME TO <%= vendor.vendor_name ? vendor.vendor_name.toUpperCase() : 'OUR STORE' %></p>
-            <p style="text-align: center;">🔥 🏆 🔥 <span style="color: #28a745;">No. 1 Trusted Vendor On This Platform</span> 🔥 🏆 🔥</p>
-            <p style="text-align: center; color: #d9534f; font-weight: bold;">⚠️ Beware of imposters! We only sell our products right here. ⚠️</p>
-            <br>
+
             <div class="ql-editor" style="padding:0;"><%- (vendor.vendor_description || '') %></div>
             
             <% if (proofs && proofs.length > 0) { %>
@@ -126,8 +169,8 @@
                 <% proofs.forEach(proof => { %>
                     <div style="position: relative; width: 100%; height: 260px; background: #000; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
                         <% if (proof.type === 'video') { %>
-                            <video src="<%= proof.file_url %>" style="width: 100%; height: 100%; object-fit: cover;" loop muted playsinline></video>
-                            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #ffcc00; width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #111; font-size: 24px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3);" onclick="this.previousElementSibling.paused ? this.previousElementSibling.play() : this.previousElementSibling.pause()">▶</div>
+                            <video src="<%= proof.file_url %>" style="width: 100%; height: 100%; object-fit: cover;" muted playsinline></video>
+                            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #ffcc00; width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #111; font-size: 24px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3);" onclick="openVideoModal('<%= proof.file_url %>')">▶</div>
                         <% } else { %>
                             <img src="<%= proof.file_url %>" style="width: 100%; height: 100%; object-fit: cover; cursor: pointer;">
                         <% } %>
@@ -282,4 +325,38 @@
     </div>
 </div>
 
+<!-- Video Modal -->
+<div id="videoModal" class="video-modal-overlay" onclick="closeVideoModal(event)">
+    <div class="video-modal-content" onclick="event.stopPropagation()">
+        <button class="video-close-btn" onclick="closeVideoModal()">×</button>
+        <video id="promoVideo" width="100%" controls controlsList="nodownload">
+            Your browser does not support the video tag.
+        </video>
+    </div>
+</div>
+
+<script>
+    function openVideoModal(videoUrl) {
+        const modal = document.getElementById('videoModal');
+        const video = document.getElementById('promoVideo');
+        video.src = videoUrl;
+        modal.style.display = 'flex';
+        video.play();
+    }
+
+    function closeVideoModal(e) {
+        // Only close if clicking the close button or the overlay background
+        if (e && e.target !== e.currentTarget && e.target.className !== 'video-close-btn') {
+            return;
+        }
+        const modal = document.getElementById('videoModal');
+        const video = document.getElementById('promoVideo');
+        modal.style.display = 'none';
+        video.pause();
+        video.currentTime = 0;
+        video.src = '';
+    }
+</script>
+
+<%- include('_advert_banner') %>
 <%- include('footer') %>

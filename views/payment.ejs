@@ -1,5 +1,27 @@
 <%- include('header') %>
 
+<style>
+    .payment-layout {
+        display: flex;
+        gap: 30px;
+        padding: 0 20px;
+    }
+    .payment-left-column {
+        width: 350px;
+        flex-shrink: 0;
+    }
+    @media (max-width: 768px) {
+        .payment-layout {
+            flex-direction: column;
+        }
+        .payment-left-column {
+            width: 100%;
+            max-width: 350px;
+            margin: 0 auto;
+        }
+    }
+</style>
+
 <div class="container" style="max-width: 1000px; margin: 40px auto; background: #fff; border: 1px solid #e2e8f0; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); padding-bottom: 20px;">
     
     <div style="text-align: center; margin: 30px 0; font-size: 24px; font-weight: bold; color: #333;">
@@ -10,10 +32,10 @@
         Order #<%= invoiceId %>
     </div>
     
-    <div style="display: flex; gap: 30px; padding: 0 20px;">
+    <div class="payment-layout">
         
         <!-- Left Column: Payment Details & QR -->
-        <div style="width: 350px; flex-shrink: 0;">
+        <div class="payment-left-column">
             <div style="background: #f8fafc; border-radius: 4px; padding: 20px; text-align: center; margin-bottom: 20px;">
                 <div style="font-weight: bold; font-size: 16px; margin-bottom: 15px;">Payment details</div>
                 
@@ -35,7 +57,7 @@
                     <div style="width: 18px; height: 18px; background: white; color: #3b82f6; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px;">i</div>
                     What to do if the crypto exchange/platform asks for the recipient's personal details?
                 </div>
-                <p style="margin-bottom: 15px;">Use a non-custodial hot wallet like <a href="#" style="color: white; text-decoration: underline;">Trust Wallet</a> or <a href="#" style="color: white; text-decoration: underline;">others</a>. We recommend the wallet mobile app.</p>
+                <p style="margin-bottom: 15px;">Use a non-custodial hot wallet like <a href="https://trustwallet.com/" target="_blank" rel="noopener noreferrer" style="color: white; text-decoration: underline;">Trust Wallet</a> or <a href="https://bitcoin.org/en/choose-your-wallet" target="_blank" rel="noopener noreferrer" style="color: white; text-decoration: underline;">others</a>. We recommend the wallet mobile app.</p>
                 <p style="margin-bottom: 15px;">You can enter your own personal details (Name, Country, etc) on the exchange first, then transfer coins to this wallet for storage.</p>
                 <p>This allows you to complete the payment securely without further restrictions.</p>
             </div>
@@ -97,8 +119,17 @@
 </div>
 
 <script>
-    // 60 minute countdown timer
-    let timeRemaining = 60 * 60; // 60 minutes in seconds
+    // 60 minute countdown timer based on order creation time
+    const createdAtStr = "<%= orders[0].created_at %>";
+    // Replace space with T and append Z for valid ISO 8601 UTC parsing across browsers
+    const createdAtIso = createdAtStr.replace(' ', 'T') + 'Z'; 
+    const createdAt = new Date(createdAtIso).getTime();
+    const now = Date.now();
+    const elapsedSeconds = Math.floor((now - createdAt) / 1000);
+    
+    let timeRemaining = (60 * 60) - elapsedSeconds;
+    if (timeRemaining < 0) timeRemaining = 0;
+    
     const totalTime = 60 * 60;
     
     const progressBar = document.getElementById('progressBar');
