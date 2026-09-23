@@ -1438,6 +1438,10 @@ app.get('/cooperation', (req, res) => {
     res.render('cooperation');
 });
 
+app.get('/about', (req, res) => {
+    res.render('about');
+});
+
 app.get('/job', (req, res) => {
     // Generate dynamic consistent top partners using seeded PRNG
     function mulberry32(a) {
