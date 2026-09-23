@@ -1,8 +1,41 @@
-<% if (typeof smart_adverts !== 'undefined' && smart_adverts.length > 0) { %>
-    <% const randomAdvert = smart_adverts[Math.floor(Math.random() * smart_adverts.length)]; %>
-    <div style="margin: 20px 0; width: 100%; border-radius: 6px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
-        <a href="<%= randomAdvert.target_url %>" style="display: block;">
-            <img src="<%= randomAdvert.image_url %>" alt="Advert" style="width: 100%; height: auto; max-height: 160px; object-fit: cover; display: block;">
-        </a>
+<% 
+    const count = (typeof advert_count !== 'undefined') ? advert_count : 1;
+    if (typeof smart_adverts !== 'undefined' && smart_adverts.length > 0) { 
+%>
+    <style>
+        .advert-row {
+            display: flex;
+            gap: 20px;
+            margin: 20px 0;
+            width: 100%;
+        }
+        .advert-item {
+            display: block;
+            flex: 1;
+            border-radius: 6px;
+            overflow: hidden;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .advert-item img {
+            width: 100%;
+            height: 160px;
+            object-fit: cover;
+            display: block;
+        }
+        @media (max-width: 768px) {
+            .advert-row {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+    </style>
+    <div class="advert-row">
+        <% for(let i=0; i<count; i++) { 
+            const randomAdvert = smart_adverts[Math.floor(Math.random() * smart_adverts.length)]; 
+        %>
+            <a href="<%= randomAdvert.target_url %>" class="advert-item">
+                <img src="<%= randomAdvert.image_url %>" alt="Advertisement">
+            </a>
+        <% } %>
     </div>
 <% } %>

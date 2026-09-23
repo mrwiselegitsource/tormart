@@ -186,40 +186,25 @@ details.tidy-panel[open] > summary::after {
             </form>
         </div>
     </details>
-    <!-- CATEGORY BANNERS -->
-    <details class="tidy-panel">
-        <summary>Category Advertisement Banners</summary>
+
+    <!-- SYSTEM LOCKS -->
+    <details class="tidy-panel" open>
+        <summary>🔒 System Locks</summary>
         <div class="tidy-content">
-            <p style="font-size: 13px; color: #666; margin-bottom: 20px;">Set an advertisement banner for specific categories. It will display at the top of the category page.</p>
-            <form action="/admin/category-banner" method="POST">
+            <p style="font-size: 14px; margin-bottom: 20px; color: #666;">Use these controls to temporarily lock down parts of the website for testing or maintenance.</p>
+            <form action="/admin/toggle-reviews-lock" method="POST" style="background: #f8fafc; padding: 15px; border-radius: 4px; border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between;">
                 <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 15px;">
-                    <div class="form-group">
-                        <label>Category</label>
-                        <select name="category" class="form-control" style="border: 1px solid #ccc; padding: 8px; border-radius: 2px;" required>
-                            <option value="">-- Select Category --</option>
-                            <option value="Carding">Carding</option>
-                            <option value="Money Transfers">Money Transfers</option>
-                            <option value="Gift Cards">Gift Cards</option>
-                            <option value="Cryptocurrency">Cryptocurrency</option>
-                            <option value="Fake money">Fake money</option>
-                            <option value="Hacking">Hacking</option>
-                            <option value="Documents">Documents</option>
-                            <option value="Electronics">Electronics</option>
-                            <option value="Porn">Porn</option>
-                            <option value="Casino/Betting">Casino/Betting</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Banner Image URL (e.g., /images/top-banner-1.jpg)</label>
-                        <input type="text" name="banner_url" class="form-control" placeholder="Image path or URL">
-                    </div>
-                    <div class="form-group">
-                        <label>Target Link (Optional)</label>
-                        <input type="text" name="target_link" class="form-control" placeholder="Where banner redirects on click">
-                    </div>
+                <div>
+                    <strong style="display: block; color: #0f172a; margin-bottom: 4px;">Public Review System</strong>
+                    <span style="font-size: 13px; color: #64748b;">When locked, the "Write a customer review" button will vanish for regular users.</span>
                 </div>
-                <button type="submit" class="btn" style="background: #8b5cf6; color: white; border: none; padding: 10px 20px; font-weight: bold; border-radius: 2px; cursor: pointer;">Save Category Banner</button>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <select name="reviews_locked" class="form-control" style="width: 120px; padding: 8px;">
+                        <option value="false" <%= typeof siteSettings !== 'undefined' && siteSettings.reviews_locked !== 'true' ? 'selected' : '' %>>🔓 Unlocked</option>
+                        <option value="true" <%= typeof siteSettings !== 'undefined' && siteSettings.reviews_locked === 'true' ? 'selected' : '' %>>🔒 Locked</option>
+                    </select>
+                    <button type="submit" class="btn" style="background: #334155; color: white; border: none; padding: 9px 15px; font-weight: bold; border-radius: 4px; cursor: pointer;">Save</button>
+                </div>
             </form>
         </div>
     </details>
@@ -230,6 +215,7 @@ details.tidy-panel[open] > summary::after {
         <div class="tidy-content">
             <p style="font-size: 14px; margin-bottom: 20px;">Set the exact date and time for the countdowns on the Free Money page.</p>
             <form action="/admin/promo-settings" method="POST">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                 <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 20px;">
                     <div class="form-group" style="flex: 1; min-width: 250px;">
                         <label>Next Ticket Timer End Date/Time</label>
@@ -261,6 +247,10 @@ details.tidy-panel[open] > summary::after {
                         <label>Payment Address (BTC or other)</label>
                         <input type="text" name="partnership_address" class="form-control" value="<%= typeof siteSettings !== 'undefined' && siteSettings.partnership_address ? siteSettings.partnership_address : '' %>" required>
                     </div>
+                    <div class="form-group" style="flex: 1; min-width: 150px;">
+                        <label>Global Bonus Cashback (%)</label>
+                        <input type="number" step="0.1" name="bonus_percentage" class="form-control" value="<%= typeof siteSettings !== 'undefined' && siteSettings.bonus_percentage ? siteSettings.bonus_percentage : '10' %>" required>
+                    </div>
                 </div>
                 <button type="submit" class="btn" style="background: #3b82f6; color: white; border: none; padding: 10px 20px; font-weight: bold; border-radius: 2px; cursor: pointer;">Save Settings</button>
             </form>
@@ -271,7 +261,7 @@ details.tidy-panel[open] > summary::after {
     <details class="tidy-panel" open>
         <summary>Bulk AI Review Importer</summary>
         <div class="tidy-content">
-            <p style="font-size: 13px; color: #666; margin-bottom: 20px;">Use an external AI to extract reviews from old screenshots. Tell it to output this exact JSON format:<br><code>[{"username":"Buyer1", "badge":"Gold Buyer", "rating":5, "comment":"Great!", "date":"2023-10-01 14:00:00"}]</code><br>Paste that exact array below. You will map each review to a specific product on the next screen.</p>
+            <p style="font-size: 13px; color: #666; margin-bottom: 20px;">Use an external AI to extract reviews from old screenshots. Tell it to output this exact JSON format:<br><code>[{"username":"Buyer1", "badge":"Gold Buyer", "rating":5, "comment":"Great!", "date":"2023-10-01 14:00:00", "hasMedia": true}]</code><br>Paste that exact array below. You will map each review to a specific product and optionally upload the extracted media on the next screen.</p>
             <form action="/admin/reviews/bulk-import-preview" method="POST">
                 <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                 <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 15px;">
@@ -368,7 +358,7 @@ details.tidy-panel[open] > summary::after {
         <summary>★ Add Simulated Review for Vendor</summary>
         <div class="tidy-content">
             <p style="font-size: 13px; color: #666; margin-bottom: 20px;">Use this tool to inject custom reviews for any vendor.</p>
-            <form action="/admin/simulate-review" method="POST">
+            <form action="/admin/simulate-review" method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                 
                 <div style="display: flex; gap: 15px; margin-bottom: 15px;">
@@ -406,9 +396,14 @@ details.tidy-panel[open] > summary::after {
                     </div>
                 </div>
 
-                <div class="form-group">
+                <div class="form-group" style="margin-bottom: 15px;">
                     <label>Review Comment</label>
                     <textarea name="comment" class="form-control" rows="3" placeholder="Write the fake review here..." required></textarea>
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label>Attach Media (Image/Video) - Optional</label>
+                    <input type="file" name="review_media" class="form-control" accept="image/*,video/*">
                 </div>
                 
                 <button type="submit" class="btn" style="background: #d97706; color: white;">Inject Review</button>

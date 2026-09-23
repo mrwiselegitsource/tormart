@@ -3,7 +3,7 @@
     <h2 style="margin-bottom: 10px;">Map Reviews to Products</h2>
     <p style="color: #64748b; margin-bottom: 30px;">Select the target product for each imported review from the dropdowns below.</p>
     
-    <form action="/admin/reviews/bulk-import-finalize" method="POST">
+    <form action="/admin/reviews/bulk-import-finalize" method="POST" enctype="multipart/form-data">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <input type="hidden" name="vendor_id" value="<%= vendor_id %>">
         
@@ -24,14 +24,22 @@
                         <input type="hidden" name="dates[]" value="<%= review.date || '' %>">
                     </div>
                     
-                    <div style="width: 350px;">
-                        <label style="font-weight: bold; font-size: 14px; display: block; margin-bottom: 8px;">Assign to Product:</label>
-                        <select name="product_ids[]" style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ccc; background: #f8fafc;">
-                            <option value="">-- General Vendor Review (No Product) --</option>
-                            <% products.forEach(product => { %>
-                                <option value="<%= product.id %>" <%= review.product_id == product.id ? 'selected' : '' %>><%= product.name %> (ID: #<%= product.id %>)</option>
-                            <% }) %>
-                        </select>
+                    <div style="width: 350px; display: flex; flex-direction: column; gap: 15px;">
+                        <div>
+                            <label style="font-weight: bold; font-size: 14px; display: block; margin-bottom: 8px;">Assign to Product:</label>
+                            <select name="product_ids[]" style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ccc; background: #f8fafc;">
+                                <option value="">-- General Vendor Review (No Product) --</option>
+                                <% products.forEach(product => { %>
+                                    <option value="<%= product.id %>" <%= review.product_id == product.id ? 'selected' : '' %>><%= product.name %> (ID: #<%= product.id %>)</option>
+                                <% }) %>
+                            </select>
+                        </div>
+                        <% if (review.hasMedia) { %>
+                            <div style="background: #f1f5f9; padding: 10px; border-radius: 4px; border: 1px dashed #cbd5e1;">
+                                <label style="font-size: 13px; font-weight: bold; display: block; margin-bottom: 5px; color: #3b82f6;">📷 Upload Extracted Media</label>
+                                <input type="file" name="review_media_<%= index %>" accept="image/*,video/*" style="font-size: 12px; width: 100%;">
+                            </div>
+                        <% } %>
                     </div>
                 </div>
             <% }) %>

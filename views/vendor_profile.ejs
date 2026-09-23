@@ -170,7 +170,7 @@
                     <div style="position: relative; width: 100%; height: 260px; background: #000; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
                         <% if (proof.type === 'video') { %>
                             <video src="<%= proof.file_url %>" style="width: 100%; height: 100%; object-fit: cover;" muted playsinline></video>
-                            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #ffcc00; width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #111; font-size: 24px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3);" onclick="openVideoModal('<%= proof.file_url %>')">▶</div>
+                            <a href="<%= proof.file_url %>" target="_blank" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #ffcc00; width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #111; font-size: 24px; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.3); text-decoration: none;">▶</a>
                         <% } else { %>
                             <img src="<%= proof.file_url %>" style="width: 100%; height: 100%; object-fit: cover; cursor: pointer;">
                         <% } %>
@@ -213,15 +213,26 @@
 
     <!-- Photos from Customers -->
     <% 
-        const reviewPhotos = reviews.filter(r => r.photo_url).map(r => r.photo_url);
+        const mediaReviews = reviews.filter(r => r.photo_url);
     %>
     <div style="margin-bottom: 40px;">
         <h3 style="color: #111; font-size: 22px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 20px;">Photos from Customers</h3>
-        <% if (reviewPhotos.length > 0) { %>
+        <% if (mediaReviews.length > 0) { %>
             <div style="display: flex; gap: 15px; overflow-x: auto; padding-bottom: 10px;">
-                <% reviewPhotos.forEach(url => { %>
-                    <div style="width: 120px; height: 120px; flex-shrink: 0; border-radius: 6px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                        <img src="<%= url %>" style="width: 100%; height: 100%; object-fit: cover;">
+                <% mediaReviews.forEach(r => { 
+                    const isVideo = r.photo_url.match(/\.(mp4|webm|ogg)$/i);
+                %>
+                    <div style="width: 120px; height: 120px; flex-shrink: 0; border-radius: 6px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); background: #000;">
+                        <% if (isVideo) { %>
+                            <a href="<%= r.photo_url %>" target="_blank" style="display: block; width: 100%; height: 100%; position: relative;">
+                                <video src="<%= r.photo_url %>" style="width: 100%; height: 100%; object-fit: cover;" muted playsinline></video>
+                                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #ffcc00; width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #111; font-size: 16px; text-decoration: none; box-shadow: 0 2px 5px rgba(0,0,0,0.3);">▶</div>
+                            </a>
+                        <% } else { %>
+                            <a href="<%= r.photo_url %>" target="_blank" style="display: block; width: 100%; height: 100%;">
+                                <img src="<%= r.photo_url %>" style="width: 100%; height: 100%; object-fit: cover;">
+                            </a>
+                        <% } %>
                     </div>
                 <% }) %>
             </div>
@@ -231,7 +242,7 @@
     </div>
 
     <!-- Vendor Reviews -->
-    <div>
+    <div style="background: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
         <h3 style="color: #111; font-size: 22px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 20px;">Vendor Reviews (<%= reviews.length %>)</h3>
         
         <% if (reviews.length === 0) { %>
@@ -241,26 +252,31 @@
         <% } else { %>
             <div style="display: flex; flex-direction: column; gap: 20px;">
                 <% reviews.forEach(review => { %>
-                    <div style="padding: 20px 0; border-bottom: 1px solid #eee;">
-                        <div style="display: flex; gap: 15px; align-items: flex-start;">
+                    <div style="padding: 30px 0; border-bottom: 1px solid #cbd5e1;">
+                        <!-- Header Row -->
+                        <div style="display: flex; gap: 20px; align-items: center; margin-bottom: 25px;">
                             <!-- Determine Role Attributes -->
                             <% 
-                                let badgeColor = '#4A90E2'; // Default blue for Regular
+                                let badgeColor = '#64748b'; // Default badge color
                                 let avatarImg = '/images/regular-avatar.png';
-                                let avatarBg = '#bde0fe'; // Light blue background for Regular
+                                let avatarBg = '#e2e8f0'; // Default background
                                 let roleName = review.buyer_role || 'Regular Buyer';
                                 
                                 if (roleName.includes('Gold')) {
-                                    badgeColor = '#F5A623'; // Gold badge
-                                    avatarBg = '#fce4c8'; // Light gold background
+                                    badgeColor = '#f59e0b'; // Gold badge
+                                    avatarBg = '#fef3c7'; // Light gold
                                     avatarImg = '/images/crown.png';
                                 } else if (roleName.includes('Platinum')) {
-                                    badgeColor = '#00BCD4'; // Diamond color badge
-                                    avatarBg = '#e0f7fa'; // Light diamond background
+                                    badgeColor = '#06b6d4'; // Diamond cyan
+                                    avatarBg = '#cffafe'; 
                                     avatarImg = '/images/platinum.png';
                                 } else if (roleName.includes('Premium')) {
                                     badgeColor = '#d97706';
                                     avatarBg = '#fef3c7';
+                                } else if (roleName.includes('Regular')) {
+                                    badgeColor = '#758bda'; // More vibrant blue-purple matching the second image
+                                    avatarBg = '#bde0fe'; 
+                                    avatarImg = '/images/regular-avatar.png';
                                 } else if (roleName.includes('Admin')) {
                                     badgeColor = '#dc2626';
                                     avatarBg = '#fee2e2';
@@ -268,41 +284,70 @@
                             %>
 
                             <!-- Avatar -->
-                            <div style="width: 45px; height: 45px; border-radius: 50%; background: <%= avatarBg %>; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0;">
+                            <div style="width: 60px; height: 60px; border-radius: 50%; background: <%= avatarBg %>; display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
                                 <img src="<%= avatarImg %>" onerror="this.src='/images/default-avatar.png'" style="width: 100%; height: 100%; object-fit: cover;">
                             </div>
                             
-                            <!-- Review Content -->
+                            <!-- Info -->
                             <div style="flex-grow: 1;">
-                                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 2px;">
-                                    <strong style="color: <%= badgeColor %>; font-size: 15px;"><%= review.buyer_name %></strong>
-                                    <span style="background: <%= badgeColor %>; color: white; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: bold;"><%= roleName %></span>
-                                    <span style="display: inline-flex; gap: 1px;">
+                                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 6px;">
+                                    <strong style="color: #2563eb; font-size: 20px; font-weight: 700;"><%= review.buyer_name %></strong>
+                                    <span style="background: <%= badgeColor %>; color: white; padding: 4px 10px; border-radius: 4px; font-size: 13px; font-weight: 600;"><%= roleName %></span>
+                                    <span style="display: inline-flex; gap: 2px;">
                                         <% for(let i=0; i<review.rating; i++) { %>
-                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="#F5A623"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="#f59e0b"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
                                         <% } %>
                                         <% for(let i=review.rating; i<5; i++) { %>
-                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="#e2e8f0"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="#e2e8f0"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
                                         <% } %>
                                     </span>
                                 </div>
-                                <div style="font-size: 11px; color: #666; margin-bottom: 12px;">
-                                    Product: <a href="/<%= slugify(vendor.vendor_name || vendor.username) %>/<%= slugify(products.find(p => p.id === review.product_id)?.name || '') %>" style="color: #4A90E2; text-decoration: none;"><%= products.find(p => p.id === review.product_id)?.name || 'Unknown Product' %></a>
+                                <div style="font-size: 14px; color: #111111; font-weight: 600; margin-bottom: 20px;">
+                                    Product: <a href="/<%= slugify(vendor.vendor_name || vendor.username) %>/<%= slugify(products.find(p => p.id === review.product_id)?.name || '') %>" style="color: #3ea6ff; font-weight: 500; text-decoration: none;"><%= products.find(p => p.id === review.product_id)?.name || 'Unknown Product' %></a>
                                 </div>
                                 
-                                <p style="margin: 0 0 10px 0; color: #111; font-size: 13px; line-height: 1.4;">
+                                <p style="margin: 0 0 20px 0; color: #000000; font-size: 16px; line-height: 1.6; font-weight: 500;">
                                     <%= review.comment %>
                                 </p>
                                 
-                                <% if (review.photo_url) { %>
-                                    <div style="margin-bottom: 10px; max-width: 200px; border-radius: 2px; overflow: hidden;">
-                                        <img src="<%= review.photo_url %>" style="width: 100%; height: auto; object-fit: contain;">
+                                <% if (review.photo_url) { 
+                                    const isVideo = review.photo_url.match(/\.(mp4|webm|ogg)$/i);
+                                %>
+                                    <div style="margin-bottom: 20px; max-width: 300px; border-radius: 6px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                                        <% if (isVideo) { %>
+                                            <video src="<%= review.photo_url %>" style="width: 100%; height: auto; object-fit: contain;" controls></video>
+                                        <% } else { %>
+                                            <img src="<%= review.photo_url %>" style="width: 100%; height: auto; object-fit: contain;">
+                                        <% } %>
                                     </div>
                                 <% } %>
 
-                                <div style="font-size: 11px; color: #999;">
+                                <div style="font-size: 14px; color: #94a3b8; font-weight: 500; margin-bottom: 15px;">
                                     <%= new Date(review.display_date || review.created_at).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'}) %>
                                 </div>
+                                
+                                <% if (review.vendor_reply) { %>
+                                    <div style="margin-top: 20px; display: flex; align-items: stretch; margin-bottom: 20px;">
+                                        <div style="display: flex; align-items: flex-start; padding-top: 15px; color: #94a3b8;">
+                                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="margin-right: -2px; position: relative; z-index: 1;">
+                                                <!-- Big bold upward arrow with a large triangle head -->
+                                                <path d="M12 2L3 11h5v11h8V11h5L12 2z"/>
+                                            </svg>
+                                        </div>
+                                        <div style="background: #f8f9fa; border-left: 3px solid #94a3b8; padding: 15px 20px; border-radius: 0 6px 6px 0; flex-grow: 1;">
+                                            <strong style="color: #3ea6ff; font-size: 15px; font-weight: 700; display: block; margin-bottom: 8px;"><%= vendor.vendor_name || vendor.username %></strong>
+                                            <p style="margin: 0; color: #334155; font-size: 15px; line-height: 1.6;"><%= review.vendor_reply %></p>
+                                        </div>
+                                    </div>
+                                <% } else if (typeof user !== 'undefined' && user && user.id === vendor.id) { %>
+                                    <form action="/vendor/review/reply/<%= review.id %>" method="POST" style="margin-top: 15px; margin-bottom: 15px; background: #f8fafc; padding: 10px; border-radius: 4px;">
+                                        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                                        <div style="display: flex; gap: 10px;">
+                                            <input type="text" name="vendor_reply" placeholder="Reply to this review..." required style="flex-grow: 1; padding: 8px; border: 1px solid #ccc; border-radius: 2px; font-size: 12px;">
+                                            <button type="submit" style="background: #007bff; color: white; border: none; padding: 8px 15px; border-radius: 2px; font-weight: bold; cursor: pointer; font-size: 12px;">Reply</button>
+                                        </div>
+                                    </form>
+                                <% } %>
                             </div>
                         </div>
                     </div>
@@ -314,6 +359,7 @@
                 <button style="background: #007bff; color: white; border: none; padding: 10px 25px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 13px;">Load more</button>
             </div>
             
+            <% if (typeof siteSettings !== 'undefined' && siteSettings.reviews_locked !== 'true') { %>
             <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 40px;">
                 <div style="width: 100%; display: flex; justify-content: flex-start; margin-bottom: 5px;">
                     <strong style="font-size: 14px; color: #111;">Review this vendor</strong>
@@ -321,42 +367,12 @@
                 <div style="font-size: 12px; color: #666;">Share your thoughts with other customers</div>
                 <button style="background: white; color: #111; border: 1px solid #ccc; padding: 8px 20px; border-radius: 4px; font-size: 12px; font-weight: bold; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#f8f9fa'" onmouseout="this.style.background='white'">Write a customer review</button>
             </div>
+            <% } %>
         <% } %>
     </div>
 </div>
 
-<!-- Video Modal -->
-<div id="videoModal" class="video-modal-overlay" onclick="closeVideoModal(event)">
-    <div class="video-modal-content" onclick="event.stopPropagation()">
-        <button class="video-close-btn" onclick="closeVideoModal()">×</button>
-        <video id="promoVideo" width="100%" controls controlsList="nodownload">
-            Your browser does not support the video tag.
-        </video>
-    </div>
-</div>
 
-<script>
-    function openVideoModal(videoUrl) {
-        const modal = document.getElementById('videoModal');
-        const video = document.getElementById('promoVideo');
-        video.src = videoUrl;
-        modal.style.display = 'flex';
-        video.play();
-    }
-
-    function closeVideoModal(e) {
-        // Only close if clicking the close button or the overlay background
-        if (e && e.target !== e.currentTarget && e.target.className !== 'video-close-btn') {
-            return;
-        }
-        const modal = document.getElementById('videoModal');
-        const video = document.getElementById('promoVideo');
-        modal.style.display = 'none';
-        video.pause();
-        video.currentTime = 0;
-        video.src = '';
-    }
-</script>
 
 <%- include('_advert_banner') %>
 <%- include('footer') %>

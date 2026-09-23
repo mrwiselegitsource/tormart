@@ -14,11 +14,12 @@
         
         <nav class="top-nav">
             <% if (user) { %>
-                <a href="/dashboard">Login / Register</a>
+                <a href="/profile">My Profile</a>
                 <a href="/free-money">Free Money</a>
-                <a href="/" style="color: var(--primary-yellow);">Proofs / Reviews</a>
+                <a href="/reviews" style="color: var(--primary-yellow);">Proofs / Reviews</a>
                 <a href="/forum">Forum</a>
                 <a href="/faq">Wiki</a>
+                <a href="/dashboard">Order History</a>
                 <a href="/escrow">Escrow</a>
                 <a href="/support">Support</a>
                 <a href="/messages">Messages</a>
@@ -32,7 +33,7 @@
             <% } else { %>
                 <a href="/login">Login / Register</a>
                 <a href="/free-money">Free Money</a>
-                <a href="/" style="color: var(--primary-yellow);">Proofs / Reviews</a>
+                <a href="/reviews" style="color: var(--primary-yellow);">Proofs / Reviews</a>
                 <a href="/forum">Forum</a>
                 <a href="/faq">Wiki</a>
                 <a href="/escrow">Escrow</a>

@@ -171,6 +171,9 @@ function initializeSchema() {
         db.run(`ALTER TABLE users ADD COLUMN application_contact TEXT`, (err) => {});
         db.run(`ALTER TABLE users ADD COLUMN application_date DATETIME`, (err) => {});
 
+        // Add bonus balance for profile dashboard
+        db.run(`ALTER TABLE users ADD COLUMN bonus_balance_usd REAL DEFAULT 0.00`, (err) => {});
+
         db.run(`CREATE TABLE IF NOT EXISTS referral_links (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER,
@@ -215,6 +218,10 @@ function initializeSchema() {
         // Ensure columns exist if db was already created
         db.run(`ALTER TABLE orders ADD COLUMN invoice_id TEXT`, (err) => { /* ignore if exists */ });
         db.run(`ALTER TABLE orders ADD COLUMN download_key TEXT`, (err) => { /* ignore if exists */ });
+        db.run(`ALTER TABLE orders ADD COLUMN tracking_id TEXT`, (err) => { /* ignore if exists */ });
+        db.run(`ALTER TABLE orders ADD COLUMN tracking_status TEXT DEFAULT 'Preparing'`, (err) => { /* ignore if exists */ });
+        db.run(`ALTER TABLE orders ADD COLUMN item_location TEXT`, (err) => { /* ignore if exists */ });
+        db.run(`ALTER TABLE products ADD COLUMN delivery_type TEXT DEFAULT 'Digital'`, (err) => { /* ignore if exists */ });
         db.run(`CREATE TABLE IF NOT EXISTS messages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             conversation_id TEXT,
@@ -254,6 +261,7 @@ function initializeSchema() {
         db.run("ALTER TABLE reviews ADD COLUMN custom_date DATETIME", (err) => {});
 
         db.run("ALTER TABLE reviews ADD COLUMN photo_url TEXT", (err) => {});
+        db.run("ALTER TABLE reviews ADD COLUMN vendor_reply TEXT", (err) => {});
 
         db.run(`CREATE TABLE IF NOT EXISTS vendor_proofs (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -325,6 +333,7 @@ function initializeSchema() {
             if (!err) {
                 db.run(`INSERT OR IGNORE INTO site_settings (setting_key, setting_value) VALUES ('partnership_fee', '$150 in BTC')`);
                 db.run(`INSERT OR IGNORE INTO site_settings (setting_key, setting_value) VALUES ('partnership_address', 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh')`);
+                db.run(`INSERT OR IGNORE INTO site_settings (setting_key, setting_value) VALUES ('bonus_percentage', '10')`);
             }
         });
 
@@ -413,19 +422,25 @@ app.use((req, res, next) => {
     res.locals.csrfToken = req.session.csrfToken;
     res.locals.currentHost = (req.protocol || 'http') + '://' + req.get('host') + '/';
     
-    // Fetch active adverts and user purchase history
+    // Fetch active adverts, site settings, and user purchase history
     db.all("SELECT * FROM adverts WHERE is_active = 1", (err, adverts) => {
         res.locals.smart_adverts = adverts || [];
         
-        if (req.session.user) {
-            db.get("SELECT COUNT(*) AS count FROM orders WHERE user_id = ?", [req.session.user.id], (err, row) => {
-                res.locals.hasPurchased = row && row.count > 0;
+        db.all("SELECT * FROM site_settings", (err, sSettings) => {
+            const siteSettings = {};
+            if (sSettings) sSettings.forEach(s => siteSettings[s.setting_key] = s.setting_value);
+            res.locals.siteSettings = siteSettings;
+            
+            if (req.session.user) {
+                db.get("SELECT COUNT(*) AS count FROM orders WHERE user_id = ?", [req.session.user.id], (err, row) => {
+                    res.locals.hasPurchased = row && row.count > 0;
+                    next();
+                });
+            } else {
+                res.locals.hasPurchased = false;
                 next();
-            });
-        } else {
-            res.locals.hasPurchased = false;
-            next();
-        }
+            }
+        });
     });
 });
 
@@ -979,6 +994,68 @@ app.get('/logout', (req, res) => {
 });
 
 // Client Dashboard
+// Client Dashboard
+app.get('/profile', requireAuth, (req, res) => {
+    const userId = req.session.user.id;
+    
+    // Fetch user details for bonus
+    db.get("SELECT bonus_balance_usd FROM users WHERE id = ?", [userId], (err, userRow) => {
+        const bonusUsd = userRow ? userRow.bonus_balance_usd : 0.00;
+        const btcRate = 65000; // Mock rate
+        const bonusBtc = (bonusUsd / btcRate).toFixed(6);
+
+        // Fetch order counts
+        db.all("SELECT status, COUNT(*) as count FROM orders WHERE user_id = ? GROUP BY status", [userId], (err, rows) => {
+            const orderStats = { unpaid: 0, processing: 0, shipping: 0, waiting_review: 0, completed: 0 };
+            let totalPurchases = 0;
+            
+            if (rows) {
+                rows.forEach(r => {
+                    if (r.status === 'pending') orderStats.unpaid += r.count;
+                    else if (r.status === 'processing') orderStats.processing += r.count;
+                    else if (r.status === 'shipping') orderStats.shipping += r.count;
+                    else if (r.status === 'delivered') orderStats.waiting_review += r.count;
+                    else if (r.status === 'completed') {
+                        orderStats.completed += r.count;
+                        totalPurchases += r.count;
+                    }
+                });
+            }
+            
+            // Determine tier
+            let tier = 'Regular';
+            let avatar = '/images/regular-avatar.png';
+            if (totalPurchases >= 7) {
+                tier = 'Platinum';
+                avatar = '/images/platinum.png';
+            } else if (totalPurchases >= 4) {
+                tier = 'Gold';
+                avatar = '/images/crown.png';
+            }
+            
+            res.render('profile', { bonusUsd, bonusBtc, orderStats, tier, avatar, username: req.session.user.username });
+        });
+    });
+});
+
+app.post('/profile/change-password', requireAuth, (req, res) => {
+    const { old_password, new_password, confirm_password } = req.body;
+    if (new_password !== confirm_password) {
+        return res.redirect('/profile?error=Passwords do not match');
+    }
+    
+    db.get("SELECT password FROM users WHERE id = ?", [req.session.user.id], (err, user) => {
+        if (user && bcrypt.compareSync(old_password, user.password)) {
+            const hash = bcrypt.hashSync(new_password, 10);
+            db.run("UPDATE users SET password = ? WHERE id = ?", [hash, req.session.user.id], (err) => {
+                res.redirect('/profile?success=Password changed successfully');
+            });
+        } else {
+            res.redirect('/profile?error=Invalid old password');
+        }
+    });
+});
+
 app.get('/dashboard', requireAuth, (req, res) => {
     db.all(`
         SELECT orders.*, products.name, products.image, products.price 
@@ -997,9 +1074,9 @@ app.post('/order/complete/:id', requireAuth, reviewsUpload.single('review_photo'
     const userId = req.session.user.id;
     const photo_url = req.file ? '/images/reviews/' + req.file.filename : null;
     
-    // Get order details to find the vendor
+    // Get order details to find the vendor and price
     db.get(`
-        SELECT orders.id, products.vendor_id, products.id as product_id
+        SELECT orders.id, products.vendor_id, products.id as product_id, products.price
         FROM orders
         JOIN products ON orders.product_id = products.id
         WHERE orders.id = ? AND orders.user_id = ?
@@ -1009,6 +1086,16 @@ app.post('/order/complete/:id', requireAuth, reviewsUpload.single('review_photo'
                 // Grant VIP status to user when they complete their first order
                 db.run("UPDATE users SET is_vip = 1 WHERE id = ?", [userId]);
                 if (req.session.user) req.session.user.is_vip = 1;
+                
+                // Add Bonus Logic
+                db.get("SELECT setting_value FROM site_settings WHERE setting_key = 'bonus_percentage'", (err, setting) => {
+                    const bonusPercentage = setting ? parseFloat(setting.setting_value) : 10;
+                    const bonusAmount = order.price * (bonusPercentage / 100);
+                    if (bonusAmount > 0) {
+                        db.run("UPDATE users SET bonus_balance_usd = bonus_balance_usd + ? WHERE id = ?", [bonusAmount, userId]);
+                    }
+                });
+
                 db.run(
                     "INSERT INTO reviews (vendor_id, buyer_id, product_id, rating, comment, photo_url) VALUES (?, ?, ?, ?, ?, ?)",
                     [order.vendor_id, userId, order.product_id, rating, comment, photo_url],
@@ -1179,6 +1266,26 @@ app.post('/api/messages/send', requireAuth, function (req, res, next) {
             insertMessage();
         }
     });
+});
+app.get('/how-to-buy/:coin', (req, res) => {
+    const coinParam = req.params.coin.toLowerCase();
+    
+    const cryptoData = {
+        'bitcoin': { id: 'bitcoin', image: 'bitcoin.png', name: 'Bitcoin', ticker: 'BTC', walletName: 'Bitcoin Core', walletLink: 'https://bitcoin.org/en/choose-your-wallet' },
+        'litecoin': { id: 'litecoin', image: 'litecoin.png', name: 'Litecoin', ticker: 'LTC', walletName: 'Litecoin Core', walletLink: 'https://litecoin.org/' },
+        'ethereum': { id: 'ethereum', image: 'eth.png', name: 'Ethereum', ticker: 'ETH', walletName: 'MetaMask', walletLink: 'https://metamask.io/' },
+        'bitcoincash': { id: 'bitcoincash', image: 'bitcoincash.png', name: 'Bitcoin Cash', ticker: 'BCH', walletName: 'Electron Cash', walletLink: 'https://electroncash.org/' },
+        'dash': { id: 'dash', image: 'dash.png', name: 'Dash', ticker: 'DASH', walletName: 'Dash Core', walletLink: 'https://www.dash.org/downloads/' },
+        'monero': { id: 'monero', image: 'monero.png', name: 'Monero', ticker: 'XMR', walletName: 'Monero GUI Wallet', walletLink: 'https://www.getmonero.org/downloads/' }
+    };
+    
+    const cryptoInfo = cryptoData[coinParam];
+    
+    if (!cryptoInfo) {
+        return res.redirect('/');
+    }
+    
+    res.render('how_to_buy', { crypto: cryptoInfo });
 });
 
 app.get('/support', requireAuth, (req, res) => {
@@ -1432,7 +1539,7 @@ function requireVendor(req, res, next) {
 app.get('/vendor', requireVendor, (req, res) => {
     db.all('SELECT * FROM products WHERE vendor_id = ? ORDER BY id DESC', [req.session.user.id], (err, products) => {
         db.all(`
-            SELECT orders.*, products.name as product_name, users.username as customer_name 
+            SELECT orders.*, products.name as product_name, products.delivery_type, users.username as customer_name 
             FROM orders 
             JOIN products ON orders.product_id = products.id 
             JOIN users ON orders.user_id = users.id
@@ -1449,11 +1556,11 @@ app.get('/vendor', requireVendor, (req, res) => {
 });
 
 app.post('/vendor/products/add', requireVendor, imageUpload.single('product_image'), (req, res) => {
-    const { name, description, price, limit_amount, tier, category } = req.body;
+    const { name, description, price, limit_amount, tier, category, delivery_type } = req.body;
     const image = req.file ? '/images/' + req.file.filename : '/images/ai-asset.svg';
     db.run(
-        "INSERT INTO products (vendor_id, name, description, price, limit_amount, image, tier, category) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        [req.session.user.id, name, description, price, limit_amount, image, tier, category],
+        "INSERT INTO products (vendor_id, name, description, price, limit_amount, image, tier, category, delivery_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        [req.session.user.id, name, description, price, limit_amount, image, tier, category, delivery_type || 'Digital'],
         (err) => {
             res.redirect('/vendor');
         }
@@ -1570,21 +1677,39 @@ app.post('/vendor/profile/edit', requireVendor, imageUpload.fields([{ name: 'ven
     });
 });
 
-app.post('/vendor/simulate-review', requireVendor, (req, res) => {
+app.post('/vendor/simulate-review', requireVendor, upload.single('review_media'), (req, res) => {
     const { custom_buyer_name, custom_buyer_role, rating, product_id, custom_date, comment } = req.body;
     
     // We parse custom_date and add arbitrary time for DATETIME column
     const dateStr = custom_date.includes('T') ? custom_date : custom_date + ' 12:00:00';
     const prodId = product_id ? parseInt(product_id) : null;
+    const photoUrl = req.file ? `/uploads/${req.file.filename}` : null;
     
     db.run(
-        "INSERT INTO reviews (vendor_id, product_id, rating, comment, custom_buyer_name, custom_buyer_role, custom_date) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        [req.session.user.id, prodId, rating, comment, custom_buyer_name, custom_buyer_role, dateStr],
+        "INSERT INTO reviews (vendor_id, product_id, rating, comment, custom_buyer_name, custom_buyer_role, custom_date, photo_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        [req.session.user.id, prodId, rating, comment, custom_buyer_name, custom_buyer_role, dateStr, photoUrl],
         () => {
             res.redirect('/vendor');
         }
     );
 });
+
+app.post('/vendor/review/reply/:id', requireVendor, (req, res) => {
+    const reviewId = req.params.id;
+    const { vendor_reply } = req.body;
+    
+    // First, ensure the review belongs to this vendor
+    db.get("SELECT vendor_id FROM reviews WHERE id = ?", [reviewId], (err, review) => {
+        if (err || !review) return res.redirect('/vendor');
+        if (review.vendor_id !== req.session.user.id) return res.redirect('/vendor');
+        
+        db.run("UPDATE reviews SET vendor_reply = ? WHERE id = ?", [vendor_reply, reviewId], () => {
+            // Redirect back to profile page so vendor can see their reply
+            res.redirect(req.get('referer') || '/dashboard');
+        });
+    });
+});
+
 app.post('/vendor/order/:id/fulfill', requireVendor, (req, res) => {
     const { download_key } = req.body;
     const orderId = req.params.id;
@@ -1609,14 +1734,40 @@ app.post('/vendor/order/:id/fulfill', requireVendor, (req, res) => {
     });
 });
 
+// Vendor: Update Physical Order Tracking
+app.post('/vendor/order/:id/tracking', requireVendor, (req, res) => {
+    const { tracking_id, tracking_status, item_location } = req.body;
+    const orderId = req.params.id;
+    const crypto = require('crypto');
+    const finalTrackingId = tracking_id || ('TRK-' + crypto.randomBytes(4).toString('hex').toUpperCase());
+    
+    db.get(`
+        SELECT orders.id FROM orders 
+        JOIN products ON orders.product_id = products.id 
+        WHERE orders.id = ? AND products.vendor_id = ?
+    `, [orderId, req.session.user.id], (err, order) => {
+        if (order) {
+            db.run(
+                "UPDATE orders SET tracking_id = ?, tracking_status = ?, item_location = ?, status = 'shipped' WHERE id = ?",
+                [finalTrackingId, tracking_status || 'In Transit', item_location || '', orderId],
+                (err) => {
+                    res.redirect('/vendor');
+                }
+            );
+        } else {
+            res.redirect('/vendor');
+        }
+    });
+});
+
 app.post('/vendor/products/edit/:id', requireVendor, imageUpload.single('product_image'), (req, res) => {
-    const { name, description, price, limit_amount, tier, category } = req.body;
+    const { name, description, price, limit_amount, tier, category, delivery_type } = req.body;
     
     db.get("SELECT id, image FROM products WHERE id = ? AND vendor_id = ?", [req.params.id, req.session.user.id], (err, product) => {
         if (!product) return res.redirect('/vendor');
         
-        const updateParams = [name, description, price, limit_amount, tier, category];
-        let query = "UPDATE products SET name = ?, description = ?, price = ?, limit_amount = ?, tier = ?, category = ?";
+        const updateParams = [name, description, price, limit_amount, tier, category, delivery_type || 'Digital'];
+        let query = "UPDATE products SET name = ?, description = ?, price = ?, limit_amount = ?, tier = ?, category = ?, delivery_type = ?";
         
         if (req.file) {
             query += ", image = ?";
@@ -1727,7 +1878,7 @@ app.post('/admin/order/:id/mark_paid', requireAdmin, (req, res) => {
 });
 
 app.post('/admin/site-settings', requireAdmin, (req, res) => {
-    const { partnership_fee, partnership_address } = req.body;
+    const { partnership_fee, partnership_address, bonus_percentage } = req.body;
     db.serialize(() => {
         const stmt = db.prepare(`
             INSERT INTO site_settings (setting_key, setting_value) 
@@ -1735,10 +1886,22 @@ app.post('/admin/site-settings', requireAdmin, (req, res) => {
             ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value
         `);
         stmt.run('partnership_fee', partnership_fee);
+        if (bonus_percentage) stmt.run('bonus_percentage', bonus_percentage);
         stmt.run('partnership_address', partnership_address, (err) => {
             res.redirect('/admin');
         });
         stmt.finalize();
+    });
+});
+
+app.post('/admin/toggle-reviews-lock', requireAdmin, (req, res) => {
+    const isLocked = req.body.reviews_locked === 'true' ? 'true' : 'false';
+    db.run(`
+        INSERT INTO site_settings (setting_key, setting_value) 
+        VALUES ('reviews_locked', ?) 
+        ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value
+    `, [isLocked], (err) => {
+        res.redirect('/admin');
     });
 });
 
@@ -1803,15 +1966,16 @@ app.post('/admin/vendors/create', requireAdmin, (req, res) => {
     );
 });
 
-app.post('/admin/simulate-review', requireAdmin, (req, res) => {
+app.post('/admin/simulate-review', requireAdmin, upload.single('review_media'), (req, res) => {
     const { vendor_id, custom_buyer_name, custom_buyer_role, rating, custom_date, comment, product_id } = req.body;
     
     const dateStr = custom_date.includes('T') ? custom_date : custom_date + ' 12:00:00';
     const prodId = product_id ? parseInt(product_id) : null;
+    const photoUrl = req.file ? `/uploads/${req.file.filename}` : null;
     
     db.run(
-        "INSERT INTO reviews (vendor_id, product_id, rating, comment, custom_buyer_name, custom_buyer_role, custom_date) VALUES (?, ?, ?, ?, ?, ?, ?)",
-        [vendor_id, prodId, rating, comment, custom_buyer_name, custom_buyer_role, dateStr],
+        "INSERT INTO reviews (vendor_id, product_id, rating, comment, custom_buyer_name, custom_buyer_role, custom_date, photo_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        [vendor_id, prodId, rating, comment, custom_buyer_name, custom_buyer_role, dateStr, photoUrl],
         () => {
             res.redirect('/admin');
         }
@@ -1841,7 +2005,7 @@ app.post('/admin/reviews/bulk-import-preview', requireAdmin, (req, res) => {
     }
 });
 
-app.post('/admin/reviews/bulk-import-finalize', requireAdmin, (req, res) => {
+app.post('/admin/reviews/bulk-import-finalize', requireAdmin, upload.any(), (req, res) => {
     const { vendor_id, product_ids, ratings, comments, usernames, badges, dates } = req.body;
     
     if (!product_ids) return res.redirect('/admin');
@@ -1856,7 +2020,7 @@ app.post('/admin/reviews/bulk-import-finalize', requireAdmin, (req, res) => {
     const badgesArray = arr(badges);
     const datesArray = arr(dates);
     
-    const stmt = db.prepare("INSERT INTO reviews (vendor_id, product_id, rating, comment, custom_buyer_name, custom_buyer_role, custom_date) VALUES (?, ?, ?, ?, ?, ?, ?)");
+    const stmt = db.prepare("INSERT INTO reviews (vendor_id, product_id, rating, comment, custom_buyer_name, custom_buyer_role, custom_date, photo_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
     
     db.serialize(() => {
         for (let i = 0; i < productIdsArray.length; i++) {
@@ -1865,6 +2029,11 @@ app.post('/admin/reviews/bulk-import-finalize', requireAdmin, (req, res) => {
                 dateStr += ' 12:00:00';
             }
             
+            // Find file uploaded for this specific review index
+            const expectedFieldName = `review_media_${i}`;
+            const file = req.files && req.files.find(f => f.fieldname === expectedFieldName);
+            const photoUrl = file ? `/uploads/${file.filename}` : null;
+            
             stmt.run(
                 vendor_id,
                 productIdsArray[i] ? parseInt(productIdsArray[i]) : null,
@@ -1872,7 +2041,8 @@ app.post('/admin/reviews/bulk-import-finalize', requireAdmin, (req, res) => {
                 commentsArray[i] || "",
                 usernamesArray[i] || "Anonymous",
                 badgesArray[i] || "Buyer",
-                dateStr
+                dateStr,
+                photoUrl
             );
         }
         stmt.finalize(() => {
@@ -1980,6 +2150,63 @@ app.post('/admin/category-banner', requireAdmin, (req, res) => {
             res.redirect('/admin?bannerSaved=true');
         }
     );
+});
+
+// Track Order Page
+app.get('/track-order', (req, res) => {
+    res.render('track_order', { order: null, error: null });
+});
+
+app.post('/track-order', (req, res) => {
+    const { tracking_id } = req.body;
+    if (!tracking_id || !tracking_id.trim()) {
+        return res.render('track_order', { order: null, error: 'Please enter a tracking ID.' });
+    }
+    db.get(`
+        SELECT orders.*, products.name as product_name, products.delivery_type,
+               users.username as buyer_name,
+               vendor_users.username as vendor_name, vendor_users.vendor_name as vendor_display_name
+        FROM orders
+        JOIN products ON orders.product_id = products.id
+        JOIN users ON orders.user_id = users.id
+        JOIN users AS vendor_users ON products.vendor_id = vendor_users.id
+        WHERE orders.tracking_id = ?
+    `, [tracking_id.trim()], (err, order) => {
+        if (err || !order) {
+            return res.render('track_order', { order: null, error: 'Order not found. Please check your tracking ID and try again.' });
+        }
+        // Only the buyer or vendor can see it
+        const userId = req.session.user ? req.session.user.id : null;
+        const isAllowed = userId === order.user_id || (req.session.user && req.session.user.is_vendor);
+        if (!isAllowed) {
+            return res.render('track_order', { order: null, error: 'Order not found. Please check your tracking ID and try again.' });
+        }
+        res.render('track_order', { order, error: null });
+    });
+});
+
+// Global Reviews Route
+app.get('/reviews', (req, res) => {
+    db.all(`
+        SELECT reviews.*,
+               COALESCE(reviews.custom_buyer_name, buyer.username) as buyer_name,
+               COALESCE(reviews.custom_buyer_role, 'Verified Buyer') as buyer_role,
+               COALESCE(reviews.custom_date, reviews.created_at) as display_date,
+               vendor.vendor_name,
+               vendor.username as vendor_username,
+               products.name as product_name
+        FROM reviews
+        LEFT JOIN users as buyer ON reviews.buyer_id = buyer.id
+        LEFT JOIN users as vendor ON reviews.vendor_id = vendor.id
+        LEFT JOIN products ON reviews.product_id = products.id
+        ORDER BY display_date DESC
+    `, [], (err, reviews) => {
+        if (err) {
+            console.error(err);
+            return res.status(500).send("Error fetching reviews");
+        }
+        res.render('reviews', { reviews: reviews || [] });
+    });
 });
 
 // Dynamic Slug Routes (Must be at the very bottom)

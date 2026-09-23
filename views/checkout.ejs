@@ -76,37 +76,37 @@
                 
                 <label style="display: flex; align-items: center; padding: 15px; border-bottom: 1px solid #e2e8f0; cursor: pointer; background: #fff;">
                     <div style="width: 30px; height: 30px; border-radius: 50%; background: #f7931a; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 10px;">₿</div>
-                    <span style="font-size: 12px; color: #333; flex-grow: 1;">Bitcoin | <strong><span class="crypto-amt" data-rate="<%= rates.bitcoin %>"><%= (total / rates.bitcoin).toFixed(6) %></span> BTC</strong></span>
+                    <span style="font-size: 12px; color: #333; flex-grow: 1;">Bitcoin <a href="/how-to-buy/bitcoin" target="_blank" style="color: #3b82f6; font-size: 11px; margin-left: 5px;">(How to buy)</a> | <strong><span class="crypto-amt" data-rate="<%= rates.bitcoin %>"><%= (total / rates.bitcoin).toFixed(6) %></span> BTC</strong></span>
                     <input type="radio" name="payment_method" value="bitcoin" required checked style="width: 18px; height: 18px; accent-color: #111;">
                 </label>
 
                 <label style="display: flex; align-items: center; padding: 15px; border-bottom: 1px solid #e2e8f0; cursor: pointer; background: #fff;">
                     <div style="width: 30px; height: 30px; border-radius: 50%; background: #bfbbbb; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 10px;">Ł</div>
-                    <span style="font-size: 12px; color: #333; flex-grow: 1;">Litecoin | <strong><span class="crypto-amt" data-rate="<%= rates.litecoin %>"><%= (total / rates.litecoin).toFixed(6) %></span> LTC</strong></span>
+                    <span style="font-size: 12px; color: #333; flex-grow: 1;">Litecoin <a href="/how-to-buy/litecoin" target="_blank" style="color: #3b82f6; font-size: 11px; margin-left: 5px;">(How to buy)</a> | <strong><span class="crypto-amt" data-rate="<%= rates.litecoin %>"><%= (total / rates.litecoin).toFixed(6) %></span> LTC</strong></span>
                     <input type="radio" name="payment_method" value="litecoin" required style="width: 18px; height: 18px; accent-color: #111;">
                 </label>
 
                 <label style="display: flex; align-items: center; padding: 15px; border-bottom: 1px solid #e2e8f0; cursor: pointer; background: #fff;">
                     <div style="width: 30px; height: 30px; border-radius: 50%; background: #627eea; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 10px;">⟠</div>
-                    <span style="font-size: 12px; color: #333; flex-grow: 1;">Ethereum | <strong><span class="crypto-amt" data-rate="<%= rates.ethereum %>"><%= (total / rates.ethereum).toFixed(6) %></span> ETH</strong></span>
+                    <span style="font-size: 12px; color: #333; flex-grow: 1;">Ethereum <a href="/how-to-buy/ethereum" target="_blank" style="color: #3b82f6; font-size: 11px; margin-left: 5px;">(How to buy)</a> | <strong><span class="crypto-amt" data-rate="<%= rates.ethereum %>"><%= (total / rates.ethereum).toFixed(6) %></span> ETH</strong></span>
                     <input type="radio" name="payment_method" value="ethereum" required style="width: 18px; height: 18px; accent-color: #111;">
                 </label>
                 
                 <label style="display: flex; align-items: center; padding: 15px; border-bottom: 1px solid #e2e8f0; cursor: pointer; background: #fff;">
                     <div style="width: 30px; height: 30px; border-radius: 50%; background: #0ac18e; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 10px;">B</div>
-                    <span style="font-size: 12px; color: #333; flex-grow: 1;">Bitcoin Cash | <strong><span class="crypto-amt" data-rate="<%= rates.bitcoincash %>"><%= (total / rates.bitcoincash).toFixed(6) %></span> BCH</strong></span>
+                    <span style="font-size: 12px; color: #333; flex-grow: 1;">Bitcoin Cash <a href="/how-to-buy/bitcoincash" target="_blank" style="color: #3b82f6; font-size: 11px; margin-left: 5px;">(How to buy)</a> | <strong><span class="crypto-amt" data-rate="<%= rates.bitcoincash %>"><%= (total / rates.bitcoincash).toFixed(6) %></span> BCH</strong></span>
                     <input type="radio" name="payment_method" value="bitcoincash" required style="width: 18px; height: 18px; accent-color: #111;">
                 </label>
 
                 <label style="display: flex; align-items: center; padding: 15px; border-bottom: 1px solid #e2e8f0; cursor: pointer; background: #fff;">
                     <div style="width: 30px; height: 30px; border-radius: 50%; background: #008de4; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 10px;">D</div>
-                    <span style="font-size: 12px; color: #333; flex-grow: 1;">Dash | <strong><span class="crypto-amt" data-rate="<%= rates.dash %>"><%= (total / rates.dash).toFixed(6) %></span> DASH</strong></span>
+                    <span style="font-size: 12px; color: #333; flex-grow: 1;">Dash <a href="/how-to-buy/dash" target="_blank" style="color: #3b82f6; font-size: 11px; margin-left: 5px;">(How to buy)</a> | <strong><span class="crypto-amt" data-rate="<%= rates.dash %>"><%= (total / rates.dash).toFixed(6) %></span> DASH</strong></span>
                     <input type="radio" name="payment_method" value="dash" required style="width: 18px; height: 18px; accent-color: #111;">
                 </label>
 
                 <label style="display: flex; align-items: center; padding: 15px; cursor: pointer; background: #fff;">
                     <div style="width: 30px; height: 30px; border-radius: 50%; background: #ff6600; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 10px;">M</div>
-                    <span style="font-size: 12px; color: #333; flex-grow: 1;">Monero | <strong><span class="crypto-amt" data-rate="<%= rates.monero %>"><%= (total / rates.monero).toFixed(6) %></span> XMR</strong></span>
+                    <span style="font-size: 12px; color: #333; flex-grow: 1;">Monero <a href="/how-to-buy/monero" target="_blank" style="color: #3b82f6; font-size: 11px; margin-left: 5px;">(How to buy)</a> | <strong><span class="crypto-amt" data-rate="<%= rates.monero %>"><%= (total / rates.monero).toFixed(6) %></span> XMR</strong></span>
                     <input type="radio" name="payment_method" value="monero" required style="width: 18px; height: 18px; accent-color: #111;">
                 </label>
 

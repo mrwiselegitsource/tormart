@@ -112,11 +112,12 @@
 <div style="background: url('/images/globe.png') no-repeat right center, linear-gradient(to right, #2c1044 0%, #66329c 60%, #8540c4 100%); background-size: 50%, auto; padding: 30px 0;">
     <div class="container" style="display: flex; flex-direction: column; gap: 12px; position: relative; z-index: 2;">
         <h3 style="color: white; margin: 0; font-size: 20px; font-weight: bold;">Tracking Order</h3>
-        <div class="tracking-bar">
-            <input type="text" placeholder="Your order number" style="flex: 1; padding: 12px 15px; border: none; border-radius: 4px; outline: none; font-size: 14px;">
-            <button style="background: var(--primary-yellow); color: black; font-weight: bold; border: none; padding: 0 25px; border-radius: 4px; cursor: pointer;">Check Order</button>
-        </div>
-        <p style="color: white; font-size: 11px; margin: 0; font-weight: bold;">Enter your order number (6+ digits) for Example: 556812</p>
+        <form action="/track-order" method="POST" class="tracking-bar" style="display:flex;">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            <input type="text" name="tracking_id" placeholder="Enter your Tracking ID (e.g. TRK-4A2F8E1B)" style="flex: 1; padding: 12px 15px; border: none; border-radius: 4px 0 0 4px; outline: none; font-size: 14px;">
+            <button type="submit" style="background: var(--primary-yellow); color: black; font-weight: bold; border: none; padding: 0 25px; border-radius: 0 4px 4px 0; cursor: pointer;">Check Order</button>
+        </form>
+        <p style="color: white; font-size: 11px; margin: 0; font-weight: bold;">Enter your Tracking ID provided by your vendor after payment.</p>
     </div>
 </div>
 
@@ -149,15 +150,7 @@
     </div>
 
     <!-- MID BANNERS -->
-    <div class="banner-row" style="margin-bottom: 50px; display: flex; gap: 20px;">
-        <% if (typeof smart_adverts !== 'undefined' && smart_adverts.length > 0) { %>
-            <% for(let i=0; i<2; i++) { const randomAdvert = smart_adverts[Math.floor(Math.random() * smart_adverts.length)]; %>
-                <a href="<%= randomAdvert.target_url %>" style="display: block; width: 50%;">
-                    <img src="<%= randomAdvert.image_url %>" alt="Advert" style="width: 100%; height: 160px; object-fit: cover; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
-                </a>
-            <% } %>
-        <% } %>
-    </div>
+    <%- include('_advert_banner', { advert_count: 2 }) %>
 
     <!-- POPULAR VENDORS GRID -->
     <h2 style="text-align: center; margin-bottom: 35px; font-size: 22px; color: #111;">Popular Vendors</h2>
@@ -221,15 +214,7 @@
     </div>
 
     <!-- BOTTOM BANNERS -->
-    <div class="banner-row" style="display: flex; gap: 20px;">
-        <% if (typeof smart_adverts !== 'undefined' && smart_adverts.length > 0) { %>
-            <% for(let i=0; i<2; i++) { const randomAdvert = smart_adverts[Math.floor(Math.random() * smart_adverts.length)]; %>
-                <a href="<%= randomAdvert.target_url %>" style="display: block; width: 50%;">
-                    <img src="<%= randomAdvert.image_url %>" alt="Advert" style="width: 100%; height: 160px; object-fit: cover; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
-                </a>
-            <% } %>
-        <% } %>
-    </div>
+    <%- include('_advert_banner', { advert_count: 2 }) %>
 
 </div>
 
