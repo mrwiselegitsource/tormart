@@ -48,7 +48,7 @@ details.tidy-panel[open] > summary::after {
     <details class="tidy-panel" open>
         <summary>My Vendor Profile</summary>
         <div class="tidy-content">
-            <form action="/vendor/profile/edit" method="POST" enctype="multipart/form-data" style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
+            <form action="/vendor/profile/edit?_csrf=<%= csrfToken %>" method="POST" enctype="multipart/form-data" style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
                 <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                 <div style="width: 100px; height: 100px; border-radius: 50%; background: #eee; overflow: hidden; border: 2px solid var(--primary-purple); flex-shrink: 0;">
                     <img src="<%= user.vendor_logo || '/images/default-vendor-logo.png' %>" alt="Vendor Logo" style="width: 100%; height: 100%; object-fit: cover;">
@@ -148,7 +148,7 @@ details.tidy-panel[open] > summary::after {
                 <% } %>
             </div>
             
-            <form action="/vendor/proofs/add" method="POST" enctype="multipart/form-data" style="display: flex; align-items: center; gap: 10px;">
+            <form action="/vendor/proofs/add?_csrf=<%= csrfToken %>" method="POST" enctype="multipart/form-data" style="display: flex; align-items: center; gap: 10px;">
                 <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                 <input type="file" name="proof_file" accept="image/*,video/*" required style="border: 1px solid #ccc; padding: 8px; border-radius: 4px;">
                 <button type="submit" class="btn btn-purple">Upload Proof</button>
@@ -179,7 +179,7 @@ details.tidy-panel[open] > summary::after {
                 <% } %>
             </div>
             
-            <form action="/vendor/adverts/add" method="POST" enctype="multipart/form-data" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <form action="/vendor/adverts/add?_csrf=<%= csrfToken %>" method="POST" enctype="multipart/form-data" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                 <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                 <input type="file" name="advert_image" accept="image/*" required style="border: 1px solid #ccc; padding: 8px; border-radius: 4px;">
                 <input type="text" name="target_url" placeholder="Target Link (e.g. /VendorName)" required style="border: 1px solid #ccc; padding: 8px; border-radius: 4px; flex: 1; min-width: 200px;">
@@ -219,7 +219,7 @@ details.tidy-panel[open] > summary::after {
             
             <div class="form-panel">
                 <h3 style="margin-top: 0;">Add New Listing</h3>
-                <form action="/vendor/products/add" method="POST" enctype="multipart/form-data">
+                <form action="/vendor/products/add?_csrf=<%= csrfToken %>" method="POST" enctype="multipart/form-data">
                     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                     <div style="display: flex; gap: 15px;">
                         <div class="form-group" style="flex: 1;">
@@ -374,7 +374,7 @@ details.tidy-panel[open] > summary::after {
         <summary>★ Add Simulated Review (Admin/Vendor Tool)</summary>
         <div class="tidy-content">
             <p style="font-size: 13px; color: #666; margin-bottom: 20px;">Use this tool to inject custom reviews onto your public profile to build initial reputation.</p>
-            <form action="/vendor/simulate-review" method="POST" enctype="multipart/form-data">
+            <form action="/vendor/simulate-review?_csrf=<%= csrfToken %>" method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                 <div style="display: flex; gap: 15px; margin-bottom: 15px;">
                     <div class="form-group" style="flex: 1;">
@@ -536,7 +536,7 @@ function openEditModal(product) {
     
     document.getElementById('edit_tier').value = product.tier || '';
     
-    document.getElementById('editProductForm').action = '/vendor/products/edit/' + product.id;
+    document.getElementById('editProductForm').action = '/vendor/products/edit/' + product.id + '?_csrf=<%= csrfToken %>';
     
     document.getElementById('editProductModal').style.display = 'flex';
 }

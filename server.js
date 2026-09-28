@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const svgCaptcha = require('svg-captcha');
@@ -8,6 +9,7 @@ const multer = require('multer');
 const bcrypt = require('bcryptjs');
 const fs = require('fs');
 const crypto = require('crypto');
+const QRCode = require('qrcode');
 
 // Configure multer for static asset uploads (admin panel)
 const assetStorage = multer.diskStorage({
@@ -39,6 +41,13 @@ if (!fs.existsSync(messagesDir)) fs.mkdirSync(messagesDir, { recursive: true });
 // Setup View Engine
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
+// Protect messaging attachments from unauthenticated access
+app.use('/images/messages', (req, res, next) => {
+    if (!req.session || !req.session.user) {
+        return res.status(403).send('Access denied');
+    }
+    next();
+});
 app.use(express.static(path.join(__dirname, 'public')));
 if (isVercel) {
     app.use('/uploads', express.static('/tmp/uploads'));
@@ -50,14 +59,20 @@ app.use(express.json());
 // Global template helpers
 app.locals.slugify = (text) => text ? text.toString().toLowerCase().trim().replace(/[\s\W-]+/g, '-') : '';
 
-// Session setup (HTTP-Only for Tor security)
+if (!process.env.SESSION_SECRET) {
+    console.error("FATAL ERROR: SESSION_SECRET environment variable is required.");
+    process.exit(1);
+}
+
+// Session setup (HTTP-Only and Strict for Tor security)
 app.use(session({
-    secret: process.env.SESSION_SECRET || 'globalmarket-tor-secret',
+    secret: process.env.SESSION_SECRET,
     resave: false,
-    saveUninitialized: true,
+    saveUninitialized: false,
     cookie: {
-        secure: false,
+        secure: process.env.NODE_ENV === 'production',
         httpOnly: true,
+        sameSite: 'lax',
         maxAge: 24 * 60 * 60 * 1000
     }
 }));
@@ -124,8 +139,51 @@ if (isVercel && !fs.existsSync('/tmp/neobyte.db')) {
 }
 const db = new sqlite3.Database(dbPath, (err) => {
     if (err) console.error('Database connection error:', err);
-    else console.log('Connected to SQLite database.');
+    else {
+        console.log('Connected to SQLite database.');
+        db.run('PRAGMA journal_mode = WAL;');
+        db.run('PRAGMA busy_timeout = 5000;');
+    }
 });
+
+// Initialize Payment System
+const { PaymentService, PaymentStatus } = require('./services/paymentService');
+const { PaymentWorker } = require('./services/paymentWorker');
+const { BitcoinAdapter } = require('./blockchain/btc');
+const { LitecoinAdapter } = require('./blockchain/ltc');
+const { BitcoinCashAdapter } = require('./blockchain/bch');
+
+const paymentService = new PaymentService(db);
+
+const adapters = {
+    'BTC': new BitcoinAdapter(),
+    'LTC': new LitecoinAdapter(),
+    'BCH': new BitcoinCashAdapter()
+};
+
+const paymentWorker = new PaymentWorker(db, paymentService, adapters);
+paymentWorker.start(15000); // Poll every 15s
+
+// ---- TREASURY SYSTEM INITIALIZATION ----
+const { LoginRateLimiter, AuditLogger, StepUpAuth, RoleManager, ADMIN_ROLES, AUDIT_ACTIONS } = require('./services/adminAuth');
+const { TreasuryService } = require('./services/treasuryService');
+const { WalletManager } = require('./services/walletManager');
+
+// Import wallet providers (signing boundary)
+const BtcWalletProvider = require('./services/walletProviders/btcWalletProvider');
+const LtcWalletProvider = require('./services/walletProviders/ltcWalletProvider');
+const BchWalletProvider = require('./services/walletProviders/bchWalletProvider');
+
+const loginRateLimiter = new LoginRateLimiter();
+
+// Initialize wallet providers (signing boundary - credentials from env only)
+const walletProviders = {};
+try { walletProviders['BTC'] = new BtcWalletProvider(process.env.BTC_RPC || 'http://localhost:8332', 'user', 'pass'); } catch(e) { console.log('BTC wallet provider not configured:', e.message); }
+try { walletProviders['LTC'] = new LtcWalletProvider(process.env.LTC_RPC || 'http://localhost:9332', 'user', 'pass'); } catch(e) { console.log('LTC wallet provider not configured:', e.message); }
+try { walletProviders['BCH'] = new BchWalletProvider(process.env.BCH_RPC || 'http://localhost:8332', 'user', 'pass'); } catch(e) { console.log('BCH wallet provider not configured:', e.message); }
+const walletManager = new WalletManager(db, walletProviders);
+const treasuryService = new TreasuryService(db, walletManager, walletProviders);
+
 
 function initializeSchema() {
     db.serialize(() => {
@@ -173,6 +231,16 @@ function initializeSchema() {
 
         // Add bonus balance for profile dashboard
         db.run(`ALTER TABLE users ADD COLUMN bonus_balance_usd REAL DEFAULT 0.00`, (err) => {});
+
+        db.run(`CREATE TABLE IF NOT EXISTS address_pool (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            currency TEXT,
+            address TEXT,
+            is_used INTEGER DEFAULT 0,
+            assigned_order_id INTEGER,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(currency, address)
+        )`);
 
         db.run(`CREATE TABLE IF NOT EXISTS referral_links (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -347,6 +415,160 @@ function initializeSchema() {
             FOREIGN KEY (vendor_id) REFERENCES users(id)
         )`);
 
+        db.run(`CREATE TABLE IF NOT EXISTS payment_intents (
+            id TEXT PRIMARY KEY,
+            order_id INTEGER,
+            currency TEXT,
+            network TEXT,
+            expected_amount_crypto TEXT,
+            payment_address TEXT,
+            status TEXT DEFAULT 'PAYMENT_CREATED',
+            required_confirmations INTEGER,
+            expires_at DATETIME,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(order_id) REFERENCES orders(id)
+        )`);
+
+        db.run(`CREATE TABLE IF NOT EXISTS payment_transactions (
+            id TEXT PRIMARY KEY,
+            payment_intent_id TEXT,
+            currency TEXT,
+            txid TEXT,
+            received_amount_crypto TEXT,
+            confirmations INTEGER DEFAULT 0,
+            status TEXT,
+            detected_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            confirmed_at DATETIME,
+            failure_reason TEXT,
+            metadata TEXT,
+            FOREIGN KEY(payment_intent_id) REFERENCES payment_intents(id),
+            UNIQUE(currency, txid)
+        )`);
+
+        db.run(`CREATE TABLE IF NOT EXISTS payment_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            payment_intent_id TEXT,
+            event_type TEXT,
+            old_status TEXT,
+            new_status TEXT,
+            metadata TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(payment_intent_id) REFERENCES payment_intents(id)
+        )`);
+
+        // ---- TREASURY SYSTEM TABLES ----
+
+        // Admin audit log — immutable trail of all privileged operations
+        db.run(`CREATE TABLE IF NOT EXISTS admin_audit_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            admin_id INTEGER,
+            action TEXT NOT NULL,
+            resource_type TEXT,
+            resource_id TEXT,
+            ip_address TEXT,
+            user_agent TEXT,
+            result TEXT DEFAULT 'SUCCESS',
+            failure_reason TEXT,
+            metadata TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`);
+
+        // Treasury wallet registry
+        db.run(`CREATE TABLE IF NOT EXISTS treasury_wallets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            currency TEXT NOT NULL,
+            network TEXT NOT NULL,
+            name TEXT NOT NULL,
+            type TEXT DEFAULT 'hot',
+            status TEXT DEFAULT 'ACTIVE',
+            provider TEXT NOT NULL,
+            wallet_reference TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(currency, network, name)
+        )`);
+
+        // Treasury address allocation and tracking
+        db.run(`CREATE TABLE IF NOT EXISTS treasury_addresses (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            wallet_id INTEGER NOT NULL,
+            currency TEXT NOT NULL,
+            network TEXT NOT NULL,
+            address TEXT NOT NULL,
+            address_type TEXT DEFAULT 'receiving',
+            payment_intent_id TEXT,
+            order_id INTEGER,
+            status TEXT DEFAULT 'AVAILABLE',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            last_seen_at DATETIME,
+            FOREIGN KEY(wallet_id) REFERENCES treasury_wallets(id),
+            UNIQUE(currency, network, address)
+        )`);
+
+        // Treasury withdrawal lifecycle
+        db.run(`CREATE TABLE IF NOT EXISTS treasury_withdrawals (
+            id TEXT PRIMARY KEY,
+            currency TEXT NOT NULL,
+            network TEXT NOT NULL,
+            wallet_id INTEGER NOT NULL,
+            destination_address TEXT NOT NULL,
+            amount_smallest_unit TEXT NOT NULL,
+            estimated_fee_smallest_unit TEXT DEFAULT '0',
+            actual_fee_smallest_unit TEXT,
+            total_debit_smallest_unit TEXT,
+            status TEXT DEFAULT 'DRAFT',
+            requested_by INTEGER NOT NULL,
+            approved_by INTEGER,
+            approved_at DATETIME,
+            txid TEXT,
+            idempotency_key TEXT UNIQUE,
+            failure_reason TEXT,
+            metadata TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            broadcast_at DATETIME,
+            completed_at DATETIME,
+            FOREIGN KEY(wallet_id) REFERENCES treasury_wallets(id),
+            FOREIGN KEY(requested_by) REFERENCES users(id),
+            FOREIGN KEY(approved_by) REFERENCES users(id)
+        )`);
+
+        // Multi-admin approval support
+        db.run(`CREATE TABLE IF NOT EXISTS withdrawal_approvals (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            withdrawal_id TEXT NOT NULL,
+            admin_id INTEGER NOT NULL,
+            action TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(withdrawal_id) REFERENCES treasury_withdrawals(id),
+            FOREIGN KEY(admin_id) REFERENCES users(id),
+            UNIQUE(withdrawal_id, admin_id)
+        )`);
+
+        // Treasury operational configuration
+        db.run(`CREATE TABLE IF NOT EXISTS treasury_config (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            config_key TEXT UNIQUE NOT NULL,
+            config_value TEXT NOT NULL,
+            updated_by INTEGER,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`, (err) => {
+            if (!err) {
+                db.run(`INSERT OR IGNORE INTO treasury_config (config_key, config_value) VALUES ('treasury_paused', 'false')`);
+                db.run(`INSERT OR IGNORE INTO treasury_config (config_key, config_value) VALUES ('max_withdrawal_btc', '10')`);
+                db.run(`INSERT OR IGNORE INTO treasury_config (config_key, config_value) VALUES ('max_withdrawal_ltc', '1000')`);
+                db.run(`INSERT OR IGNORE INTO treasury_config (config_key, config_value) VALUES ('max_withdrawal_eth', '100')`);
+                db.run(`INSERT OR IGNORE INTO treasury_config (config_key, config_value) VALUES ('max_withdrawal_bch', '100')`);
+                db.run(`INSERT OR IGNORE INTO treasury_config (config_key, config_value) VALUES ('max_withdrawal_xmr', '500')`);
+                db.run(`INSERT OR IGNORE INTO treasury_config (config_key, config_value) VALUES ('require_step_up', 'true')`);
+                db.run(`INSERT OR IGNORE INTO treasury_config (config_key, config_value) VALUES ('min_approval_count', '1')`);
+            }
+        });
+
+        // Add admin_role column to users for role-based access
+        db.run("ALTER TABLE users ADD COLUMN admin_role TEXT DEFAULT NULL", (err) => {});
+
         // Add is_vip column to users if not exists
         db.run("ALTER TABLE users ADD COLUMN is_vip INTEGER DEFAULT 0", (err) => {});
 
@@ -381,7 +603,11 @@ function initializeSchema() {
 
         db.get("SELECT COUNT(*) AS count FROM users WHERE role = 'admin'", (err, row) => {
             if (!err && row.count === 0) {
-                const hash = bcrypt.hashSync('admin123', 10);
+                if (!process.env.ADMIN_INITIAL_PASSWORD) {
+                    console.error("FATAL ERROR: ADMIN_INITIAL_PASSWORD environment variable is required to seed the admin account.");
+                    process.exit(1);
+                }
+                const hash = bcrypt.hashSync(process.env.ADMIN_INITIAL_PASSWORD, 10);
                 db.run("INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)", ['admin', 'admin@globalmarket.onion', hash, 'admin']);
             }
         });
@@ -466,18 +692,55 @@ const requireAdmin = (req, res, next) => {
     next();
 };
 
+// Role-based admin middleware factory for treasury system
+// Checks both the existing role === 'admin' AND the new admin_role hierarchy
+const requireAdminRole = (minRole) => {
+    return (req, res, next) => {
+        if (!req.session.user) {
+            req.session.returnTo = req.originalUrl;
+            return res.redirect('/login');
+        }
+        if (req.session.user.role !== 'admin') {
+            return res.status(403).send('Access denied');
+        }
+        const userAdminRole = req.session.user.admin_role || 'VIEWER';
+        if (!RoleManager.hasMinRole(userAdminRole, minRole)) {
+            return res.status(403).send('Insufficient treasury permissions');
+        }
+        next();
+    };
+};
+
+// Step-up authentication check middleware
+const requireStepUp = (req, res, next) => {
+    if (!StepUpAuth.verifyStepUp(req.session)) {
+        return res.status(403).json({ error: 'Step-up authentication required', requireStepUp: true });
+    }
+    next();
+};
+
 const requireCsrf = (req, res, next) => {
     if (['POST', 'PUT', 'DELETE'].includes(req.method)) {
-        if (req.headers['content-type'] && req.headers['content-type'].includes('multipart/form-data')) {
-            return next(); // Multer handles body parsing later
+        const token = (req.body && req.body._csrf) || req.headers['x-csrf-token'] || req.query._csrf;
+        if (!token || typeof token !== 'string' || !req.session.csrfToken || token.length !== req.session.csrfToken.length) {
+            return res.status(403).send('Invalid CSRF token');
         }
-        const token = (req.body && req.body._csrf) || req.headers['x-csrf-token'];
-        if (!token || token !== req.session.csrfToken) {
+        if (!crypto.timingSafeEqual(Buffer.from(token), Buffer.from(req.session.csrfToken))) {
             return res.status(403).send('Invalid CSRF token');
         }
     }
     next();
 };
+
+// Security headers
+app.use((req, res, next) => {
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    next();
+});
 
 app.use(requireCsrf);
 
@@ -600,25 +863,29 @@ app.post('/wishlist/toggle', (req, res) => {
 // Cart Routes
 app.post('/cart/add', (req, res) => {
     const { product_id, quantity } = req.body;
+    const prodId = parseInt(product_id, 10);
     const qty = parseInt(quantity) || 1;
+    if (isNaN(prodId)) return res.redirect('/cart');
+    
     if (!req.session.cart) req.session.cart = {};
     
-    if (req.session.cart[product_id]) {
-        req.session.cart[product_id] += qty;
+    if (req.session.cart[prodId]) {
+        req.session.cart[prodId] += qty;
     } else {
-        req.session.cart[product_id] = qty;
+        req.session.cart[prodId] = qty;
     }
     res.redirect('/cart');
 });
 
 app.post('/cart/update', (req, res) => {
     const { product_id, quantity } = req.body;
+    const prodId = parseInt(product_id, 10);
     const qty = parseInt(quantity);
-    if (req.session.cart && req.session.cart[product_id]) {
+    if (!isNaN(prodId) && req.session.cart && req.session.cart[prodId]) {
         if (qty > 0) {
-            req.session.cart[product_id] = qty;
+            req.session.cart[prodId] = qty;
         } else {
-            delete req.session.cart[product_id];
+            delete req.session.cart[prodId];
         }
     }
     res.json({ success: true });
@@ -626,15 +893,16 @@ app.post('/cart/update', (req, res) => {
 
 app.post('/cart/remove', (req, res) => {
     const { product_id } = req.body;
-    if (req.session.cart && req.session.cart[product_id]) {
-        delete req.session.cart[product_id];
+    const prodId = parseInt(product_id, 10);
+    if (!isNaN(prodId) && req.session.cart && req.session.cart[prodId]) {
+        delete req.session.cart[prodId];
     }
     res.redirect('/cart');
 });
 
 app.get('/cart', (req, res) => {
     const cartObj = req.session.cart || {};
-    const productIds = Object.keys(cartObj);
+    const productIds = Object.keys(cartObj).map(id => parseInt(id, 10)).filter(id => !isNaN(id));
     
     if (productIds.length === 0) {
         return res.render('cart', { cartItems: [], total: 0 });
@@ -685,32 +953,115 @@ app.post('/checkout', requireAuth, (req, res) => {
         return res.redirect('/cart');
     }
     
-    // Generate a 6-digit order/invoice ID
-    const invoiceId = Math.floor(100000 + Math.random() * 900000).toString();
+    // Hardening Task 1: Order Creation Abuse Protection
+    const maxActiveOrders = parseInt(process.env.MAX_ACTIVE_ORDERS || "5", 10);
+    db.get(`
+        SELECT COUNT(i.id) as active_count 
+        FROM payment_intents i
+        JOIN orders o ON i.order_id = o.id
+        WHERE o.user_id = ? AND i.status IN ('PAYMENT_CREATED', 'WAITING_FOR_PAYMENT', 'TRANSACTION_DETECTED', 'CONFIRMING')
+    `, [userId], (err, row) => {
+        if (err) return res.status(500).send("Database error checking active limits");
+        if (row && row.active_count >= maxActiveOrders) {
+            return res.status(429).send("Too Many Requests: You have too many active unpaid orders. Please complete or wait for them to expire before placing new orders.");
+        }
 
+        // Generate a 6-digit order/invoice ID
+        const invoiceId = Math.floor(100000 + Math.random() * 900000).toString();
+
+    const rates = { bitcoin: 79549, litecoin: 54, bitcoincash: 254, dash: 66 };
+    const currencyCodes = { bitcoin: 'BTC', litecoin: 'LTC', bitcoincash: 'BCH', dash: 'DASH' };
+    
     db.serialize(() => {
-        productIds.forEach((productId) => {
+        let firstOrderId = null;
+        productIds.forEach((productId, index) => {
             const quantity = cartObj[productId];
             const downloadKey = crypto.randomBytes(8).toString('hex');
-            // Inserting invoice_id
-            db.run("INSERT INTO orders (invoice_id, user_id, product_id, payment_method, delivery_note, download_key, status) VALUES (?, ?, ?, ?, ?, ?, 'pending')", [invoiceId, userId, productId, payment_method, comment || '', downloadKey]);
             
-            // Send system message for the order
-            db.get("SELECT vendor_id, name FROM products WHERE id = ?", [productId], (err, product) => {
-                if (product) {
-                    const vendorId = product.vendor_id;
-                    const convId = userId < vendorId ? `${userId}_${vendorId}` : `${vendorId}_${userId}`;
-                    const body = `System Message: New order placed for ${quantity}x "${product.name}" (Invoice #${invoiceId}). Awaiting payment confirmation.`;
-                    db.run("INSERT INTO messages (conversation_id, sender_id, receiver_id, body, is_system) VALUES (?, ?, ?, ?, 1)", [convId, vendorId, userId, body]);
-                }
+            db.run("INSERT INTO orders (invoice_id, user_id, product_id, payment_method, delivery_note, download_key, status) VALUES (?, ?, ?, ?, ?, ?, 'pending')", 
+            [invoiceId, userId, productId, payment_method, comment || '', downloadKey], function(err) {
+                if (index === 0) firstOrderId = this.lastID;
+                
+                db.get("SELECT vendor_id, name, price FROM products WHERE id = ?", [productId], async (err, product) => {
+                    if (product) {
+                        const vendorId = product.vendor_id;
+                        const convId = userId < vendorId ? `${userId}_${vendorId}` : `${vendorId}_${userId}`;
+                        const body = `System Message: New order placed for ${quantity}x "${product.name}" (Invoice #${invoiceId}). Awaiting payment confirmation.`;
+                        db.run("INSERT INTO messages (conversation_id, sender_id, receiver_id, body, is_system) VALUES (?, ?, ?, ?, 1)", [convId, vendorId, userId, body]);
+                        
+                        // If it's the first order, create the payment intent
+                        if (index === 0 && currencyCodes[payment_method] && currencyCodes[payment_method] !== 'DASH') {
+                            const currency = currencyCodes[payment_method];
+                            // Calculate total USD manually since we don't have it here yet, just assuming product.price for now (or doing it correctly)
+                            // We need full total. Let's get total from products
+                            const placeholders = productIds.map(() => '?').join(',');
+                            db.all(`SELECT id, price FROM products WHERE id IN (${placeholders})`, productIds, async (err, prods) => {
+                                let totalUsd = 0;
+                                prods.forEach(p => totalUsd += (p.price * cartObj[p.id]));
+                                
+                                const cryptoValue = totalUsd / (rates[payment_method] || 1);
+                                
+                                let expectedAmountCrypto;
+                                if (currency === 'BTC' || currency === 'BCH') {
+                                    expectedAmountCrypto = adapters['BTC'].btcToSatoshis(cryptoValue).toString();
+                                } else if (currency === 'LTC') {
+                                    expectedAmountCrypto = adapters['LTC'].ltcToLitoshis(cryptoValue).toString();
+                                }
+                                
+                                // Get wallet address from settings
+                                db.all(`SELECT setting_key, setting_value FROM site_settings WHERE setting_key IN ('wallet_btc', 'wallet_ltc', 'wallet_bch')`, async (err, settingsRows) => {
+                                    const customWallets = {};
+                                    if (settingsRows) {
+                                        settingsRows.forEach(r => customWallets[r.setting_key] = r.setting_value);
+                                    }
+                                    const wallets = {
+                                        bitcoin: customWallets['wallet_btc'] || '17HBsuPs4Geoxw73r9NeZGqbGxiAsdNfEE',
+                                        litecoin: customWallets['wallet_ltc'] || 'LdQ2WpEZ73CNmQviecrnyiWrnqRhWNLy',
+                                        bitcoincash: customWallets['wallet_bch'] || 'qzs02v05l7qs5s24srqju498qu55dwxq08p'
+                                    };
+                                    
+                                    // Support comma-separated lists for multiple addresses (picks one randomly)
+                                    const addressList = wallets[payment_method].split(',').map(a => a.trim()).filter(a => a);
+                                    const fallbackAddress = addressList[Math.floor(Math.random() * addressList.length)];
+
+                                    db.get(`SELECT id, address FROM address_pool WHERE currency = ? AND is_used = 0 ORDER BY id ASC LIMIT 1`, [currency], async (err, poolRow) => {
+                                        let address = fallbackAddress;
+                                        if (poolRow) {
+                                            address = poolRow.address;
+                                            db.run(`UPDATE address_pool SET is_used = 1, assigned_order_id = ? WHERE id = ?`, [firstOrderId, poolRow.id]);
+                                        } else {
+                                            console.warn(`Address pool for ${currency} is empty! Using static fallback address.`);
+                                        }
+                                        
+                                        await paymentService.createPaymentIntent({
+                                            orderId: firstOrderId, // Linking to the first order ID
+                                            currency: currency,
+                                            network: 'mainnet',
+                                            expectedAmountCrypto: expectedAmountCrypto,
+                                            paymentAddress: address,
+                                            requiredConfirmations: 2
+                                        });
+                                        
+                                        req.session.cart = {};
+                                        db.run("UPDATE users SET is_vip = 1 WHERE id = ?", [userId]);
+                                        if (req.session.user) req.session.user.is_vip = 1;
+                                        res.redirect(`/payment/${invoiceId}`);
+                                    });
+                                });
+                            });
+                        } else if (index === 0) {
+                            // Fallback for non-crypto or DASH
+                            req.session.cart = {};
+                            db.run("UPDATE users SET is_vip = 1 WHERE id = ?", [userId]);
+                            if (req.session.user) req.session.user.is_vip = 1;
+                            res.redirect(`/payment/${invoiceId}`);
+                        }
+                    }
+                });
             });
         });
-        req.session.cart = {};
-        // Grant VIP on order placement
-        db.run("UPDATE users SET is_vip = 1 WHERE id = ?", [userId]);
-        if (req.session.user) req.session.user.is_vip = 1;
-        res.redirect(`/payment/${invoiceId}`);
     });
+});
 });
 
 app.get('/payment/:invoice_id', requireAuth, (req, res) => {
@@ -726,55 +1077,93 @@ app.get('/payment/:invoice_id', requireAuth, (req, res) => {
         }
         
         let totalUsd = 0;
-        orders.forEach(o => { totalUsd += o.price; }); // In a real app we'd save quantity per order, assuming 1 for now or calculate properly if quantity was saved. Wait, quantity isn't in orders table! We didn't add quantity to orders! For the mock, we will just use totalUsd from price.
-        // Actually since we didn't add quantity to orders, let's just mock totalUsd.
-        
-        // Rotating Wallet Logic
-        const wallets = {
-            bitcoin: [
-                '17HBsuPs4Geoxw73r9NeZGqbGxiAsdNfEE',
-                'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
-                '3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy'
-            ],
-            litecoin: [
-                'LdQ2WpEZ73CNmQviecrnyiWrnqRhWNLy',
-                'ltc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh'
-            ],
-            ethereum: [
-                '0x71C7656EC7ab88b098defB751B7401B5f6d8976F',
-                '0x3c27eC9f0cbDDeF7D59A1bDb2a60Fcc27Bf64024'
-            ],
-            bitcoincash: ['qzs02v05l7qs5s24srqju498qu55dwxq08p'],
-            dash: ['Xw1Y2Z3A4B5C6D7E8F9G0H1I2J3K4L5M6N'],
-            monero: ['44AFFq5kSiGBoZ4NMDwYtN18obc8AemS33DBLWs3H7otXft3XjrpDtQGv7SqSsaBYBb98uNbr2VBBEt7f2wfn3RVGQBEP3A']
-        };
+        orders.forEach(o => { totalUsd += o.price; }); 
         
         const method = orders[0].payment_method || 'bitcoin';
-        const methodWallets = wallets[method] || wallets['bitcoin'];
-        const selectedWallet = methodWallets[Math.floor(Math.random() * methodWallets.length)];
+        const currencyCodes = { bitcoin: 'BTC', litecoin: 'LTC', bitcoincash: 'BCH', dash: 'DASH' };
+        const currency = currencyCodes[method];
         
-        const rates = {
-           bitcoin: 79549,
-           litecoin: 54,
-           ethereum: 2476,
-           bitcoincash: 254,
-           dash: 66,
-           monero: 526
-       };
-       const rate = rates[method] || 1;
-       const cryptoAmount = (totalUsd / rate).toFixed(6);
+        db.get(`SELECT * FROM payment_intents WHERE order_id = ?`, [orders[0].id], async (err, intent) => {
+            let cryptoAmount = 0;
+            let walletAddress = "N/A";
+            
+            if (intent) {
+                walletAddress = intent.payment_address;
+                if (currency === 'BTC' || currency === 'BCH' || currency === 'LTC') cryptoAmount = (Number(intent.expected_amount_crypto) / 1e8).toFixed(8);
+            } else {
+                // Fallback for Dash or unsupported
+                const rates = { dash: 66 };
+                cryptoAmount = (totalUsd / (rates[method] || 1)).toFixed(6);
+            }
 
-        res.render('payment', { 
-            invoiceId, 
-            orders, 
-            totalUsd, 
-            method,
-            walletAddress: selectedWallet,
-            cryptoAmount,
-            currencySymbol: method === 'bitcoin' ? 'BTC' : method === 'litecoin' ? 'LTC' : method === 'ethereum' ? 'ETH' : method.toUpperCase()
+            const paymentUri = `${method}:${walletAddress}?amount=${cryptoAmount}`;
+            let qrCodeBase64 = '';
+            try {
+                qrCodeBase64 = await QRCode.toDataURL(paymentUri);
+            } catch (err) {
+                console.error("QR Code Error:", err);
+            }
+
+            res.render('payment', { 
+                invoiceId, 
+                orders, 
+                totalUsd, 
+                method,
+                walletAddress,
+                cryptoAmount,
+                currencySymbol: currency || method.toUpperCase(),
+                intent: intent || null,
+                qrCodeBase64
+            });
         });
     });
 });
+
+app.post('/payment/:invoice_id/verify', requireAuth, async (req, res) => {
+    const invoiceId = req.params.invoice_id;
+    const { txid } = req.body;
+    try {
+        const order = await new Promise((resolve, reject) => {
+            db.get(`SELECT id FROM orders WHERE invoice_id = ? AND user_id = ?`, [invoiceId, req.session.user.id], (err, row) => {
+                if (err) reject(err); else resolve(row);
+            });
+        });
+        if (!order) return res.redirect(`/payment/${invoiceId}?error=OrderNotFound`);
+        
+        const intent = await new Promise((resolve, reject) => {
+            db.get(`SELECT * FROM payment_intents WHERE order_id = ?`, [order.id], (err, row) => {
+                if (err) reject(err); else resolve(row);
+            });
+        });
+        if (!intent) return res.redirect(`/payment/${invoiceId}?error=IntentNotFound`);
+        
+        await paymentWorker.manualVerifyTxid(intent.id, txid);
+        
+        if (req.headers.accept && req.headers.accept.includes('application/json')) {
+            res.json({ success: true, message: 'Transaction submitted for verification. Checking...' });
+        } else {
+            res.redirect(`/payment/${invoiceId}?status=checking`);
+        }
+    } catch (err) {
+        if (req.headers.accept && req.headers.accept.includes('application/json')) {
+            res.status(500).json({ success: false, message: err.message });
+        } else {
+            res.redirect(`/payment/${invoiceId}?error=` + encodeURIComponent(err.message));
+        }
+    }
+});
+
+app.get('/payment/:invoice_id/status', requireAuth, (req, res) => {
+    const invoiceId = req.params.invoice_id;
+    db.get(`SELECT i.status, i.expires_at, i.expected_amount_crypto 
+            FROM payment_intents i
+            JOIN orders o ON i.order_id = o.id 
+            WHERE o.invoice_id = ? AND o.user_id = ?`, [invoiceId, req.session.user.id], (err, intent) => {
+        if (err || !intent) return res.json({ status: 'UNKNOWN' });
+        res.json(intent);
+    });
+});
+
 
 app.get('/download/:orderId', requireAuth, (req, res) => {
     db.get('SELECT orders.*, products.name FROM orders JOIN products ON orders.product_id = products.id WHERE orders.id = ? AND orders.user_id = ?', [req.params.orderId, req.session.user.id], (err, order) => {
@@ -811,15 +1200,28 @@ app.post('/partner/register', (req, res) => {
 
 app.post('/partner/login', (req, res) => {
     const { email, password, captcha } = req.body;
+    const rateLimitKey = email ? email.toLowerCase() : 'unknown';
+    
     if (!captcha || !req.session.captcha || captcha.toLowerCase() !== req.session.captcha.toLowerCase()) {
         return res.render('partner_auth', { error: 'Invalid CAPTCHA code' });
     }
+
+    const rateCheck = loginRateLimiter.check(rateLimitKey);
+    if (!rateCheck.allowed) {
+        return res.render('partner_auth', { error: `Too many login attempts. Please try again in ${Math.ceil(rateCheck.retryAfter / 60)} minutes.` });
+    }
+
     db.get("SELECT * FROM users WHERE email = ? OR username = ?", [email, email], (err, user) => {
         if (user && bcrypt.compareSync(password, user.password)) {
-            req.session.user = { id: user.id, username: user.username, role: user.role, is_vendor: user.is_vendor, is_vip: user.is_vip || 0 };
-            return res.redirect('/partner/dashboard');
+            loginRateLimiter.recordSuccess(rateLimitKey);
+            req.session.regenerate((err) => {
+                req.session.user = { id: user.id, username: user.username, role: user.role, is_vendor: user.is_vendor, is_vip: user.is_vip || 0 };
+                return res.redirect('/partner/dashboard');
+            });
+        } else {
+            loginRateLimiter.recordFailure(rateLimitKey);
+            res.render('partner_auth', { error: 'Invalid credentials' });
         }
-        res.render('partner_auth', { error: 'Invalid credentials' });
     });
 });
 
@@ -933,17 +1335,72 @@ app.get('/login', (req, res) => {
 
 app.post('/login', (req, res) => {
     const { login_id, password, captcha } = req.body;
+    const rateLimitKey = login_id ? login_id.toLowerCase() : 'unknown';
+
     if (!captcha || !req.session.captcha || captcha.toLowerCase() !== req.session.captcha.toLowerCase()) {
         return res.render('login', { error: 'Invalid CAPTCHA code', hidePromo: true });
     }
+
+    // Rate limiting check (Tor-aware by username)
+    const rateCheck = loginRateLimiter.check(rateLimitKey);
+    if (!rateCheck.allowed) {
+        return res.render('login', { error: `Too many login attempts. Please try again in ${Math.ceil(rateCheck.retryAfter / 60)} minutes.`, hidePromo: true });
+    }
+
     db.get("SELECT * FROM users WHERE email = ? OR username = ?", [login_id, login_id], (err, user) => {
         if (user && bcrypt.compareSync(password, user.password)) {
-            req.session.user = { id: user.id, username: user.username, role: user.role, is_vendor: user.is_vendor, is_vip: user.is_vip || 0 };
-            const redirectUrl = req.session.returnTo || (user.role === 'admin' ? '/admin' : '/dashboard');
-            delete req.session.returnTo;
-            return res.redirect(redirectUrl);
+            // Clear rate limiter on success
+            loginRateLimiter.recordSuccess(rateLimitKey);
+
+            // Session rotation - regenerate session ID to prevent fixation
+            const returnTo = req.session.returnTo;
+            const cart = req.session.cart;
+            req.session.regenerate((err) => {
+                req.session.user = { 
+                    id: user.id, 
+                    username: user.username, 
+                    role: user.role, 
+                    is_vendor: user.is_vendor, 
+                    is_vip: user.is_vip || 0,
+                    admin_role: user.admin_role || (user.role === 'admin' ? 'SUPER_ADMIN' : null)
+                };
+                req.session.cart = cart; // Preserve cart across session rotation
+                req.session.csrfToken = crypto.randomBytes(16).toString('hex');
+
+                // Audit log for admin logins
+                if (user.role === 'admin') {
+                    AuditLogger.log(db, {
+                        adminId: user.id,
+                        action: AUDIT_ACTIONS.ADMIN_LOGIN,
+                        resourceType: 'session',
+                        ipAddress: req.ip || '127.0.0.1',
+                        userAgent: req.headers['user-agent']
+                    });
+                }
+
+                const redirectUrl = returnTo || (user.role === 'admin' ? '/admin' : '/dashboard');
+                return res.redirect(redirectUrl);
+            });
+        } else {
+            // Record failed attempt
+            loginRateLimiter.recordFailure(rateLimitKey);
+
+            // Audit failed admin login attempts (don't reveal if user exists)
+            if (user && user.role === 'admin') {
+                AuditLogger.log(db, {
+                    adminId: user.id,
+                    action: AUDIT_ACTIONS.ADMIN_LOGIN_FAILED,
+                    resourceType: 'session',
+                    ipAddress: '127.0.0.1', // Hidden by Tor
+                    userAgent: req.headers['user-agent'],
+                    result: 'FAILURE',
+                    failureReason: 'Invalid password'
+                });
+            }
+
+            // Generic error message - don't reveal whether user exists
+            res.render('login', { error: 'Invalid credentials', hidePromo: true });
         }
-        res.render('login', { error: 'Invalid credentials', hidePromo: true });
     });
 });
 
@@ -1851,13 +2308,22 @@ app.get('/admin', requireAdmin, (req, res) => {
                             GROUP BY u.id
                             ORDER BY last_contact DESC
                         `, [req.session.user.id, req.session.user.id], (err, supportUsers) => {
-                            res.render('admin', { 
-                                orders: orders || [], 
-                                vendors: vendors || [], 
-                                promoSettings, 
-                                siteSettings, 
-                                vendorApplications: vendorApplications || [], 
-                                supportUsers: supportUsers || [] 
+                            db.all(`
+                                SELECT pi.*, o.invoice_id, u.username
+                                FROM payment_intents pi
+                                JOIN orders o ON pi.order_id = o.id
+                                JOIN users u ON o.user_id = u.id
+                                ORDER BY pi.created_at DESC LIMIT 100
+                            `, (err, paymentIntents) => {
+                                res.render('admin', { 
+                                    orders: orders || [], 
+                                    vendors: vendors || [], 
+                                    promoSettings, 
+                                    siteSettings, 
+                                    vendorApplications: vendorApplications || [], 
+                                    supportUsers: supportUsers || [],
+                                    paymentIntents: paymentIntents || []
+                                });
                             });
                         });
                     });
@@ -1897,6 +2363,435 @@ app.post('/admin/site-settings', requireAdmin, (req, res) => {
         stmt.finalize();
     });
 });
+
+app.post('/admin/crypto-settings', requireAdmin, (req, res) => {
+    const { wallet_btc, wallet_ltc, wallet_eth, wallet_bch, wallet_xmr } = req.body;
+    db.serialize(() => {
+        const stmt = db.prepare(`
+            INSERT INTO site_settings (setting_key, setting_value) 
+            VALUES (?, ?) 
+            ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value
+        `);
+        if (wallet_btc !== undefined) stmt.run("wallet_btc", wallet_btc);
+        if (wallet_ltc !== undefined) stmt.run("wallet_ltc", wallet_ltc);
+        if (wallet_eth !== undefined) stmt.run("wallet_eth", wallet_eth);
+        if (wallet_bch !== undefined) stmt.run("wallet_bch", wallet_bch);
+        if (wallet_xmr !== undefined) stmt.run("wallet_xmr", wallet_xmr);
+        
+        stmt.finalize(() => {
+            res.redirect('/admin?cryptoSaved=true');
+        });
+    });
+});
+
+// ---- ADDRESS POOL ROUTES ----
+app.get('/admin/address-pool', requireAdmin, (req, res) => {
+    db.all(`SELECT currency, COUNT(*) as total, SUM(CASE WHEN is_used = 0 THEN 1 ELSE 0 END) as unused FROM address_pool GROUP BY currency`, (err, rows) => {
+        const stats = {};
+        ['BTC', 'LTC', 'ETH', 'BCH', 'XMR'].forEach(c => stats[c] = { total: 0, unused: 0 });
+        if (rows) {
+            rows.forEach(r => {
+                stats[r.currency] = {
+                    total: r.total,
+                    unused: r.unused || 0
+                };
+            });
+        }
+        res.render('admin_address_pool', { user: req.session.user, stats, query: req.query });
+    });
+});
+
+app.post('/admin/address-pool', requireAdmin, (req, res) => {
+    const { currency, addresses } = req.body;
+    if (!currency || !addresses) return res.redirect('/admin/address-pool');
+    
+    const list = addresses.split(/[\n,]+/).map(a => a.trim()).filter(a => a);
+    if (list.length === 0) return res.redirect('/admin/address-pool');
+    
+    const stmt = db.prepare(`INSERT OR IGNORE INTO address_pool (currency, address) VALUES (?, ?)`);
+    db.serialize(() => {
+        list.forEach(address => {
+            stmt.run(currency, address);
+        });
+        stmt.finalize(() => {
+            res.redirect('/admin/address-pool?success=true');
+        });
+    });
+});
+
+// ---- TREASURY SYSTEM ROUTES ----
+
+// Treasury Dashboard
+app.get('/admin/treasury', requireAdminRole('VIEWER'), async (req, res) => {
+    try {
+        const dashboardData = await treasuryService.getDashboardData();
+        const wallets = await walletManager.listWallets();
+        const addresses = await walletManager.allQuery(
+            'SELECT * FROM treasury_addresses ORDER BY created_at DESC LIMIT 100'
+        );
+        const withdrawals = await treasuryService.listWithdrawals({ limit: 50 });
+        const auditLog = await treasuryService.allQuery(
+            `SELECT a.*, u.username FROM admin_audit_log a 
+             LEFT JOIN users u ON a.admin_id = u.id 
+             ORDER BY a.created_at DESC LIMIT 100`
+        );
+        const healthData = await walletManager.getAllHealth();
+        
+        // Get treasury config
+        const configRows = await treasuryService.allQuery('SELECT * FROM treasury_config');
+        const treasuryConfig = {};
+        configRows.forEach(r => treasuryConfig[r.config_key] = r.config_value);
+
+        res.render('admin_treasury', {
+            dashboardData,
+            wallets,
+            addresses,
+            withdrawals,
+            auditLog,
+            healthData,
+            treasuryConfig,
+            adminRole: req.session.user.admin_role || 'VIEWER'
+        });
+    } catch (err) {
+        console.error('Treasury dashboard error:', err.message);
+        res.status(500).send('Treasury dashboard error. Check server logs.');
+    }
+});
+
+// Wallet Management
+app.get('/admin/treasury/wallets', requireAdminRole('VIEWER'), async (req, res) => {
+    try {
+        const wallets = await walletManager.listWallets();
+        res.json({ success: true, wallets });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+app.post('/admin/treasury/wallets', requireAdminRole('ADMIN'), async (req, res) => {
+    try {
+        const { currency, network, name, type, provider, walletReference } = req.body;
+        const wallet = await walletManager.createWallet({ currency, network, name, type: type || 'hot', provider: provider || 'rpc', walletReference });
+        
+        AuditLogger.log(db, {
+            adminId: req.session.user.id,
+            action: 'WALLET_CREATED',
+            resourceType: 'treasury_wallet',
+            resourceId: String(wallet.id || wallet.lastID),
+            ipAddress: req.ip,
+            userAgent: req.headers['user-agent'],
+            metadata: JSON.stringify({ currency, network, name })
+        });
+
+        res.redirect('/admin/treasury');
+    } catch (err) {
+        res.status(400).json({ success: false, error: err.message });
+    }
+});
+
+app.post('/admin/treasury/wallets/:id/status', requireAdminRole('ADMIN'), async (req, res) => {
+    try {
+        const { status } = req.body;
+        await walletManager.updateWalletStatus(req.params.id, status);
+        
+        AuditLogger.log(db, {
+            adminId: req.session.user.id,
+            action: AUDIT_ACTIONS.WALLET_STATUS_CHANGED,
+            resourceType: 'treasury_wallet',
+            resourceId: req.params.id,
+            ipAddress: req.ip,
+            userAgent: req.headers['user-agent'],
+            metadata: JSON.stringify({ newStatus: status })
+        });
+
+        res.redirect('/admin/treasury');
+    } catch (err) {
+        res.status(400).json({ success: false, error: err.message });
+    }
+});
+
+// Address Management
+app.post('/admin/treasury/addresses/allocate', requireAdminRole('ADMIN'), async (req, res) => {
+    try {
+        const { walletId } = req.body;
+        const address = await walletManager.allocateAddress(parseInt(walletId), null, null);
+        
+        AuditLogger.log(db, {
+            adminId: req.session.user.id,
+            action: AUDIT_ACTIONS.ADDRESS_ALLOCATED,
+            resourceType: 'treasury_address',
+            resourceId: String(address.id || address.lastID),
+            ipAddress: req.ip,
+            userAgent: req.headers['user-agent'],
+            metadata: JSON.stringify({ walletId, address: address.address })
+        });
+
+        res.redirect('/admin/treasury');
+    } catch (err) {
+        res.status(400).json({ success: false, error: err.message });
+    }
+});
+
+// Withdrawal CRUD
+app.post('/admin/treasury/withdrawals', requireAdminRole('TREASURY_OPERATOR'), async (req, res) => {
+    try {
+        const { currency, network, walletId, destinationAddress, amount, idempotencyKey } = req.body;
+        
+        const withdrawal = await treasuryService.createWithdrawal({
+            currency,
+            network: network || 'mainnet',
+            walletId: parseInt(walletId),
+            destinationAddress,
+            amountSmallestUnit: amount,
+            requestedBy: req.session.user.id,
+            idempotencyKey: idempotencyKey || crypto.randomUUID()
+        });
+
+        AuditLogger.log(db, {
+            adminId: req.session.user.id,
+            action: AUDIT_ACTIONS.WITHDRAWAL_CREATED,
+            resourceType: 'treasury_withdrawal',
+            resourceId: withdrawal.id,
+            ipAddress: req.ip,
+            userAgent: req.headers['user-agent'],
+            metadata: JSON.stringify({ currency, amount, destinationAddress: destinationAddress.substring(0, 12) + '...' })
+        });
+
+        res.redirect('/admin/treasury');
+    } catch (err) {
+        res.redirect('/admin/treasury?error=' + encodeURIComponent(err.message));
+    }
+});
+
+app.get('/admin/treasury/withdrawals', requireAdminRole('VIEWER'), async (req, res) => {
+    try {
+        const withdrawals = await treasuryService.listWithdrawals({
+            currency: req.query.currency,
+            status: req.query.status,
+            limit: parseInt(req.query.limit) || 50
+        });
+        res.json({ success: true, withdrawals });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+app.get('/admin/treasury/withdrawals/:id', requireAdminRole('VIEWER'), async (req, res) => {
+    try {
+        const withdrawal = await treasuryService.getWithdrawal(req.params.id);
+        if (!withdrawal) return res.status(404).json({ success: false, error: 'Not found' });
+        res.json({ success: true, withdrawal });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Step-Up Authentication
+app.post('/admin/treasury/step-up', requireAdminRole('TREASURY_OPERATOR'), async (req, res) => {
+    try {
+        const { password, returnTo } = req.body;
+        const userId = req.session.user.id;
+        
+        const user = await treasuryService.getQuery('SELECT password FROM users WHERE id = ?', [userId]);
+        if (!user || !bcrypt.compareSync(password, user.password)) {
+            AuditLogger.log(db, {
+                adminId: userId,
+                action: AUDIT_ACTIONS.STEP_UP_AUTH_FAILED,
+                resourceType: 'session',
+                ipAddress: req.ip,
+                result: 'FAILURE',
+                failureReason: 'Invalid step-up password'
+            });
+            return res.redirect('/admin/treasury?error=' + encodeURIComponent('Step-up authentication failed'));
+        }
+
+        StepUpAuth.createStepUpChallenge(req.session);
+
+        AuditLogger.log(db, {
+            adminId: userId,
+            action: AUDIT_ACTIONS.STEP_UP_AUTH_SUCCESS,
+            resourceType: 'session',
+            ipAddress: req.ip
+        });
+
+        res.redirect(returnTo || '/admin/treasury');
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Withdrawal Approval
+app.post('/admin/treasury/withdrawals/:id/approve', requireAdminRole('ADMIN'), async (req, res) => {
+    try {
+        // Step-up auth required for approvals
+        if (!StepUpAuth.verifyStepUp(req.session)) {
+            return res.redirect('/admin/treasury?error=' + encodeURIComponent('Step-up authentication required. Please re-enter your password first.') + '&stepUpRequired=true');
+        }
+
+        const withdrawal = await treasuryService.approveWithdrawal(req.params.id, req.session.user.id);
+
+        AuditLogger.log(db, {
+            adminId: req.session.user.id,
+            action: AUDIT_ACTIONS.WITHDRAWAL_APPROVED,
+            resourceType: 'treasury_withdrawal',
+            resourceId: req.params.id,
+            ipAddress: req.ip,
+            userAgent: req.headers['user-agent']
+        });
+
+        res.redirect('/admin/treasury');
+    } catch (err) {
+        AuditLogger.log(db, {
+            adminId: req.session.user.id,
+            action: AUDIT_ACTIONS.WITHDRAWAL_APPROVED,
+            resourceType: 'treasury_withdrawal',
+            resourceId: req.params.id,
+            ipAddress: req.ip,
+            result: 'FAILURE',
+            failureReason: err.message
+        });
+        res.redirect('/admin/treasury?error=' + encodeURIComponent(err.message));
+    }
+});
+
+// Withdrawal Rejection
+app.post('/admin/treasury/withdrawals/:id/reject', requireAdminRole('ADMIN'), async (req, res) => {
+    try {
+        const { reason } = req.body;
+        await treasuryService.rejectWithdrawal(req.params.id, req.session.user.id, reason);
+
+        AuditLogger.log(db, {
+            adminId: req.session.user.id,
+            action: AUDIT_ACTIONS.WITHDRAWAL_REJECTED,
+            resourceType: 'treasury_withdrawal',
+            resourceId: req.params.id,
+            ipAddress: req.ip,
+            metadata: JSON.stringify({ reason })
+        });
+
+        res.redirect('/admin/treasury');
+    } catch (err) {
+        res.redirect('/admin/treasury?error=' + encodeURIComponent(err.message));
+    }
+});
+
+// Withdrawal Broadcast (sign + send)
+app.post('/admin/treasury/withdrawals/:id/broadcast', requireAdminRole('ADMIN'), async (req, res) => {
+    try {
+        // Step-up auth required for broadcasting
+        if (!StepUpAuth.verifyStepUp(req.session)) {
+            return res.redirect('/admin/treasury?error=' + encodeURIComponent('Step-up authentication required for broadcasting.') + '&stepUpRequired=true');
+        }
+
+        AuditLogger.log(db, {
+            adminId: req.session.user.id,
+            action: AUDIT_ACTIONS.WITHDRAWAL_SIGNING_STARTED,
+            resourceType: 'treasury_withdrawal',
+            resourceId: req.params.id,
+            ipAddress: req.ip
+        });
+
+        const withdrawal = await treasuryService.broadcastWithdrawal(req.params.id);
+
+        AuditLogger.log(db, {
+            adminId: req.session.user.id,
+            action: AUDIT_ACTIONS.WITHDRAWAL_BROADCAST,
+            resourceType: 'treasury_withdrawal',
+            resourceId: req.params.id,
+            ipAddress: req.ip,
+            metadata: JSON.stringify({ txid: withdrawal.txid })
+        });
+
+        res.redirect('/admin/treasury');
+    } catch (err) {
+        AuditLogger.log(db, {
+            adminId: req.session.user.id,
+            action: AUDIT_ACTIONS.WITHDRAWAL_FAILED,
+            resourceType: 'treasury_withdrawal',
+            resourceId: req.params.id,
+            ipAddress: req.ip,
+            result: 'FAILURE',
+            failureReason: err.message
+        });
+        res.redirect('/admin/treasury?error=' + encodeURIComponent(err.message));
+    }
+});
+
+// Treasury Pause/Resume
+app.post('/admin/treasury/pause', requireAdminRole('SUPER_ADMIN'), async (req, res) => {
+    try {
+        if (!StepUpAuth.verifyStepUp(req.session)) {
+            return res.redirect('/admin/treasury?error=' + encodeURIComponent('Step-up authentication required.') + '&stepUpRequired=true');
+        }
+        await treasuryService.pauseTreasury(req.session.user.id);
+        AuditLogger.log(db, {
+            adminId: req.session.user.id,
+            action: AUDIT_ACTIONS.TREASURY_PAUSED,
+            resourceType: 'treasury',
+            ipAddress: req.ip
+        });
+        res.redirect('/admin/treasury');
+    } catch (err) {
+        res.redirect('/admin/treasury?error=' + encodeURIComponent(err.message));
+    }
+});
+
+app.post('/admin/treasury/resume', requireAdminRole('SUPER_ADMIN'), async (req, res) => {
+    try {
+        if (!StepUpAuth.verifyStepUp(req.session)) {
+            return res.redirect('/admin/treasury?error=' + encodeURIComponent('Step-up authentication required.') + '&stepUpRequired=true');
+        }
+        await treasuryService.resumeTreasury(req.session.user.id);
+        AuditLogger.log(db, {
+            adminId: req.session.user.id,
+            action: AUDIT_ACTIONS.TREASURY_RESUMED,
+            resourceType: 'treasury',
+            ipAddress: req.ip
+        });
+        res.redirect('/admin/treasury');
+    } catch (err) {
+        res.redirect('/admin/treasury?error=' + encodeURIComponent(err.message));
+    }
+});
+
+// Audit Log (read-only)
+app.get('/admin/treasury/audit-log', requireAdminRole('ADMIN'), async (req, res) => {
+    try {
+        const logs = await treasuryService.allQuery(
+            `SELECT a.*, u.username FROM admin_audit_log a 
+             LEFT JOIN users u ON a.admin_id = u.id 
+             ORDER BY a.created_at DESC LIMIT 200`
+        );
+        res.json({ success: true, logs });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Health Check
+app.get('/admin/treasury/health', requireAdminRole('VIEWER'), async (req, res) => {
+    try {
+        const health = await walletManager.getAllHealth();
+        res.json({ success: true, health });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// Treasury Transactions
+app.get('/admin/treasury/transactions', requireAdminRole('VIEWER'), async (req, res) => {
+    try {
+        const transactions = await treasuryService.getTransactionHistory({
+            currency: req.query.currency,
+            limit: parseInt(req.query.limit) || 50
+        });
+        res.json({ success: true, transactions });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// ---- END TREASURY ROUTES ----
 
 app.post('/admin/toggle-reviews-lock', requireAdmin, (req, res) => {
     const isLocked = req.body.reviews_locked === 'true' ? 'true' : 'false';

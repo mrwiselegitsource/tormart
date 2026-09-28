@@ -41,7 +41,7 @@
 
                             <% if (order.status === 'shipped') { %>
                                 <div style="margin-top: 10px;">
-                                    <form action="/order/complete/<%= order.id %>" method="POST" enctype="multipart/form-data" style="display: flex; gap: 5px; flex-direction: column;">
+                                    <form action="/order/complete/<%= order.id %>?_csrf=<%= csrfToken %>" method="POST" enctype="multipart/form-data" style="display: flex; gap: 5px; flex-direction: column;">
                                         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                                         <select name="rating" required style="padding: 5px;">
                                             <option value="5">★★★★★ (5/5)</option>

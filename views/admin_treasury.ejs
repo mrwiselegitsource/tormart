@@ -1,0 +1,502 @@
+<%- include('header') %>
+
+<style>
+details.tidy-panel {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+details.tidy-panel > summary {
+    padding: 15px 20px;
+    font-size: 16px;
+    font-weight: bold;
+    color: #1e293b;
+    cursor: pointer;
+    list-style: none;
+    border-bottom: 1px solid transparent;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+details.tidy-panel > summary::-webkit-details-marker { display: none; }
+details.tidy-panel > summary::after {
+    content: '▼'; font-size: 12px; color: #64748b; transition: transform 0.2s;
+}
+details.tidy-panel[open] > summary { border-bottom: 1px solid #e2e8f0; }
+details.tidy-panel[open] > summary::after { transform: rotate(180deg); }
+.tidy-content { padding: 20px; }
+
+.t-nav { display: flex; align-items: center; gap: 15px; margin-bottom: 25px; flex-wrap: wrap; }
+.t-nav a { color: #3b82f6; text-decoration: none; font-size: 14px; font-weight: 500; }
+.t-nav a:hover { text-decoration: underline; }
+.t-badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+.t-badge-green { background: #dcfce7; color: #166534; }
+.t-badge-red { background: #fee2e2; color: #991b1b; }
+.t-badge-yellow { background: #fef9c3; color: #854d0e; }
+.t-badge-blue { background: #dbeafe; color: #1e40af; }
+.t-badge-gray { background: #f1f5f9; color: #475569; }
+.t-badge-purple { background: #f3e8ff; color: #6b21a8; }
+
+.t-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+.t-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; }
+.t-card h4 { margin: 0 0 8px; font-size: 14px; color: #64748b; font-weight: 600; }
+.t-card .t-val { font-size: 18px; font-weight: 700; color: #1e293b; word-break: break-all; }
+.t-card .t-sub { font-size: 12px; color: #94a3b8; margin-top: 4px; }
+
+.t-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.t-table th { background: #f1f5f9; padding: 10px 12px; text-align: left; font-weight: 600; color: #475569; border-bottom: 2px solid #e2e8f0; }
+.t-table td { padding: 10px 12px; border-bottom: 1px solid #f1f5f9; color: #334155; }
+.t-table tr:hover { background: #f8fafc; }
+.t-truncate { max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; vertical-align: middle; }
+
+.t-btn { display: inline-block; padding: 5px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; border: none; cursor: pointer; text-decoration: none; }
+.t-btn-primary { background: #3b82f6; color: #fff; }
+.t-btn-primary:hover { background: #2563eb; }
+.t-btn-success { background: #22c55e; color: #fff; }
+.t-btn-success:hover { background: #16a34a; }
+.t-btn-danger { background: #ef4444; color: #fff; }
+.t-btn-danger:hover { background: #dc2626; }
+.t-btn-warning { background: #f59e0b; color: #fff; }
+.t-btn-warning:hover { background: #d97706; }
+.t-btn-sm { padding: 3px 10px; font-size: 11px; }
+
+.t-form-row { margin-bottom: 12px; }
+.t-form-row label { display: block; font-size: 13px; font-weight: 600; color: #334155; margin-bottom: 4px; }
+.t-form-row input, .t-form-row select { width: 100%; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 13px; box-sizing: border-box; }
+
+.t-alert { padding: 12px 16px; border-radius: 6px; font-size: 13px; margin-bottom: 15px; }
+.t-alert-error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+.t-alert-success { background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+
+.t-modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+.t-modal-overlay.active { display: flex; }
+.t-modal { background: #fff; border-radius: 12px; padding: 30px; max-width: 420px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+.t-modal h3 { margin: 0 0 15px; color: #1e293b; }
+</style>
+
+<div class="container">
+    <!-- Navigation -->
+    <div class="t-nav">
+        <a href="/admin">← Admin Panel</a>
+        <h2 style="color: #111; margin: 0; flex: 1;">Treasury Management</h2>
+        <% if (dashboardData.treasuryPaused) { %>
+            <span class="t-badge t-badge-red">⏸ PAUSED</span>
+        <% } else { %>
+            <span class="t-badge t-badge-green">● ACTIVE</span>
+        <% } %>
+        <span class="t-badge t-badge-purple"><%= adminRole %></span>
+    </div>
+
+    <% const urlParams = new URLSearchParams(typeof require !== 'undefined' ? '' : ''); %>
+    <% if (typeof locals !== 'undefined') { %>
+        <script>
+            (function() {
+                var p = new URLSearchParams(window.location.search);
+                var errEl = document.getElementById('t-url-error');
+                if (p.get('error') && errEl) errEl.style.display = 'block';
+            })();
+        </script>
+    <% } %>
+    <div id="t-url-error" class="t-alert t-alert-error" style="display:none;">
+        <script>
+            (function(){
+                var p = new URLSearchParams(window.location.search);
+                if(p.get('error')) document.write(p.get('error'));
+            })();
+        </script>
+    </div>
+
+    <%
+    function formatSmallest(val, currency) {
+        if (!val || val === 'UNAVAILABLE') return 'UNAVAILABLE';
+        try {
+            var n = parseFloat(val);
+            if (isNaN(n)) return val;
+            switch(currency) {
+                case 'ETH': return (n / 1e18).toFixed(6) + ' ETH';
+                case 'XMR': return (n / 1e12).toFixed(6) + ' XMR';
+                default: return (n / 1e8).toFixed(8) + ' ' + currency;
+            }
+        } catch(e) { return val; }
+    }
+    function statusBadge(status) {
+        var cls = 't-badge-gray';
+        if (['ACTIVE','HEALTHY','COMPLETED','SUCCESS','AVAILABLE','PAID'].includes(status)) cls = 't-badge-green';
+        else if (['DISABLED','COMPROMISED','FAILED','SIGNING_FAILED','BROADCAST_FAILED','FAILURE','ERROR'].includes(status)) cls = 't-badge-red';
+        else if (['MAINTENANCE','SYNCING','AWAITING_APPROVAL','REQUESTED','CONFIRMING'].includes(status)) cls = 't-badge-yellow';
+        else if (['APPROVED','ASSIGNED','BROADCASTING','SIGNING'].includes(status)) cls = 't-badge-blue';
+        return '<span class="t-badge ' + cls + '">' + status + '</span>';
+    }
+    %>
+
+    <!-- OVERVIEW DASHBOARD -->
+    <details class="tidy-panel" open>
+        <summary>📊 Treasury Overview</summary>
+        <div class="tidy-content">
+            <div class="t-cards">
+                <% ['BTC','LTC','ETH','BCH','XMR'].forEach(function(c) { %>
+                    <div class="t-card">
+                        <h4><%= c %> Balance</h4>
+                        <% var bal = dashboardData.balances[c]; %>
+                        <% if (bal && bal.total !== 'UNAVAILABLE') { %>
+                            <div class="t-val"><%= formatSmallest(bal.spendable, c) %></div>
+                            <div class="t-sub">Total: <%= formatSmallest(bal.total, c) %></div>
+                            <% if (bal.reserved) { %>
+                                <div class="t-sub" style="color:#f59e0b;">Reserved: <%= formatSmallest(bal.reserved, c) %></div>
+                            <% } %>
+                        <% } else { %>
+                            <div class="t-val" style="color:#94a3b8; font-size:14px;">UNAVAILABLE</div>
+                            <div class="t-sub"><%= bal && bal.error ? bal.error : 'Provider not connected' %></div>
+                        <% } %>
+                    </div>
+                <% }); %>
+            </div>
+            <div class="t-cards">
+                <div class="t-card">
+                    <h4>Pending Incoming</h4>
+                    <div class="t-val"><%= dashboardData.pendingPayments.reduce(function(s,p){return s+p.count},0) %></div>
+                    <div class="t-sub">payment intents awaiting confirmation</div>
+                </div>
+                <div class="t-card">
+                    <h4>Pending Withdrawals</h4>
+                    <div class="t-val"><%= dashboardData.pendingWithdrawals.reduce(function(s,p){return s+p.count},0) %></div>
+                    <div class="t-sub">awaiting approval or broadcast</div>
+                </div>
+            </div>
+        </div>
+    </details>
+
+    <!-- WALLETS -->
+    <details class="tidy-panel">
+        <summary>💰 Wallets (<%= wallets.length %>)</summary>
+        <div class="tidy-content">
+            <% if (wallets.length === 0) { %>
+                <p style="color:#94a3b8; font-size:13px;">No treasury wallets configured. Create one below.</p>
+            <% } else { %>
+                <table class="t-table">
+                    <thead><tr><th>Currency</th><th>Network</th><th>Name</th><th>Type</th><th>Status</th><th>Actions</th></tr></thead>
+                    <tbody>
+                    <% wallets.forEach(function(w) { %>
+                        <tr>
+                            <td><strong><%= w.currency %></strong></td>
+                            <td><%= w.network %></td>
+                            <td><%= w.name %></td>
+                            <td><%= w.type %></td>
+                            <td><%- statusBadge(w.status) %></td>
+                            <td>
+                                <% if (['ADMIN','SUPER_ADMIN'].includes(adminRole)) { %>
+                                    <form method="POST" action="/admin/treasury/wallets/<%= w.id %>/status" style="display:inline;">
+                                        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                                        <% if (w.status === 'ACTIVE') { %>
+                                            <input type="hidden" name="status" value="DISABLED">
+                                            <button type="submit" class="t-btn t-btn-danger t-btn-sm">Disable</button>
+                                        <% } else if (w.status === 'DISABLED') { %>
+                                            <input type="hidden" name="status" value="ACTIVE">
+                                            <button type="submit" class="t-btn t-btn-success t-btn-sm">Enable</button>
+                                        <% } %>
+                                    </form>
+                                <% } %>
+                            </td>
+                        </tr>
+                    <% }); %>
+                    </tbody>
+                </table>
+            <% } %>
+
+            <% if (['ADMIN','SUPER_ADMIN'].includes(adminRole)) { %>
+                <div style="margin-top:20px; padding-top:20px; border-top:1px solid #e2e8f0;">
+                    <h4 style="margin:0 0 12px; font-size:14px; color:#475569;">Add Wallet</h4>
+                    <form method="POST" action="/admin/treasury/wallets" style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr auto; gap:10px; align-items:end;">
+                        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                        <div class="t-form-row"><label>Currency</label>
+                            <select name="currency"><option>BTC</option><option>LTC</option><option>ETH</option><option>BCH</option><option>XMR</option></select>
+                        </div>
+                        <div class="t-form-row"><label>Network</label>
+                            <input type="text" name="network" value="mainnet" required>
+                        </div>
+                        <div class="t-form-row"><label>Name</label>
+                            <input type="text" name="name" placeholder="e.g. Primary Hot Wallet" required>
+                        </div>
+                        <div class="t-form-row"><label>Type</label>
+                            <select name="type"><option value="hot">Hot</option><option value="warm">Warm</option><option value="cold">Cold</option></select>
+                        </div>
+                        <button type="submit" class="t-btn t-btn-primary" style="height:38px;">Add</button>
+                    </form>
+                </div>
+            <% } %>
+        </div>
+    </details>
+
+    <!-- ADDRESSES -->
+    <details class="tidy-panel">
+        <summary>📋 Addresses (<%= addresses.length %>)</summary>
+        <div class="tidy-content">
+            <% if (addresses.length === 0) { %>
+                <p style="color:#94a3b8; font-size:13px;">No addresses allocated yet.</p>
+            <% } else { %>
+                <table class="t-table">
+                    <thead><tr><th>Address</th><th>Currency</th><th>Status</th><th>Payment Intent</th><th>Created</th></tr></thead>
+                    <tbody>
+                    <% addresses.slice(0,50).forEach(function(a) { %>
+                        <tr>
+                            <td><span class="t-truncate" title="<%= a.address %>"><%= a.address %></span></td>
+                            <td><%= a.currency %></td>
+                            <td><%- statusBadge(a.status) %></td>
+                            <td><%= a.payment_intent_id || '—' %></td>
+                            <td><%= a.created_at %></td>
+                        </tr>
+                    <% }); %>
+                    </tbody>
+                </table>
+            <% } %>
+        </div>
+    </details>
+
+    <!-- CREATE WITHDRAWAL -->
+    <% if (['TREASURY_OPERATOR','ADMIN','SUPER_ADMIN'].includes(adminRole)) { %>
+    <details class="tidy-panel">
+        <summary>📤 Create Withdrawal</summary>
+        <div class="tidy-content">
+            <% if (dashboardData.treasuryPaused) { %>
+                <div class="t-alert t-alert-error">Treasury is currently PAUSED. Withdrawals cannot be created.</div>
+            <% } else { %>
+                <form method="POST" action="/admin/treasury/withdrawals" style="max-width:500px;">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <input type="hidden" name="idempotencyKey" value="wd-<%= Date.now() %>-<%= Math.random().toString(36).substr(2,9) %>">
+                    <div class="t-form-row">
+                        <label>Currency</label>
+                        <select name="currency" id="wd-currency" required>
+                            <option value="">Select...</option>
+                            <option value="BTC">BTC — Bitcoin</option>
+                            <option value="LTC">LTC — Litecoin</option>
+                            <option value="ETH">ETH — Ethereum</option>
+                            <option value="BCH">BCH — Bitcoin Cash</option>
+                            <option value="XMR">XMR — Monero</option>
+                        </select>
+                    </div>
+                    <div class="t-form-row">
+                        <label>Wallet</label>
+                        <select name="walletId" id="wd-wallet" required>
+                            <option value="">Select currency first</option>
+                            <% wallets.filter(function(w){return w.status==='ACTIVE'}).forEach(function(w) { %>
+                                <option value="<%= w.id %>" data-currency="<%= w.currency %>"><%= w.name %> (<%= w.currency %> — <%= w.network %>)</option>
+                            <% }); %>
+                        </select>
+                    </div>
+                    <div class="t-form-row">
+                        <label>Destination Address</label>
+                        <input type="text" name="destinationAddress" placeholder="Recipient address" required>
+                    </div>
+                    <div class="t-form-row">
+                        <label>Amount <span style="color:#94a3b8; font-weight:normal;">(in smallest unit — satoshis / wei / atomic units)</span></label>
+                        <input type="text" name="amount" placeholder="e.g. 100000 (= 0.001 BTC)" required pattern="[0-9]+">
+                    </div>
+                    <div class="t-form-row">
+                        <label>Network</label>
+                        <input type="text" name="network" value="mainnet">
+                    </div>
+                    <button type="submit" class="t-btn t-btn-warning" style="margin-top:8px;">Create Withdrawal Request</button>
+                </form>
+                <script>
+                    document.getElementById('wd-currency').addEventListener('change', function() {
+                        var sel = this.value;
+                        var opts = document.getElementById('wd-wallet').options;
+                        for (var i = 0; i < opts.length; i++) {
+                            if (opts[i].dataset.currency) {
+                                opts[i].style.display = (!sel || opts[i].dataset.currency === sel) ? '' : 'none';
+                            }
+                        }
+                    });
+                </script>
+            <% } %>
+        </div>
+    </details>
+    <% } %>
+
+    <!-- WITHDRAWALS LIST -->
+    <details class="tidy-panel" open>
+        <summary>📋 Withdrawals (<%= withdrawals.length %>)</summary>
+        <div class="tidy-content">
+            <% if (withdrawals.length === 0) { %>
+                <p style="color:#94a3b8; font-size:13px;">No withdrawals yet.</p>
+            <% } else { %>
+                <div style="overflow-x:auto;">
+                <table class="t-table">
+                    <thead><tr><th>ID</th><th>Currency</th><th>Amount</th><th>Destination</th><th>Status</th><th>Requested By</th><th>TXID</th><th>Created</th><th>Actions</th></tr></thead>
+                    <tbody>
+                    <% withdrawals.forEach(function(w) { %>
+                        <tr>
+                            <td><span class="t-truncate" style="max-width:80px;" title="<%= w.id %>"><%= w.id %></span></td>
+                            <td><strong><%= w.currency %></strong></td>
+                            <td><%= formatSmallest(w.amount_smallest_unit, w.currency) %></td>
+                            <td><span class="t-truncate" title="<%= w.destination_address %>"><%= w.destination_address %></span></td>
+                            <td><%- statusBadge(w.status) %></td>
+                            <td><%= w.requested_by_username || '—' %></td>
+                            <td><span class="t-truncate" style="max-width:100px;" title="<%= w.txid || '' %>"><%= w.txid || '—' %></span></td>
+                            <td style="white-space:nowrap;"><%= w.created_at %></td>
+                            <td style="white-space:nowrap;">
+                                <% if (['ADMIN','SUPER_ADMIN'].includes(adminRole)) { %>
+                                    <% if (['REQUESTED','AWAITING_APPROVAL','VALIDATED'].includes(w.status)) { %>
+                                        <button type="button" class="t-btn t-btn-success t-btn-sm" onclick="showStepUp('/admin/treasury/withdrawals/<%= w.id %>/approve')">Approve</button>
+                                        <form method="POST" action="/admin/treasury/withdrawals/<%= w.id %>/reject" style="display:inline;">
+                                            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                                            <input type="hidden" name="reason" value="Admin rejection">
+                                            <button type="submit" class="t-btn t-btn-danger t-btn-sm">Reject</button>
+                                        </form>
+                                    <% } else if (w.status === 'APPROVED') { %>
+                                        <button type="button" class="t-btn t-btn-warning t-btn-sm" onclick="showStepUp('/admin/treasury/withdrawals/<%= w.id %>/broadcast')">Broadcast</button>
+                                    <% } %>
+                                <% } %>
+                            </td>
+                        </tr>
+                    <% }); %>
+                    </tbody>
+                </table>
+                </div>
+            <% } %>
+        </div>
+    </details>
+
+    <!-- STEP-UP AUTH MODAL -->
+    <div class="t-modal-overlay" id="stepUpModal">
+        <div class="t-modal">
+            <h3>🔐 Step-Up Authentication</h3>
+            <p style="font-size:13px; color:#64748b; margin-bottom:15px;">Re-enter your password to authorize this action.</p>
+            <form method="POST" action="/admin/treasury/step-up" id="stepUpForm">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <input type="hidden" name="returnTo" id="stepUpReturn" value="/admin/treasury">
+                <div class="t-form-row">
+                    <label>Password</label>
+                    <input type="password" name="password" required autofocus>
+                </div>
+                <div style="display:flex; gap:10px; margin-top:15px;">
+                    <button type="submit" class="t-btn t-btn-primary">Authenticate</button>
+                    <button type="button" class="t-btn t-btn-gray" onclick="hideStepUp()" style="background:#e2e8f0; color:#334155;">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        var pendingAction = null;
+        function showStepUp(actionUrl) {
+            pendingAction = actionUrl;
+            document.getElementById('stepUpReturn', actionUrl);
+            document.getElementById('stepUpModal').classList.add('active');
+        }
+        function hideStepUp() {
+            document.getElementById('stepUpModal').classList.remove('active');
+            pendingAction = null;
+        }
+        // After step-up success, execute the pending action
+        document.getElementById('stepUpForm').addEventListener('submit', function(e) {
+            if (pendingAction) {
+                // Create a hidden form to submit the actual action after step-up
+                var returnUrl = pendingAction;
+                document.getElementById('stepUpReturn').value = returnUrl;
+            }
+        });
+        // Auto-show modal if step-up required
+        if (new URLSearchParams(window.location.search).get('stepUpRequired')) {
+            document.getElementById('stepUpModal').classList.add('active');
+        }
+    </script>
+
+    <!-- AUDIT LOG -->
+    <details class="tidy-panel">
+        <summary>📜 Audit Log (last 100)</summary>
+        <div class="tidy-content">
+            <% if (auditLog.length === 0) { %>
+                <p style="color:#94a3b8; font-size:13px;">No audit entries yet.</p>
+            <% } else { %>
+                <div style="overflow-x:auto;">
+                <table class="t-table">
+                    <thead><tr><th>Time</th><th>Admin</th><th>Action</th><th>Resource</th><th>Result</th></tr></thead>
+                    <tbody>
+                    <% auditLog.forEach(function(l) { %>
+                        <tr>
+                            <td style="white-space:nowrap;"><%= l.created_at %></td>
+                            <td><%= l.username || 'System' %></td>
+                            <td style="font-family:monospace; font-size:12px;"><%= l.action %></td>
+                            <td><%= l.resource_type ? l.resource_type + (l.resource_id ? ':' + l.resource_id.substring(0,8) : '') : '—' %></td>
+                            <td><%- statusBadge(l.result || 'SUCCESS') %></td>
+                        </tr>
+                    <% }); %>
+                    </tbody>
+                </table>
+                </div>
+            <% } %>
+        </div>
+    </details>
+
+    <!-- HEALTH STATUS -->
+    <details class="tidy-panel">
+        <summary>🏥 System Health</summary>
+        <div class="tidy-content">
+            <div class="t-cards">
+                <% ['BTC','LTC','ETH','BCH','XMR'].forEach(function(c) { %>
+                    <div class="t-card">
+                        <h4><%= c %> Node</h4>
+                        <% var h = healthData[c]; %>
+                        <% if (h) { %>
+                            <div><%- statusBadge(h.status || 'UNAVAILABLE') %></div>
+                            <% if (h.blockHeight) { %><div class="t-sub">Block: <%= h.blockHeight %></div><% } %>
+                            <% if (h.error) { %><div class="t-sub" style="color:#ef4444;"><%= h.error %></div><% } %>
+                        <% } else { %>
+                            <div><%- statusBadge('UNAVAILABLE') %></div>
+                            <div class="t-sub">Provider not configured</div>
+                        <% } %>
+                    </div>
+                <% }); %>
+            </div>
+        </div>
+    </details>
+
+    <!-- SETTINGS (SUPER_ADMIN ONLY) -->
+    <% if (adminRole === 'SUPER_ADMIN') { %>
+    <details class="tidy-panel">
+        <summary>⚙️ Treasury Settings</summary>
+        <div class="tidy-content">
+            <div style="display:flex; gap:15px; align-items:center; margin-bottom:20px;">
+                <strong style="font-size:14px;">Treasury Status:</strong>
+                <% if (dashboardData.treasuryPaused) { %>
+                    <span class="t-badge t-badge-red">PAUSED</span>
+                    <form method="POST" action="/admin/treasury/resume" style="display:inline;">
+                        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                        <button type="submit" class="t-btn t-btn-success t-btn-sm">Resume</button>
+                    </form>
+                <% } else { %>
+                    <span class="t-badge t-badge-green">ACTIVE</span>
+                    <form method="POST" action="/admin/treasury/pause" style="display:inline;">
+                        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                        <button type="submit" class="t-btn t-btn-danger t-btn-sm">Pause Withdrawals</button>
+                    </form>
+                <% } %>
+            </div>
+            <h4 style="font-size:14px; color:#475569; margin-bottom:10px;">Withdrawal Limits</h4>
+            <table class="t-table" style="max-width:400px;">
+                <thead><tr><th>Currency</th><th>Max Per Withdrawal</th></tr></thead>
+                <tbody>
+                    <tr><td>BTC</td><td><%= treasuryConfig.max_withdrawal_btc || '—' %> BTC</td></tr>
+                    <tr><td>LTC</td><td><%= treasuryConfig.max_withdrawal_ltc || '—' %> LTC</td></tr>
+                    <tr><td>ETH</td><td><%= treasuryConfig.max_withdrawal_eth || '—' %> ETH</td></tr>
+                    <tr><td>BCH</td><td><%= treasuryConfig.max_withdrawal_bch || '—' %> BCH</td></tr>
+                    <tr><td>XMR</td><td><%= treasuryConfig.max_withdrawal_xmr || '—' %> XMR</td></tr>
+                </tbody>
+            </table>
+            <div style="margin-top:15px;">
+                <strong style="font-size:13px; color:#475569;">Min Approval Count:</strong>
+                <span style="font-size:13px;"><%= treasuryConfig.min_approval_count || '1' %></span>
+            </div>
+            <div style="margin-top:8px;">
+                <strong style="font-size:13px; color:#475569;">Require Step-Up:</strong>
+                <span style="font-size:13px;"><%= treasuryConfig.require_step_up || 'true' %></span>
+            </div>
+        </div>
+    </details>
+    <% } %>
+</div>
+
+<%- include('footer') %>

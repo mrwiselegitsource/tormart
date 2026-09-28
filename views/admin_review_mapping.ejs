@@ -3,7 +3,7 @@
     <h2 style="margin-bottom: 10px;">Map Reviews to Products</h2>
     <p style="color: #64748b; margin-bottom: 30px;">Select the target product for each imported review from the dropdowns below.</p>
     
-    <form action="/admin/reviews/bulk-import-finalize" method="POST" enctype="multipart/form-data">
+    <form action="/admin/reviews/bulk-import-finalize?_csrf=<%= csrfToken %>" method="POST" enctype="multipart/form-data">
         <input type="hidden" name="_csrf" value="<%= csrfToken %>">
         <input type="hidden" name="vendor_id" value="<%= vendor_id %>">
         

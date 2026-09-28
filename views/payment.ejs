@@ -40,7 +40,11 @@
                 <div style="font-weight: bold; font-size: 16px; margin-bottom: 15px;">Payment details</div>
                 
                 <div style="margin-bottom: 15px;">
-                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=<%= method %>:<%= walletAddress %>?amount=<%= cryptoAmount %>" alt="QR Code" style="width: 200px; height: 200px; border-radius: 4px;">
+                    <% if (typeof qrCodeBase64 !== 'undefined' && qrCodeBase64) { %>
+                        <img src="<%= qrCodeBase64 %>" alt="QR Code" style="width: 200px; height: 200px; border-radius: 4px;">
+                    <% } else { %>
+                        <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=<%= method %>:<%= walletAddress %>?amount=<%= cryptoAmount %>" alt="QR Code" style="width: 200px; height: 200px; border-radius: 4px;">
+                    <% } %>
                 </div>
                 
                 <div style="font-size: 14px; color: #333; margin-bottom: 15px;">
@@ -48,10 +52,36 @@
                     <strong><%= cryptoAmount %> <%= currencySymbol %></strong> to
                 </div>
                 
-                <input type="text" value="<%= walletAddress %>" readonly style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px; text-align: center; margin-bottom: 10px;">
+                <div style="display:flex; gap: 10px; margin-bottom: 10px;">
+                    <input type="text" id="walletAddr" value="<%= walletAddress %>" readonly style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px; text-align: center;">
+                    <button onclick="navigator.clipboard.writeText(document.getElementById('walletAddr').value); alert('Address copied!');" style="background:#333; color:white; border:none; border-radius:4px; padding: 0 15px; cursor:pointer;">Copy</button>
+                </div>
+                
+                <% if (locals.intent && locals.intent.status !== 'PAID' && locals.intent.status !== 'CONFIRMED' && locals.intent.status !== 'OVERPAID') { %>
+                <div style="margin-top: 20px; text-align:left;">
+                    <div style="font-size: 14px; font-weight:bold; margin-bottom: 5px;">Payment Status</div>
+                    <div id="statusBadge" style="display:inline-block; padding: 5px 10px; border-radius: 4px; background: #e2e8f0; font-size: 13px; font-weight: bold;"><%= locals.intent.status %></div>
+                    <div id="statusMsg" style="font-size: 12px; color: #64748b; margin-top: 5px;">Awaiting blockchain detection...</div>
+                </div>
+                
+                <div style="margin-top: 20px; text-align:left;">
+                    <div style="font-size: 13px; font-weight:bold; margin-bottom: 5px;">Already paid? Submit TXID</div>
+                    <form method="POST" action="/payment/<%= invoiceId %>/verify" style="display:flex; gap: 10px;">
+                        <input type="hidden" name="_csrf" value="<%= locals.csrfToken %>">
+                        <input type="text" name="txid" id="txidInput" placeholder="Transaction Hash" required style="flex-grow:1; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px;">
+                        <button type="submit" style="background:#3b82f6; color:white; border:none; border-radius:4px; padding: 0 15px; cursor:pointer; font-size: 12px;">Verify</button>
+                    </form>
+                </div>
+                <% } else if (locals.intent) { %>
+                <div style="margin-top: 20px; text-align:left;">
+                    <div style="font-size: 14px; font-weight:bold; margin-bottom: 5px; color:#22c55e;">Payment Confirmed!</div>
+                    <div style="font-size: 12px; color: #64748b; margin-top: 5px;">Your order is now being processed.</div>
+                </div>
+                <% } %>
             </div>
 
             <!-- Blue Info Box -->
+
             <div style="background: #3b82f6; color: white; border-radius: 4px; padding: 20px; font-size: 12px; line-height: 1.5;">
                 <div style="display: flex; gap: 10px; font-weight: bold; font-size: 13px; margin-bottom: 15px;">
                     <div style="width: 18px; height: 18px; background: white; color: #3b82f6; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px;">i</div>
@@ -120,23 +150,32 @@
 
 <script>
     // 60 minute countdown timer based on order creation time
+    const intentExpiresAt = "<%= locals.intent ? locals.intent.expires_at : '' %>";
     const createdAtStr = "<%= orders[0].created_at %>";
-    // Replace space with T and append Z for valid ISO 8601 UTC parsing across browsers
     const createdAtIso = createdAtStr.replace(' ', 'T') + 'Z'; 
     const createdAt = new Date(createdAtIso).getTime();
-    const now = Date.now();
-    const elapsedSeconds = Math.floor((now - createdAt) / 1000);
     
-    let timeRemaining = (60 * 60) - elapsedSeconds;
+    // If intent exists, use its expiry, else 60 mins from created
+    let expiresTime = createdAt + (60 * 60 * 1000);
+    if (intentExpiresAt) {
+        expiresTime = new Date(intentExpiresAt).getTime();
+    }
+    
+    const now = Date.now();
+    let timeRemaining = Math.floor((expiresTime - now) / 1000);
     if (timeRemaining < 0) timeRemaining = 0;
     
-    const totalTime = 60 * 60;
+    const totalTime = 60 * 60; // 60 mins scale
     
     const progressBar = document.getElementById('progressBar');
     const timeLeftDisplay = document.getElementById('timeLeftDisplay');
     
     setInterval(() => {
-        if (timeRemaining <= 0) return;
+        if (timeRemaining <= 0) {
+            timeLeftDisplay.innerText = 'Expired';
+            progressBar.style.width = '0%';
+            return;
+        }
         timeRemaining--;
         
         const minutes = Math.floor(timeRemaining / 60);
@@ -147,9 +186,63 @@
             seconds.toString().padStart(2, '0');
             
         const percentage = (timeRemaining / totalTime) * 100;
-        progressBar.style.width = percentage + '%';
+        progressBar.style.width = Math.min(100, Math.max(0, percentage)) + '%';
         
     }, 1000);
+    
+    <% if (locals.intent && locals.intent.status !== 'CONFIRMED' && locals.intent.status !== 'PAID' && locals.intent.status !== 'OVERPAID') { %>
+    // Status polling
+    setInterval(() => {
+        fetch(`/payment/<%= invoiceId %>/status`)
+            .then(res => res.json())
+            .then(data => {
+                if(data.status) {
+                    const badge = document.getElementById('statusBadge');
+                    const msg = document.getElementById('statusMsg');
+                    if (badge) badge.innerText = data.status;
+                    
+                    if (data.status === 'TRANSACTION_DETECTED') {
+                        badge.style.background = '#fef08a';
+                        msg.innerText = 'Transaction seen, waiting for blocks.';
+                    } else if (data.status === 'CONFIRMING') {
+                        badge.style.background = '#bfdbfe';
+                        msg.innerText = 'Confirmations in progress...';
+                    } else if (data.status === 'CONFIRMED' || data.status === 'OVERPAID') {
+                        badge.style.background = '#bbf7d0';
+                        msg.innerText = 'Payment Confirmed!';
+                        setTimeout(() => window.location.reload(), 2000);
+                    } else if (data.status === 'UNDERPAID') {
+                        badge.style.background = '#fecaca';
+                        msg.innerText = 'Underpayment detected. Please pay the remaining amount.';
+                    } else if (data.status === 'EXPIRED') {
+                        badge.style.background = '#fecaca';
+                        msg.innerText = 'Payment expired. If you paid, submit TXID.';
+                    }
+                }
+            })
+            .catch(e => console.error("Polling error", e));
+    }, 15000); // Poll every 15s
+    
+    function submitTxid() {
+        const txid = document.getElementById('txidInput').value.trim();
+        if(!txid) return alert('Enter a transaction hash');
+        
+        fetch(`/payment/<%= invoiceId %>/verify`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ txid: txid })
+        })
+        .then(res => res.json())
+        .then(data => {
+            alert(data.message);
+            if(data.success) {
+                // Instantly trigger a poll check after 2 seconds
+                setTimeout(() => fetch(`/payment/<%= invoiceId %>/status`), 2000);
+            }
+        })
+        .catch(err => alert("Error verifying TXID"));
+    }
+    <% } %>
 </script>
 
 <%- include('footer') %>

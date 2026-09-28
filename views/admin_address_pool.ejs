@@ -1,0 +1,138 @@
+<%- include('header') %>
+
+<style>
+details.tidy-panel {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+details.tidy-panel > summary {
+    padding: 15px 20px;
+    font-size: 16px;
+    font-weight: bold;
+    color: #1e293b;
+    cursor: pointer;
+    list-style: none;
+    border-bottom: 1px solid transparent;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+details.tidy-panel[open] > summary {
+    border-bottom: 1px solid #e2e8f0;
+    background: #f8fafc;
+    border-radius: 8px 8px 0 0;
+}
+details.tidy-panel > .tidy-content {
+    padding: 20px;
+}
+.stat-box {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 15px;
+    text-align: center;
+    flex: 1;
+    min-width: 120px;
+}
+.stat-box h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 18px;
+    color: #1e293b;
+}
+.text-danger { color: #ef4444; font-weight: bold; }
+.text-warning { color: #f59e0b; font-weight: bold; }
+.text-success { color: #10b981; font-weight: bold; }
+</style>
+
+<div class="container" style="max-width: 1200px; margin: 0 auto; padding: 20px;">
+    
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+        <h2>Address Pool Manager</h2>
+        <a href="/admin" class="btn btn-primary" style="text-decoration: none; padding: 8px 15px; border-radius: 4px; background: #3b82f6; color: white;">Back to Admin</a>
+    </div>
+
+    <% if (query.success) { %>
+        <div style="background: #dcfce7; color: #166534; padding: 15px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #bbf7d0;">
+            Addresses successfully added to the pool!
+        </div>
+    <% } %>
+
+    <details class="tidy-panel" open>
+        <summary>Current Pool Statistics</summary>
+        <div class="tidy-content" style="display: flex; gap: 15px; flex-wrap: wrap;">
+            <% ['BTC', 'LTC', 'BCH'].forEach(curr => { %>
+                <div class="stat-box">
+                    <h3><%= curr %></h3>
+                    <p style="margin: 0; font-size: 14px; color: #475569;">
+                        Unused: <span class="<%= stats[curr].unused < 10 ? 'text-danger' : (stats[curr].unused < 50 ? 'text-warning' : 'text-success') %>"><%= stats[curr].unused %></span><br>
+                        Total: <%= stats[curr].total %>
+                    </p>
+                </div>
+            <% }) %>
+        </div>
+    </details>
+
+    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
+        <details class="tidy-panel" open>
+            <summary>Add Addresses to Pool</summary>
+            <div class="tidy-content">
+                <p style="font-size: 14px; color: #64748b; margin-bottom: 20px;">
+                    Paste pre-generated addresses here. These will be assigned dynamically to new orders. 
+                    Using an address pool allows you to process payments without running expensive blockchain nodes on this server.
+                </p>
+                
+                <form action="/admin/address-pool" method="POST">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                    <div class="form-group" style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px;">Currency</label>
+                        <select name="currency" class="form-control" required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 4px;">
+                            <option value="BTC">Bitcoin (BTC)</option>
+                            <option value="LTC">Litecoin (LTC)</option>
+                            <option value="BCH">Bitcoin Cash (BCH)</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px;">Addresses (One per line or comma-separated)</label>
+                        <textarea name="addresses" class="form-control" rows="10" placeholder="bc1q...\nbc1q...\nbc1q..." required style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-family: monospace;"></textarea>
+                    </div>
+                    <button type="submit" style="background: #3b82f6; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold;">Upload Addresses</button>
+                </form>
+            </div>
+        </details>
+
+        <details class="tidy-panel" open>
+            <summary>How it works</summary>
+            <div class="tidy-content" style="font-size: 14px; color: #475569; line-height: 1.5;">
+                <p><strong>1. Generate</strong><br>
+                Use a secure wallet (like Electrum or Trust Wallet) on your own machine to generate a massive batch of unused receiving addresses.</p>
+                
+                <p><strong>2. Upload</strong><br>
+                Paste the addresses into the form. They are saved to the database.</p>
+                
+                <p><strong>3. Checkout</strong><br>
+                When a customer checks out, the system pops the next unused address from the pool and assigns it permanently to their order.</p>
+                
+                <p><strong>4. Detection</strong><br>
+                The server uses public Block Explorer APIs to detect incoming payments to these addresses automatically.</p>
+                
+                <div style="margin-top: 15px; padding: 12px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; color: #b45309;">
+                    <strong>⚠️ Important:</strong> Ensure you backup your wallet seed phrase! If you lose it, you lose access to all funds sent to these addresses.
+                </div>
+            </div>
+        </details>
+    </div>
+
+</div>
+
+<script>
+    // Add simple toggle functionality for details/summary
+    document.querySelectorAll('details').forEach(detail => {
+        detail.querySelector('summary').addEventListener('click', (e) => {
+            // let it toggle naturally
+        });
+    });
+</script>

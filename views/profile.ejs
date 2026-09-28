@@ -220,6 +220,7 @@
             <div id="password-panel" class="dynamic-panel">
                 <h2>🔒 Change Password</h2>
                 <form action="/profile/change-password" method="POST">
+                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                     <div class="form-group">
                         <label>Old Password</label>
                         <input type="password" name="old_password" class="form-control" required>
