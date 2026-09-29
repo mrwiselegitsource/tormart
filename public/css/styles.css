@@ -949,3 +949,51 @@ body.menu-open {
     .dashboard-wrapper { flex-direction: column; }
     .dashboard-sidebar { width: 100%; }
 }
+
+/* Advert Carousel System */
+.advert-carousel {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    overflow: hidden;
+    scroll-snap-type: x mandatory;
+    margin-bottom: 20px;
+}
+
+.advert-item {
+    flex: 1 1 calc(50% - 12px);
+    max-width: calc(50% - 12px);
+    scroll-snap-align: start;
+}
+
+.advert-item img {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: 4px;
+}
+
+/* Mobile – one per line */
+@media (max-width: 600px) {
+    .advert-item {
+        flex-basis: 100%;
+        max-width: 100%;
+    }
+}
+
+/* Auto‑rotate (desktop only) */
+@keyframes advertRotate {
+    0%   { transform: translateX(0); }
+    33%  { transform: translateX(-33%); }
+    66%  { transform: translateX(-66%); }
+    100% { transform: translateX(0); }
+}
+
+@media (min-width: 601px) {
+    .advert-carousel {
+        animation: advertRotate 15s infinite linear;
+    }
+    .advert-carousel:hover {
+        animation-play-state: paused;
+    }
+}

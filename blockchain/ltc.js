@@ -4,6 +4,7 @@ const { PaymentStatus } = require('../services/paymentService');
 class LitecoinAdapter {
     constructor(rpcUrl, rpcUser, rpcPass, mockClient = null) {
         this.apiBase = 'https://litecoinspace.org/api';
+        this.timeout = 10000; // 10 second timeout
     }
 
     ltcToLitoshis(ltcValue) {
@@ -12,7 +13,7 @@ class LitecoinAdapter {
 
     async findTransactionsByAddress(address) {
         try {
-            const response = await axios.get(`${this.apiBase}/address/${address}/txs`);
+            const response = await axios.get(`${this.apiBase}/address/${address}/txs`, { timeout: this.timeout });
             if (Array.isArray(response.data)) {
                 return response.data.map(tx => tx.txid);
             }
@@ -26,11 +27,11 @@ class LitecoinAdapter {
     async verifyTransaction(txid, expectedAddress, expectedAmountLitoshisStr, expectedNetwork, requiredConfirmations) {
         try {
             // Fetch transaction
-            const txRes = await axios.get(`${this.apiBase}/tx/${txid}`);
+            const txRes = await axios.get(`${this.apiBase}/tx/${txid}`, { timeout: this.timeout });
             const tx = txRes.data;
 
             // Fetch current block height to calculate confirmations
-            const heightRes = await axios.get(`${this.apiBase}/blocks/tip/height`);
+            const heightRes = await axios.get(`${this.apiBase}/blocks/tip/height`, { timeout: this.timeout });
             const currentHeight = heightRes.data;
 
             let totalReceivedLitoshis = 0n;

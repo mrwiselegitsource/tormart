@@ -1,0 +1,109 @@
+<%- include('header') %>
+
+<div class="container" style="max-width: 1000px; margin-top: 30px; margin-bottom: 50px;">
+    <h2>Advert Manager</h2>
+    <p style="color: #666; margin-bottom: 20px;">Upload and manage banners. Adverts will auto-rotate across the site based on their Page Key.</p>
+
+    <!-- Upload Form -->
+    <div class="form-panel">
+        <h3>Create New Advert</h3>
+        <form action="/admin/adverts/add?_csrf=<%= csrfToken %>" method="POST" enctype="multipart/form-data" style="margin-top: 15px;">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            
+            <div style="display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 15px;">
+                <div class="form-group" style="flex: 1; min-width: 200px;">
+                    <label>Vendor</label>
+                    <select name="vendor_id" class="form-control" required>
+                        <option value="">Select Vendor...</option>
+                        <% vendors.forEach(v => { %>
+                            <option value="<%= v.id %>"><%= v.username %></option>
+                        <% }) %>
+                    </select>
+                </div>
+                
+                <div class="form-group" style="flex: 1; min-width: 200px;">
+                    <label>Page Placement (Page Key)</label>
+                    <select name="page_key" class="form-control" required>
+                        <option value="home">Home Page (home)</option>
+                        <option value="vendors">Vendors Directory (vendors)</option>
+                        <option value="product_detail">Product Detail (product_detail)</option>
+                        <option value="vendor_profile">Vendor Profile (vendor_profile)</option>
+                        <option value="faq">FAQ / Wiki (faq)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Target URL (where the advert links to)</label>
+                <input type="text" name="target_url" class="form-control" placeholder="/vendor/someuser" required>
+            </div>
+
+            <div class="form-group">
+                <label>Advert Image (GIF only, max 2MB)</label>
+                <input type="file" name="advert_image" class="form-control" accept="image/gif" required>
+            </div>
+
+            <button type="submit" class="btn btn-purple">Upload Advert</button>
+        </form>
+    </div>
+
+    <!-- Active Adverts Table -->
+    <div class="form-panel">
+        <h3>Current Adverts</h3>
+        <div class="table-responsive" style="margin-top: 15px;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Preview</th>
+                        <th>Vendor</th>
+                        <th>Page Key</th>
+                        <th>Target URL</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% if (adverts.length === 0) { %>
+                        <tr>
+                            <td colspan="6" style="text-align: center; color: #888;">No adverts found.</td>
+                        </tr>
+                    <% } else { %>
+                        <% adverts.forEach(ad => { %>
+                            <tr>
+                                <td>
+                                    <img src="<%= ad.image_url %>" alt="Advert" style="width: 150px; border-radius: 4px;">
+                                </td>
+                                <td><%= ad.vendor_name %></td>
+                                <td><span style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px; font-size: 12px;"><%= ad.page_key %></span></td>
+                                <td><a href="<%= ad.target_url %>" target="_blank" style="color: #3b82f6;"><%= ad.target_url %></a></td>
+                                <td>
+                                    <% if (ad.is_active) { %>
+                                        <span class="text-green">Active</span>
+                                    <% } else { %>
+                                        <span style="color: #ef4444; font-weight: bold;">Inactive</span>
+                                    <% } %>
+                                </td>
+                                <td>
+                                    <div style="display: flex; gap: 8px;">
+                                        <form action="/admin/adverts/toggle/<%= ad.id %>" method="POST" style="margin: 0;">
+                                            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                                            <button type="submit" class="btn <%= ad.is_active ? 'btn-purple' : 'btn-green' %>" style="padding: 5px 10px; font-size: 12px;">
+                                                <%= ad.is_active ? 'Deactivate' : 'Activate' %>
+                                            </button>
+                                        </form>
+                                        <form action="/admin/adverts/delete/<%= ad.id %>" method="POST" style="margin: 0;" onsubmit="return confirm('Delete this advert permanently?');">
+                                            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                                            <button type="submit" class="btn" style="background: #ef4444; padding: 5px 10px; font-size: 12px;">Delete</button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        <% }) %>
+                    <% } %>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<%- include('footer') %>

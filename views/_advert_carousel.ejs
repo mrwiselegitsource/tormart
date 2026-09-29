@@ -1,0 +1,15 @@
+<%
+    // Expects: advert_count (optional, default 1), pageKey (required)
+    const count = (typeof advert_count !== 'undefined') ? advert_count : 1;
+    const key = (typeof pageKey !== 'undefined') ? pageKey : 'home';
+    const adverts = smart_adverts[key] || [];
+%>
+<% if (adverts.length > 0) { %>
+    <div class="advert-carousel" data-count="<%= count %>">
+        <% adverts.forEach(ad => { %>
+            <a href="<%= ad.target_url %>" class="advert-item">
+                <img src="<%= ad.image_url %>" alt="Advertisement">
+            </a>
+        <% }) %>
+    </div>
+<% } %>

@@ -26,6 +26,28 @@ const assetStorage = multer.diskStorage({
 });
 const assetUpload = multer({ storage: assetStorage });
 
+// Configure multer for advert uploads (admin and vendor)
+const advertStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, path.join(__dirname, 'public/uploads/advert'));
+    },
+    filename: (req, file, cb) => {
+        const ext = path.extname(file.originalname);
+        cb(null, Date.now() + ext);
+    }
+});
+const advertUpload = multer({ 
+    storage: advertStorage,
+    limits: { fileSize: 2 * 1024 * 1024 }, // 2 MB
+    fileFilter: (req, file, cb) => {
+        if (file.mimetype === 'image/gif') {
+            cb(null, true);
+        } else {
+            cb(new Error('Only GIF images are allowed for adverts.'));
+        }
+    }
+});
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -34,9 +56,11 @@ const isVercel = process.env.VERCEL;
 const uploadsDir = isVercel ? '/tmp/uploads' : path.join(__dirname, 'public', 'uploads');
 const imagesDir = isVercel ? '/tmp/images' : path.join(__dirname, 'public', 'images');
 const messagesDir = isVercel ? '/tmp/messages' : path.join(__dirname, 'public', 'images', 'messages');
+const advertDir = isVercel ? '/tmp/advert' : path.join(__dirname, 'public', 'uploads', 'advert');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 if (!fs.existsSync(imagesDir)) fs.mkdirSync(imagesDir, { recursive: true });
 if (!fs.existsSync(messagesDir)) fs.mkdirSync(messagesDir, { recursive: true });
+if (!fs.existsSync(advertDir)) fs.mkdirSync(advertDir, { recursive: true });
 
 // Setup View Engine
 app.set('view engine', 'ejs');
@@ -162,7 +186,7 @@ const adapters = {
 };
 
 const paymentWorker = new PaymentWorker(db, paymentService, adapters);
-paymentWorker.start(15000); // Poll every 15s
+paymentWorker.start(120000); // Poll every 2 minutes to avoid API spam
 
 // ---- TREASURY SYSTEM INITIALIZATION ----
 const { LoginRateLimiter, AuditLogger, StepUpAuth, RoleManager, ADMIN_ROLES, AUDIT_ACTIONS } = require('./services/adminAuth');
@@ -408,12 +432,20 @@ function initializeSchema() {
         db.run(`CREATE TABLE IF NOT EXISTS adverts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             vendor_id INTEGER NOT NULL,
-            image_url TEXT,
-            target_url TEXT,
+            image_url TEXT NOT NULL,
+            target_url TEXT NOT NULL,
+            page_key TEXT NOT NULL DEFAULT 'home',
             is_active INTEGER DEFAULT 1,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (vendor_id) REFERENCES users(id)
-        )`);
+        )`, (err) => {
+            if (!err) {
+                // Add page_key column if it doesn't exist (SQLite doesn't support IF NOT EXISTS in ALTER TABLE add column natively in old versions, but we can catch the error)
+                db.run(`ALTER TABLE adverts ADD COLUMN page_key TEXT NOT NULL DEFAULT 'home'`, (e) => {
+                    // Ignore error if column already exists
+                });
+            }
+        });
 
         db.run(`CREATE TABLE IF NOT EXISTS payment_intents (
             id TEXT PRIMARY KEY,
@@ -650,8 +682,15 @@ app.use((req, res, next) => {
     
     // Fetch active adverts, site settings, and user purchase history
     db.all("SELECT * FROM adverts WHERE is_active = 1", (err, adverts) => {
-        res.locals.smart_adverts = adverts || [];
-        
+        const advertsByPage = {};
+        if (adverts) {
+            adverts.forEach(ad => {
+                advertsByPage[ad.page_key] = advertsByPage[ad.page_key] || [];
+                advertsByPage[ad.page_key].push(ad);
+            });
+        }
+        res.locals.smart_adverts = advertsByPage;
+
         db.all("SELECT * FROM site_settings", (err, sSettings) => {
             const siteSettings = {};
             if (sSettings) sSettings.forEach(s => siteSettings[s.setting_key] = s.setting_value);
@@ -2057,28 +2096,30 @@ app.post('/vendor/proofs/delete/:id', requireVendor, (req, res) => {
     });
 });
 
-app.post('/vendor/adverts/add', requireVendor, imageUpload.single('advert_image'), (req, res) => {
-    if (!req.file) return res.redirect('/vendor');
+app.post('/vendor/adverts/add', requireVendor, requireCsrf, advertUpload.single('advert_image'), (req, res) => {
+    if (!req.file) return res.redirect('/vendor?error=No+file+uploaded');
     
     const target_url = req.body.target_url || '#';
-    const image_url = '/images/' + req.file.filename;
+    const image_url = '/uploads/advert/' + req.file.filename;
+    const page_key = 'vendor_profile';
 
     db.run(
-        "INSERT INTO adverts (vendor_id, image_url, target_url) VALUES (?, ?, ?)",
-        [req.session.user.id, image_url, target_url],
+        "INSERT INTO adverts (vendor_id, image_url, target_url, page_key) VALUES (?, ?, ?, ?)",
+        [req.session.user.id, image_url, target_url, page_key],
         (err) => {
-            res.redirect('/vendor');
+            if (err) console.error("Error adding vendor advert:", err);
+            res.redirect('/vendor?success=true');
         }
     );
 });
 
-app.post('/vendor/adverts/delete/:id', requireVendor, (req, res) => {
+app.post('/vendor/adverts/delete/:id', requireVendor, requireCsrf, (req, res) => {
     db.get("SELECT image_url FROM adverts WHERE id = ? AND vendor_id = ?", [req.params.id, req.session.user.id], (err, advert) => {
         if (advert) {
             const filePath = path.join(__dirname, 'public', advert.image_url);
-            fs.unlink(filePath, () => {});
+            if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
             db.run("DELETE FROM adverts WHERE id = ?", [req.params.id], () => {
-                res.redirect('/vendor');
+                res.redirect('/vendor?deleted=true');
             });
         } else {
             res.redirect('/vendor');
@@ -2403,10 +2444,12 @@ app.get('/admin/address-pool', requireAdmin, (req, res) => {
 
 app.post('/admin/address-pool', requireAdmin, (req, res) => {
     const { currency, addresses } = req.body;
-    if (!currency || !addresses) return res.redirect('/admin/address-pool');
+    if (!currency || !addresses) {
+        return res.redirect('/admin/address-pool?error=Missing+currency+or+addresses');
+    }
     
     const list = addresses.split(/[\n,]+/).map(a => a.trim()).filter(a => a);
-    if (list.length === 0) return res.redirect('/admin/address-pool');
+    if (list.length === 0) return res.redirect('/admin/address-pool?error=No+valid+addresses+found');
     
     const stmt = db.prepare(`INSERT OR IGNORE INTO address_pool (currency, address) VALUES (?, ?)`);
     db.serialize(() => {
@@ -2414,8 +2457,59 @@ app.post('/admin/address-pool', requireAdmin, (req, res) => {
             stmt.run(currency, address);
         });
         stmt.finalize(() => {
-            res.redirect('/admin/address-pool?success=true');
+            res.redirect(`/admin/address-pool?success=true&count=${list.length}`);
         });
+    });
+});
+
+// ---- ADMIN ADVERTS MANAGER ----
+app.get('/admin/adverts', requireAdmin, (req, res) => {
+    db.all(`SELECT a.*, u.username as vendor_name FROM adverts a LEFT JOIN users u ON a.vendor_id = u.id ORDER BY a.id DESC`, (err, adverts) => {
+        if (err) {
+            console.error("Error fetching adverts:", err);
+            return res.status(500).send("Database error");
+        }
+        // Fetch all vendors to populate the vendor dropdown
+        db.all("SELECT id, username FROM users WHERE role = 'vendor'", (err, vendors) => {
+            res.render('admin_adverts', { adverts: adverts || [], vendors: vendors || [] });
+        });
+    });
+});
+
+app.post('/admin/adverts/add', requireAdmin, requireCsrf, advertUpload.single('advert_image'), (req, res) => {
+    const { target_url, page_key, vendor_id } = req.body;
+    if (!req.file || !target_url || !page_key || !vendor_id) {
+        return res.redirect('/admin/adverts?error=Missing+required+fields');
+    }
+    const imageUrl = '/uploads/advert/' + req.file.filename;
+    db.run(
+        "INSERT INTO adverts (vendor_id, image_url, target_url, page_key) VALUES (?, ?, ?, ?)",
+        [vendor_id, imageUrl, target_url, page_key],
+        function(err) {
+            if (err) console.error("Error adding advert:", err);
+            res.redirect('/admin/adverts?success=true');
+        }
+    );
+});
+
+app.post('/admin/adverts/toggle/:id', requireAdmin, requireCsrf, (req, res) => {
+    db.run("UPDATE adverts SET is_active = CASE WHEN is_active = 1 THEN 0 ELSE 1 END WHERE id = ?", [req.params.id], function(err) {
+        if (err) console.error("Error toggling advert:", err);
+        res.redirect('/admin/adverts');
+    });
+});
+
+app.post('/admin/adverts/delete/:id', requireAdmin, requireCsrf, (req, res) => {
+    db.get("SELECT image_url FROM adverts WHERE id = ?", [req.params.id], (err, row) => {
+        if (row) {
+            const filePath = path.join(__dirname, 'public', row.image_url);
+            if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+            db.run("DELETE FROM adverts WHERE id = ?", [req.params.id], () => {
+                res.redirect('/admin/adverts?deleted=true');
+            });
+        } else {
+            res.redirect('/admin/adverts');
+        }
     });
 });
 

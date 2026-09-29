@@ -3,16 +3,35 @@ const { PaymentStatus } = require('../services/paymentService');
 
 class BitcoinAdapter {
     constructor(rpcUrl, rpcUser, rpcPass, mockClient = null) {
-        this.apiBase = 'https://mempool.space/api';
+        // Primary and fallback APIs for resilience
+        this.apiEndpoints = [
+            'https://mempool.space/api',
+            'https://blockstream.info/api'
+        ];
+        this.timeout = 10000; // 10 second timeout
     }
 
     btcToSatoshis(btcValue) {
         return BigInt(Math.round(btcValue * 100000000));
     }
 
+    async apiGet(path) {
+        let lastError = null;
+        for (const baseUrl of this.apiEndpoints) {
+            try {
+                const response = await axios.get(`${baseUrl}${path}`, { timeout: this.timeout });
+                return response;
+            } catch (error) {
+                lastError = error;
+                // Try the next endpoint
+            }
+        }
+        throw lastError;
+    }
+
     async findTransactionsByAddress(address) {
         try {
-            const response = await axios.get(`${this.apiBase}/address/${address}/txs`);
+            const response = await this.apiGet(`/address/${address}/txs`);
             if (Array.isArray(response.data)) {
                 return response.data.map(tx => tx.txid);
             }
@@ -26,11 +45,11 @@ class BitcoinAdapter {
     async verifyTransaction(txid, expectedAddress, expectedAmountSatsStr, expectedNetwork, requiredConfirmations) {
         try {
             // Fetch transaction
-            const txRes = await axios.get(`${this.apiBase}/tx/${txid}`);
+            const txRes = await this.apiGet(`/tx/${txid}`);
             const tx = txRes.data;
 
             // Fetch current block height to calculate confirmations
-            const heightRes = await axios.get(`${this.apiBase}/blocks/tip/height`);
+            const heightRes = await this.apiGet(`/blocks/tip/height`);
             const currentHeight = heightRes.data;
 
             let totalReceivedSats = 0n;

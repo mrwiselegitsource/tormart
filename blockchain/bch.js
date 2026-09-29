@@ -4,6 +4,7 @@ const { PaymentStatus } = require('../services/paymentService');
 class BitcoinCashAdapter {
     constructor(rpcUrl, rpcUser, rpcPass, mockClient = null) {
         this.apiBase = 'https://api.blockchair.com/bitcoin-cash';
+        this.timeout = 10000; // 10 second timeout
     }
 
     bchToSatoshis(bchValue) {
@@ -22,7 +23,7 @@ class BitcoinCashAdapter {
     async findTransactionsByAddress(address) {
         try {
             const norm = this.normalizeAddress(address);
-            const response = await axios.get(`${this.apiBase}/dashboards/address/${norm}`);
+            const response = await axios.get(`${this.apiBase}/dashboards/address/${norm}`, { timeout: this.timeout });
             if (response.data && response.data.data && response.data.data[norm]) {
                 return response.data.data[norm].transactions || [];
             }
@@ -35,7 +36,7 @@ class BitcoinCashAdapter {
 
     async verifyTransaction(txid, expectedAddress, expectedAmountSatsStr, expectedNetwork, requiredConfirmations) {
         try {
-            const response = await axios.get(`${this.apiBase}/dashboards/transaction/${txid}`);
+            const response = await axios.get(`${this.apiBase}/dashboards/transaction/${txid}`, { timeout: this.timeout });
             const data = response.data.data[txid];
             if (!data) {
                 return { status: PaymentStatus.WAITING_FOR_PAYMENT, receivedAmountCrypto: '0', confirmations: 0 };
@@ -73,7 +74,7 @@ class BitcoinCashAdapter {
             // Calculate confirmations
             let confirmations = 0;
             if (tx.block_id && tx.block_id !== -1) {
-                const statsResponse = await axios.get(`${this.apiBase}/stats`);
+                const statsResponse = await axios.get(`${this.apiBase}/stats`, { timeout: this.timeout });
                 const currentHeight = statsResponse.data.data.blocks;
                 confirmations = (currentHeight - tx.block_id) + 1;
             }
