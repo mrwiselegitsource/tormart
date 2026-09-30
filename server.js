@@ -916,7 +916,20 @@ app.post('/cart/add', (req, res) => {
 
     if (req.xhr || req.headers.accept.indexOf('json') > -1) {
         const cartCount = Object.values(req.session.cart).reduce((a, b) => a + b, 0);
-        return res.json({ success: true, cartCount: cartCount });
+        const productIds = Object.keys(req.session.cart).map(id => parseInt(id, 10)).filter(id => !isNaN(id));
+        if (productIds.length === 0) {
+            return res.json({ success: true, cartCount: 0, cartItems: [], total: 0 });
+        }
+        const placeholders = productIds.map(() => '?').join(',');
+        return db.all(`SELECT * FROM products WHERE id IN (${placeholders})`, productIds, (err, products) => {
+            let total = 0;
+            const cartItems = (products || []).map(p => {
+                const q = req.session.cart[p.id];
+                total += (p.price * q);
+                return { id: p.id, name: p.name, image: p.image, price: p.price, quantity: q };
+            });
+            return res.json({ success: true, cartCount: cartCount, cartItems: cartItems, total: total });
+        });
     }
     res.redirect('/cart');
 });

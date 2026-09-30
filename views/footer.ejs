@@ -131,13 +131,22 @@
     <% } %>
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-    #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
-    .cart-toast { background: #28a745; color: white; padding: 15px 20px; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-size: 14px; opacity: 0; transform: translateY(20px); transition: all 0.3s ease; max-width: 300px; line-height: 1.4; }
-    .cart-toast.show { opacity: 1; transform: translateY(0); }
+    #cart-preview-container { position: fixed; top: 70px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
+    .cart-preview { background: #fff; color: #333; padding: 20px; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); width: 320px; opacity: 0; transform: translateY(-20px); transition: all 0.3s ease; border: 1px solid #e2e8f0; pointer-events: none; }
+    .cart-preview.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
+    .cart-preview-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px; }
+    .cart-preview-title { font-weight: bold; font-size: 16px; color: #111; }
+    .cart-preview-close { background: none; border: none; font-size: 24px; color: #ef4444; cursor: pointer; padding: 0; line-height: 1; margin-top: -5px; }
+    .cart-preview-images { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 15px; }
+    .cart-preview-images img { width: 60px; height: 40px; object-fit: cover; border-radius: 4px; border: 1px solid #eee; }
+    .cart-preview-total { display: flex; justify-content: space-between; font-weight: bold; font-size: 16px; margin-bottom: 10px; }
+    .cart-preview-msg { font-size: 13px; color: #22c55e; margin-bottom: 15px; line-height: 1.4; }
+    .cart-preview-btn { display: block; text-align: center; background: #22c55e; color: white; text-decoration: none; padding: 10px; border-radius: 4px; font-weight: bold; transition: background 0.2s; }
+    .cart-preview-btn:hover { background: #16a34a; color: white; }
     .fly-to-cart-img { position: fixed; z-index: 10000; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); transition: all 0.8s cubic-bezier(0.25, 1, 0.5, 1); pointer-events: none; }
     .cart-badge { transition: transform 0.2s; display: inline-block; }
     </style>
-    <div id="toast-container"></div>
+    <div id="cart-preview-container"></div>
     <script>
     document.addEventListener('DOMContentLoaded', function() {
         lucide.createIcons();
@@ -149,6 +158,7 @@
                 if (btn) btn.disabled = true;
                 
                 let productContainer = form.closest('.product-card, .product-detail-grid, tr');
+                if (!productContainer) productContainer = form.closest('.product-top-flex');
                 let img = productContainer ? productContainer.querySelector('img') : null;
                 
                 fetch('/cart/add', {
@@ -159,7 +169,7 @@
                     if (res.success) {
                         const badge = document.querySelector('.cart-badge');
                         if (badge) { badge.innerText = res.cartCount; badge.style.display = 'inline-block'; }
-                        showToast(`You have ${res.cartCount} item${res.cartCount !== 1 ? 's' : ''} in your cart. Check out now and use your cashback balance to save up to 30%!`);
+                        showCartPreview(res);
                         if (img) flyToCart(img);
                     }
                 }).catch(err => console.error(err)).finally(() => {
@@ -169,15 +179,43 @@
         });
     });
 
-    function showToast(message) {
-        const container = document.getElementById('toast-container');
-        const toast = document.createElement('div');
-        toast.className = 'cart-toast';
-        toast.innerText = message;
-        container.appendChild(toast);
-        void toast.offsetWidth;
-        toast.classList.add('show');
-        setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 5000);
+    function showCartPreview(res) {
+        const container = document.getElementById('cart-preview-container');
+        container.innerHTML = '';
+        
+        const preview = document.createElement('div');
+        preview.className = 'cart-preview';
+        
+        let imagesHtml = '';
+        if (res.cartItems && res.cartItems.length > 0) {
+            const itemsToShow = res.cartItems.slice(-4).reverse();
+            imagesHtml = itemsToShow.map(item => `<img src="${item.image}" alt="Item">`).join('');
+        }
+        
+        const totalFormatted = (res.total || 0).toFixed(2);
+        
+        preview.innerHTML = `
+            <div class="cart-preview-header">
+                <span class="cart-preview-title">Added to Cart (${res.cartCount})</span>
+                <button type="button" class="cart-preview-close" onclick="this.closest('.cart-preview').classList.remove('show')">&times;</button>
+            </div>
+            <div class="cart-preview-images">
+                ${imagesHtml}
+            </div>
+            <div class="cart-preview-total"><span>Total:</span> <span>$${totalFormatted}</span></div>
+            <div class="cart-preview-msg">Use your cashback balance to save up to 30%!</div>
+            <a href="/checkout" class="cart-preview-btn">Checkout Now</a>
+        `;
+        
+        container.appendChild(preview);
+        void preview.offsetWidth;
+        preview.classList.add('show');
+        
+        setTimeout(() => {
+            if (preview.classList.contains('show')) {
+                preview.classList.remove('show');
+            }
+        }, 8000);
     }
 
     function flyToCart(imgElement) {
