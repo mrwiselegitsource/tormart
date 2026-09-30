@@ -981,19 +981,3 @@ body.menu-open {
     }
 }
 
-/* Auto‑rotate (desktop only) */
-@keyframes advertRotate {
-    0%   { transform: translateX(0); }
-    33%  { transform: translateX(-33%); }
-    66%  { transform: translateX(-66%); }
-    100% { transform: translateX(0); }
-}
-
-@media (min-width: 601px) {
-    .advert-carousel {
-        animation: advertRotate 15s infinite linear;
-    }
-    .advert-carousel:hover {
-        animation-play-state: paused;
-    }
-}
