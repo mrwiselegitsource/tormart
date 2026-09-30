@@ -47,9 +47,7 @@
         <div style="display: flex; align-items: center; gap: 20px;">
             <a href="/cart" class="cart-icon" style="color: white; text-decoration: none; display: flex; align-items: center; gap: 4px;">
                 <img src="/images/cart-icon.png" alt="Cart" style="height: 18px; object-fit: contain;">
-                <% if (cartCount > 0) { %>
-                    <span class="cart-badge"><%= cartCount %></span>
-                <% } %>
+                <span class="cart-badge" style="<%= cartCount > 0 ? '' : 'display: none;' %>"><%= cartCount %></span>
             </a>
             
             <!-- Hamburger Icon (Mobile Only) -->

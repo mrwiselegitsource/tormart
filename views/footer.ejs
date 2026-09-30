@@ -130,10 +130,80 @@
     </script>
     <% } %>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+    #toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
+    .cart-toast { background: #28a745; color: white; padding: 15px 20px; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-size: 14px; opacity: 0; transform: translateY(20px); transition: all 0.3s ease; max-width: 300px; line-height: 1.4; }
+    .cart-toast.show { opacity: 1; transform: translateY(0); }
+    .fly-to-cart-img { position: fixed; z-index: 10000; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); transition: all 0.8s cubic-bezier(0.25, 1, 0.5, 1); pointer-events: none; }
+    .cart-badge { transition: transform 0.2s; display: inline-block; }
+    </style>
+    <div id="toast-container"></div>
     <script>
-      document.addEventListener('DOMContentLoaded', function() {
-          lucide.createIcons();
-      });
+    document.addEventListener('DOMContentLoaded', function() {
+        lucide.createIcons();
+        
+        document.querySelectorAll('form[action="/cart/add"]').forEach(form => {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const btn = form.querySelector('button[type="submit"]');
+                if (btn) btn.disabled = true;
+                
+                let productContainer = form.closest('.product-card, .product-detail-grid, tr');
+                let img = productContainer ? productContainer.querySelector('img') : null;
+                
+                fetch('/cart/add', {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                    body: new URLSearchParams(new FormData(form))
+                }).then(res => res.json()).then(res => {
+                    if (res.success) {
+                        const badge = document.querySelector('.cart-badge');
+                        if (badge) { badge.innerText = res.cartCount; badge.style.display = 'inline-block'; }
+                        showToast(`You have ${res.cartCount} item${res.cartCount !== 1 ? 's' : ''} in your cart. Check out now and use your cashback balance to save up to 30%!`);
+                        if (img) flyToCart(img);
+                    }
+                }).catch(err => console.error(err)).finally(() => {
+                    if (btn) btn.disabled = false;
+                });
+            });
+        });
+    });
+
+    function showToast(message) {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = 'cart-toast';
+        toast.innerText = message;
+        container.appendChild(toast);
+        void toast.offsetWidth;
+        toast.classList.add('show');
+        setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 300); }, 5000);
+    }
+
+    function flyToCart(imgElement) {
+        const cartIcon = document.querySelector('.cart-icon');
+        if (!cartIcon || !imgElement) return;
+        const imgRect = imgElement.getBoundingClientRect();
+        const cartRect = cartIcon.getBoundingClientRect();
+        const clone = imgElement.cloneNode(true);
+        clone.className = 'fly-to-cart-img';
+        clone.style.top = imgRect.top + 'px';
+        clone.style.left = imgRect.left + 'px';
+        clone.style.width = imgRect.width + 'px';
+        clone.style.height = imgRect.height + 'px';
+        document.body.appendChild(clone);
+        void clone.offsetWidth;
+        clone.style.top = (cartRect.top + 5) + 'px';
+        clone.style.left = (cartRect.left + 5) + 'px';
+        clone.style.width = '20px';
+        clone.style.height = '20px';
+        clone.style.opacity = '0.3';
+        setTimeout(() => {
+            clone.remove();
+            const badge = document.querySelector('.cart-badge');
+            if (badge) { badge.style.transform = 'scale(1.4)'; setTimeout(() => badge.style.transform = 'scale(1)', 200); }
+        }, 800);
+    }
     </script>
 </body>
 </html>

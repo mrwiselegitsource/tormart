@@ -904,7 +904,7 @@ app.post('/cart/add', (req, res) => {
     const { product_id, quantity } = req.body;
     const prodId = parseInt(product_id, 10);
     const qty = parseInt(quantity) || 1;
-    if (isNaN(prodId)) return res.redirect('/cart');
+    if (isNaN(prodId)) return req.xhr || req.headers.accept.indexOf('json') > -1 ? res.json({ success: false, error: 'Invalid product' }) : res.redirect('/cart');
     
     if (!req.session.cart) req.session.cart = {};
     
@@ -912,6 +912,11 @@ app.post('/cart/add', (req, res) => {
         req.session.cart[prodId] += qty;
     } else {
         req.session.cart[prodId] = qty;
+    }
+
+    if (req.xhr || req.headers.accept.indexOf('json') > -1) {
+        const cartCount = Object.values(req.session.cart).reduce((a, b) => a + b, 0);
+        return res.json({ success: true, cartCount: cartCount });
     }
     res.redirect('/cart');
 });
