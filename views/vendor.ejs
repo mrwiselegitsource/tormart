@@ -66,10 +66,22 @@ details.tidy-panel[open] > summary::after {
                         <div style="flex: 1; min-width: 150px;">
                             <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px;">Update Logo</label>
                             <input type="file" name="vendor_logo" accept="image/*" class="form-control">
+                            <% if (user.vendor_logo) { %>
+                                <div style="margin-top: 10px;">
+                                    <span style="font-size: 11px; color: #666; display: block; margin-bottom: 3px;">Current Logo:</span>
+                                    <img src="<%= user.vendor_logo %>" style="max-height: 40px; border-radius: 4px; border: 1px solid #ddd;">
+                                </div>
+                            <% } %>
                         </div>
                         <div style="flex: 1; min-width: 150px;">
                             <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px;">Update Banner</label>
                             <input type="file" name="vendor_banner" accept="image/*" class="form-control">
+                            <% if (user.vendor_banner) { %>
+                                <div style="margin-top: 10px;">
+                                    <span style="font-size: 11px; color: #666; display: block; margin-bottom: 3px;">Current Banner:</span>
+                                    <img src="<%= user.vendor_banner %>" style="max-height: 40px; border-radius: 4px; border: 1px solid #ddd;">
+                                </div>
+                            <% } %>
                         </div>
                     </div>
                     <div style="margin-bottom: 15px; display: flex; gap: 15px; flex-wrap: wrap;">

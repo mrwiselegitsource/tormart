@@ -149,12 +149,6 @@
             </a>
         </div>
 
-        <div>
-            <a href="/<%= slugify(vendor ? (vendor.vendor_name || vendor.username) : '') %>">
-                <img src="/images/sidebar-ad.jpg" alt="Vendor Ad" style="width: 100%; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-            </a>
-        </div>
-        
         <!-- Smart Advert System -->
         <%- include('_advert_carousel', { advert_count: 1, pageKey: 'product_detail' }) %>
     </div>
