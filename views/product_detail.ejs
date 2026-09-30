@@ -51,8 +51,8 @@
         <!-- Top Section -->
         <div class="product-top-flex">
             <!-- Product Image -->
-            <div class="product-image-container" style="text-align: center;">
-                <img src="<%= product.image %>" alt="<%= product.name %>" style="width: 100%; max-height: 250px; object-fit: contain; background: #fff; border: 1px solid #e2e8f0; border-radius: 4px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <div class="product-image-container">
+                <img src="<%= product.image %>" alt="<%= product.name %>" style="width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
             </div>
             
             <!-- Product Info & Pricing -->
@@ -83,18 +83,18 @@
                 
                 <!-- Total Price & Action -->
                 <div>
-                    <div class="total-price-flex" style="background: #f5f5f5; padding: 8px 10px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <div style="font-size: 11px; color: #94a3b8; margin-bottom: 2px;">Total Price</div>
-                            <div id="totalUsd" style="font-size: 22px; font-weight: bold; color: #111; line-height: 1;">$<%= product.price.toFixed(2) %></div>
+                    <div style="font-size: 12px; color: #94a3b8; margin-bottom: 4px;">Total price</div>
+                    <div class="total-price-flex" style="background: #f5f5f5; padding: 10px 15px; border-radius: 4px;">
+                        <div style="text-align: center; margin-bottom: 10px;">
+                            <div id="totalUsd" style="font-size: 24px; font-weight: bold; color: #111; line-height: 1;">$<%= product.price.toFixed(2) %></div>
                             <!-- Assuming approx 1 BTC = $80000 for calculation mockup -->
-                            <div id="totalBtc" style="font-size: 11px; color: #64748b; margin-top: 4px;"><%= (product.price / 80000).toFixed(6) %>BTC</div>
+                            <div id="totalBtc" style="font-size: 12px; color: #64748b; margin-top: 4px;"><%= (product.price / 80000).toFixed(6) %>BTC</div>
                         </div>
-                        <form action="/cart/add" method="POST" id="addToCartForm" style="margin: 0;">
+                        <form action="/cart/add" method="POST" id="addToCartForm" style="margin: 0; display: flex; flex-direction: column;">
                             <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                             <input type="hidden" name="product_id" value="<%= product.id %>">
                             <input type="hidden" name="quantity" id="formQty" value="1">
-                            <button type="submit" style="background: #22c55e; color: white; border: none; padding: 10px 20px; border-radius: 4px; font-size: 15px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 4px rgba(34,197,94,0.3); transition: background 0.2s;">Go to cart</button>
+                            <button type="submit" style="background: #22c55e; color: white; border: none; padding: 12px 20px; border-radius: 4px; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 4px rgba(34,197,94,0.3); transition: background 0.2s; width: 100%;">Go to cart</button>
                         </form>
                     </div>
                 </div>
