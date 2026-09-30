@@ -1225,7 +1225,7 @@ app.get('/partner/auth', (req, res) => {
 
 app.post('/partner/register', (req, res) => {
     const { email, password, btc_wallet, captcha } = req.body;
-    if (!captcha || !req.session.captcha || captcha.toLowerCase() !== req.session.captcha.toLowerCase()) {
+    if (!captcha || !req.session.captcha || captcha.replace(/\\s+/g, '').toLowerCase() !== req.session.captcha.toLowerCase()) {
         return res.render('partner_auth', { error: 'Invalid CAPTCHA code' });
     }
     const username = email.split('@')[0]; // Quick username generation
@@ -1241,7 +1241,7 @@ app.post('/partner/login', (req, res) => {
     const { email, password, captcha } = req.body;
     const rateLimitKey = email ? email.toLowerCase() : 'unknown';
     
-    if (!captcha || !req.session.captcha || captcha.toLowerCase() !== req.session.captcha.toLowerCase()) {
+    if (!captcha || !req.session.captcha || captcha.replace(/\\s+/g, '').toLowerCase() !== req.session.captcha.toLowerCase()) {
         return res.render('partner_auth', { error: 'Invalid CAPTCHA code' });
     }
 
@@ -1362,7 +1362,7 @@ app.post('/partner/settings/btc', requireAuth, (req, res) => {
 });
 
 app.get('/captcha', (req, res) => {
-    const captcha = svgCaptcha.create({ size: 4, noise: 2, color: true, background: '#f0fdf4', width: 120, height: 40 });
+    const captcha = svgCaptcha.create({ size: 4, noise: 2, color: true, background: '#f0fdf4', width: 120, height: 40, ignoreChars: '0o1iIlL' });
     req.session.captcha = captcha.text;
     res.type('svg');
     res.status(200).send(captcha.data);
@@ -1376,7 +1376,7 @@ app.post('/login', (req, res) => {
     const { login_id, password, captcha } = req.body;
     const rateLimitKey = login_id ? login_id.toLowerCase() : 'unknown';
 
-    if (!captcha || !req.session.captcha || captcha.toLowerCase() !== req.session.captcha.toLowerCase()) {
+    if (!captcha || !req.session.captcha || captcha.replace(/\\s+/g, '').toLowerCase() !== req.session.captcha.toLowerCase()) {
         return res.render('login', { error: 'Invalid CAPTCHA code', hidePromo: true });
     }
 
@@ -1401,7 +1401,15 @@ app.post('/login', (req, res) => {
                     role: user.role, 
                     is_vendor: user.is_vendor, 
                     is_vip: user.is_vip || 0,
-                    admin_role: user.admin_role || (user.role === 'admin' ? 'SUPER_ADMIN' : null)
+                    admin_role: user.admin_role || (user.role === 'admin' ? 'SUPER_ADMIN' : null),
+                    vendor_name: user.vendor_name,
+                    vendor_description: user.vendor_description,
+                    vendor_short_description: user.vendor_short_description,
+                    vendor_logo: user.vendor_logo,
+                    vendor_banner: user.vendor_banner,
+                    vendor_video: user.vendor_video,
+                    created_at: user.created_at,
+                    btc_wallet: user.btc_wallet
                 };
                 req.session.cart = cart; // Preserve cart across session rotation
                 req.session.csrfToken = crypto.randomBytes(16).toString('hex');
@@ -1454,7 +1462,7 @@ app.get('/invite/:code', (req, res) => {
 
 app.post('/register', (req, res) => {
     const { username, password, captcha } = req.body;
-    if (!captcha || !req.session.captcha || captcha.toLowerCase() !== req.session.captcha.toLowerCase()) {
+    if (!captcha || !req.session.captcha || captcha.replace(/\\s+/g, '').toLowerCase() !== req.session.captcha.toLowerCase()) {
         return res.render('login', { error: 'Invalid CAPTCHA code', hidePromo: true });
     }
     // We will just generate a fake email for now or skip it if the form doesn't have it
@@ -2173,6 +2181,8 @@ app.post('/vendor/profile/edit', requireVendor, imageUpload.fields([{ name: 'ven
         if (!err) {
             req.session.user.vendor_name = vendor_name;
             req.session.user.vendor_description = vendor_description;
+            req.session.user.vendor_short_description = vendor_short_description;
+            if (created_at) req.session.user.created_at = req.body.created_at;
             if (btc_wallet !== undefined) req.session.user.btc_wallet = btc_wallet;
         }
         res.redirect('/vendor');

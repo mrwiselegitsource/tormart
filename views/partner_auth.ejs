@@ -275,6 +275,22 @@
             });
         });
     });
+
+    document.querySelectorAll('form').forEach(form => {
+        form.addEventListener('submit', function() {
+            const btn = this.querySelector('button[type="submit"]');
+            if (btn) {
+                const action = this.getAttribute('action');
+                if (action === '/partner/register') {
+                    btn.innerHTML = 'Registering your account...';
+                } else if (action === '/partner/login') {
+                    btn.innerHTML = 'Logging in...';
+                }
+                btn.style.opacity = '0.8';
+                btn.style.cursor = 'wait';
+            }
+        });
+    });
 </script>
 
 </body>

@@ -77,7 +77,7 @@
                         </button>
                     </div>
                     
-                    <button type="submit" style="background: #28a745; color: white; border: none; padding: 12px 30px; border-radius: 2px; font-weight: bold; cursor: pointer; width: 100%; font-size: 15px;">
+                    <button type="submit" class="auth-submit-btn" style="background: #28a745; color: white; border: none; padding: 12px 30px; border-radius: 2px; font-weight: bold; cursor: pointer; width: 100%; font-size: 15px;">
                         Login
                     </button>
                 </form>
@@ -86,4 +86,22 @@
     </div>
 </div>
 
+<script>
+    document.querySelectorAll('form').forEach(form => {
+        form.addEventListener('submit', function() {
+            const btn = this.querySelector('button[type="submit"]');
+            if (btn) {
+                const action = this.getAttribute('action');
+                if (action === '/register') {
+                    btn.innerHTML = 'Registering your account...';
+                } else if (action === '/login') {
+                    btn.innerHTML = 'Logging in...';
+                }
+                btn.style.opacity = '0.8';
+                btn.style.cursor = 'wait';
+                // Don't disable the button completely otherwise the form might not submit properly in some browsers
+            }
+        });
+    });
+</script>
 <%- include('footer') %>
