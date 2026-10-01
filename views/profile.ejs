@@ -174,6 +174,29 @@
                 <strong>Tiers:</strong> Regular (0-3) • Gold (4-6) • Platinum (7+)
             </div>
         </div>
+
+        <!-- Vendor Partnership -->
+        <div class="dashboard-card" style="grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 20px;">
+            <div>
+                <h2 style="margin-bottom: 5px;">🤝 Vendor Partnership</h2>
+                <% if (user.is_vendor === 1) { %>
+                    <p style="color: #aaa; margin: 0; font-size: 0.95rem;">You are an approved vendor! Manage your shop and products in the Vendor Area.</p>
+                <% } else if (user.vendor_status === 'pending') { %>
+                    <p style="color: #aaa; margin: 0; font-size: 0.95rem;">Your vendor application is currently <strong style="color: #f59e0b;">pending review</strong> by the administration team.</p>
+                <% } else { %>
+                    <p style="color: #aaa; margin: 0; font-size: 0.95rem;">Want to sell on Tormart? Apply to become a verified vendor and reach thousands of customers.</p>
+                <% } %>
+            </div>
+            <div>
+                <% if (user.is_vendor === 1) { %>
+                    <a href="/vendor" class="btn-submit" style="display: inline-block; text-align: center; width: auto; background: #28a745; color: white; text-decoration: none;">Go to Vendor Area</a>
+                <% } else if (user.vendor_status === 'pending') { %>
+                    <a href="/apply-vendor" class="btn-submit" style="display: inline-block; text-align: center; width: auto; background: #f59e0b; color: white; text-decoration: none;">View Status</a>
+                <% } else { %>
+                    <a href="/apply-vendor" class="btn-submit" style="display: inline-block; text-align: center; width: auto; text-decoration: none;">Apply Now</a>
+                <% } %>
+            </div>
+        </div>
         
         <!-- Account Nav -->
         <div class="dashboard-card">
