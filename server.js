@@ -1826,7 +1826,7 @@ app.get('/apply-vendor', requireAuth, (req, res) => {
 
 app.get('/apply-vendor/step-1', requireAuth, (req, res) => {
     if (req.session.user.vendor_status === 'pending') return res.redirect('/profile');
-    res.render('vendor-apply-step1', { user: req.session.user, csrfToken: req.csrfToken() });
+    res.render('vendor-apply-step1', { user: req.session.user });
 });
 
 app.post('/apply-vendor/step-1', requireAuth, (req, res) => {
@@ -1851,7 +1851,7 @@ app.get('/apply-vendor/step-2', requireAuth, (req, res) => {
         if (!siteSettings.partnership_fee) siteSettings.partnership_fee = "$150 in BTC";
         if (!siteSettings.partnership_address) siteSettings.partnership_address = "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh";
 
-        res.render('vendor-apply-step2', { user: req.session.user, siteSettings, csrfToken: req.csrfToken() });
+        res.render('vendor-apply-step2', { user: req.session.user, siteSettings });
     });
 });
 
