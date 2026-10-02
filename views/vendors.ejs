@@ -1,11 +1,11 @@
 <%- include('header') %>
 
 <div class="container" style="max-width: 1000px; margin-top: 30px; margin-bottom: 50px;">
-    <%- include('_advert_carousel', { advert_count: 1, pageKey: 'vendors' }) %>
+    <%- include('_advert_carousel', { advert_count: 2, pageKey: 'vendors' }) %>
     
 
 
-    <h2 style="color: #111; margin-bottom: 20px;"><%= categoryName %></h2>
+    <h2 style="text-align: center; color: #111; margin-top: 30px; margin-bottom: 30px; font-size: 28px; font-weight: bold;"><%= categoryName %></h2>
 
     <% if (vendors.length === 0) { %>
         <div class="form-panel" style="text-align: center; padding: 40px; color: #666;">
@@ -66,7 +66,7 @@
         </div>
     <% } %>
 
-    <%- include('_advert_carousel', { advert_count: 1, pageKey: 'vendors' }) %>
+    <%- include('_advert_carousel', { advert_count: 2, pageKey: 'vendors' }) %>
 </div>
 
 <%- include('footer') %>
