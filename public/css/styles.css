@@ -60,7 +60,8 @@ a:hover {
     align-items: center;
 }
 .top-nav a {
-    color: #e2e8f0;
+    color: #f8fafc;
+    font-weight: 500;
 }
 .top-nav a:hover {
     color: #fff;
