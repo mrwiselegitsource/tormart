@@ -18,8 +18,12 @@
                     <input type="radio" name="department" value="Support Department" checked style="margin-right: 10px;"> Support Department
                 </label>
                 <label style="display: block; margin-bottom: 10px; cursor: pointer; color: #555; font-size: 14px;">
-                    <input type="radio" name="department" value="Partnership Department" style="margin-right: 10px;"> Partnership Department
+                    <input type="radio" name="department" value="Partnership Department" id="partnershipRadio" style="margin-right: 10px;"> Partnership Department
                 </label>
+                <div id="partnershipNotice" style="display: none; background: #e0f2fe; border-left: 4px solid #3b82f6; padding: 15px; margin-bottom: 15px; margin-left: 25px; border-radius: 0 4px 4px 0;">
+                    <p style="margin: 0 0 10px 0; color: #1e3a8a; font-size: 13px;">Looking to become a Vendor? You don't need to open a ticket for that.</p>
+                    <a href="/apply-vendor" style="display: inline-block; background: #3b82f6; color: white; padding: 6px 12px; text-decoration: none; border-radius: 4px; font-weight: bold; font-size: 13px;">Go to Vendor Application</a>
+                </div>
                 <label style="display: block; margin-bottom: 10px; cursor: pointer; color: #555; font-size: 14px;">
                     <input type="radio" name="department" value="Advertising Department" style="margin-right: 10px;"> Advertising Department
                 </label>
@@ -39,3 +43,20 @@
 </div>
 
 <%- include('footer') %>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const radios = document.querySelectorAll('input[name="department"]');
+        const notice = document.getElementById('partnershipNotice');
+        
+        radios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (this.id === 'partnershipRadio' && this.checked) {
+                    notice.style.display = 'block';
+                } else {
+                    notice.style.display = 'none';
+                }
+            });
+        });
+    });
+</script>
