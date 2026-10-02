@@ -252,6 +252,7 @@ function initializeSchema() {
         db.run(`ALTER TABLE users ADD COLUMN application_txid TEXT`, (err) => {});
         db.run(`ALTER TABLE users ADD COLUMN application_contact TEXT`, (err) => {});
         db.run(`ALTER TABLE users ADD COLUMN application_date DATETIME`, (err) => {});
+        db.run(`ALTER TABLE users ADD COLUMN vendor_delivery_statement TEXT`, (err) => {});
 
         // Add bonus balance for profile dashboard
         db.run(`ALTER TABLE users ADD COLUMN bonus_balance_usd REAL DEFAULT 0.00`, (err) => {});
@@ -1816,29 +1817,53 @@ app.get('/support', requireAuth, (req, res) => {
 
 // Vendor Application System
 app.get('/apply-vendor', requireAuth, (req, res) => {
-    db.all("SELECT * FROM site_settings", (err, sSettings) => {
-        const siteSettings = {};
-        if (sSettings) sSettings.forEach(s => siteSettings[s.setting_key] = s.setting_value);
-        
-        // Ensure default settings exist if DB hasn't flushed yet
-        if (!siteSettings.partnership_fee) siteSettings.partnership_fee = "$150 in BTC";
-        if (!siteSettings.partnership_address) siteSettings.partnership_address = "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh";
+    // If they already applied and are pending, we can send them to a status page or profile
+    if (req.session.user.vendor_status === 'pending') {
+        return res.redirect('/profile');
+    }
+    res.render('vendor-apply-landing', { user: req.session.user });
+});
 
-        res.render('vendor-apply', { user: req.session.user, siteSettings });
+app.get('/apply-vendor/step-1', requireAuth, (req, res) => {
+    if (req.session.user.vendor_status === 'pending') return res.redirect('/profile');
+    res.render('vendor-apply-step1', { user: req.session.user, csrfToken: req.csrfToken() });
+});
+
+app.post('/apply-vendor/step-1', requireAuth, (req, res) => {
+    const { vendor_name, vendor_short_description, vendor_delivery_statement, application_contact } = req.body;
+    db.run(`
+        UPDATE users 
+        SET vendor_name = ?, vendor_short_description = ?, vendor_delivery_statement = ?, application_contact = ?, vendor_status = 'applying' 
+        WHERE id = ?
+    `, [vendor_name, vendor_short_description, vendor_delivery_statement, application_contact, req.session.user.id], (err) => {
+        req.session.user.vendor_status = 'applying';
+        req.session.user.vendor_name = vendor_name;
+        res.redirect('/apply-vendor/step-2');
     });
 });
 
-app.post('/apply-vendor', requireAuth, (req, res) => {
-    const { vendor_name, vendor_short_description, application_contact, application_txid } = req.body;
+app.get('/apply-vendor/step-2', requireAuth, (req, res) => {
+    if (req.session.user.vendor_status === 'pending') return res.redirect('/profile');
+    
+    db.all("SELECT * FROM site_settings", (err, sSettings) => {
+        const siteSettings = {};
+        if (sSettings) sSettings.forEach(s => siteSettings[s.setting_key] = s.setting_value);
+        if (!siteSettings.partnership_fee) siteSettings.partnership_fee = "$150 in BTC";
+        if (!siteSettings.partnership_address) siteSettings.partnership_address = "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh";
+
+        res.render('vendor-apply-step2', { user: req.session.user, siteSettings, csrfToken: req.csrfToken() });
+    });
+});
+
+app.post('/apply-vendor/step-2', requireAuth, (req, res) => {
+    const { application_txid } = req.body;
     db.run(`
         UPDATE users 
-        SET vendor_name = ?, vendor_short_description = ?, application_contact = ?, application_txid = ?, application_date = CURRENT_TIMESTAMP, vendor_status = 'pending' 
+        SET application_txid = ?, application_date = CURRENT_TIMESTAMP, vendor_status = 'pending' 
         WHERE id = ?
-    `, [vendor_name, vendor_short_description, application_contact, application_txid, req.session.user.id], (err) => {
-        // Update session so UI reflects pending status
+    `, [application_txid, req.session.user.id], (err) => {
         req.session.user.vendor_status = 'pending';
-        req.session.user.vendor_name = vendor_name;
-        res.redirect('/apply-vendor');
+        res.redirect('/profile?success=Application%20submitted%20successfully!');
     });
 });
 

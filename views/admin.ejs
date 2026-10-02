@@ -223,7 +223,8 @@ details.tidy-panel[open] > summary::after {
                                     <td style="padding: 12px; font-weight: 500; color: #1e293b;"><%= app.username %></td>
                                     <td style="padding: 12px; color: #64748b;">
                                         <strong><%= app.vendor_name %></strong><br>
-                                        <small><%= app.vendor_short_description %></small>
+                                        <small><strong>Products:</strong> <%= app.vendor_short_description %></small><br>
+                                        <small><strong>Delivery:</strong> <%= app.vendor_delivery_statement || 'N/A' %></small>
                                     </td>
                                     <td style="padding: 12px; color: #64748b;"><%= app.application_contact %></td>
                                     <td style="padding: 12px; color: #64748b;"><code style="background:#f1f5f9;padding:4px;border-radius:4px;"><%= app.application_txid %></code></td>

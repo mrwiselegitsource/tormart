@@ -1,0 +1,48 @@
+<%- include('header') %>
+
+<div class="container" style="max-width: 700px; margin: 40px auto;">
+    
+    <div style="text-align: center; margin-bottom: 30px;">
+        <h2 style="color: #111; margin-bottom: 10px;">Step 2: Payment Verification</h2>
+        <p style="color: #666;">Almost there! Complete the registration fee payment to finalize your application.</p>
+        
+        <div style="display: flex; justify-content: center; align-items: center; margin-top: 20px;">
+            <div style="background: #e2e8f0; color: #64748b; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold;">1</div>
+            <div style="width: 50px; height: 3px; background: #28a745; margin: 0 10px;"></div>
+            <div style="background: #28a745; color: white; width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold;">2</div>
+        </div>
+    </div>
+
+    <div class="form-panel" style="padding: 30px;">
+        
+        <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 25px; text-align: center; margin-bottom: 30px;">
+            <h3 style="color: #0f172a; margin-bottom: 10px; font-size: 1.2rem;">One-Time Verification Fee</h3>
+            <p style="color: #475569; font-size: 15px; margin-bottom: 20px; line-height: 1.5;">To ensure a high-quality marketplace and protect our community from spam, we require all new partners to pay a verification fee of <strong style="color: #111; font-size: 1.1rem;"><%= siteSettings.partnership_fee %></strong>.</p>
+            
+            <img src="https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=<%= encodeURIComponent(siteSettings.partnership_address) %>" alt="QR Code" style="background: white; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+            
+            <div style="margin-bottom: 10px; font-weight: 600; color: #333; text-align: left;">Send Bitcoin to this address:</div>
+            <div style="background: white; border: 1px dashed #cbd5e1; padding: 15px; border-radius: 4px; font-family: monospace; font-size: 16px; color: #1e293b; user-select: all; word-break: break-all; margin-bottom: 15px;">
+                <%= siteSettings.partnership_address %>
+            </div>
+            
+            <p style="color: #f59e0b; font-size: 0.9rem; font-weight: 600; margin: 0;">⚠️ Please make sure to send the exact amount.</p>
+        </div>
+
+        <form action="/apply-vendor/step-2" method="POST">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+            
+            <div class="form-group" style="margin-bottom: 25px;">
+                <label style="display: block; font-weight: 600; margin-bottom: 8px; color: #333;">Payment Transaction ID (TXID)</label>
+                <p style="font-size: 13px; color: #666; margin-top: 0; margin-bottom: 10px;">After you have sent the payment, paste the transaction hash here so our team can verify it.</p>
+                <input type="text" name="application_txid" class="form-control" placeholder="Paste your TXID here..." required style="width: 100%; padding: 15px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-family: monospace;">
+            </div>
+
+            <button type="submit" class="btn" style="width: 100%; background: var(--primary-color); color: white; border: none; padding: 15px; font-weight: bold; border-radius: 4px; font-size: 16px; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 10px;">
+                Submit Final Application 🚀
+            </button>
+        </form>
+    </div>
+</div>
+
+<%- include('footer') %>
