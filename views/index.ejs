@@ -164,7 +164,9 @@
                 
                 <!-- Vendor Avatar -->
                 <div style="display: flex; justify-content: center; margin-top: -45px;">
-                    <img src="<%= vendor.vendor_logo || '/images/default-vendor-logo.png' %>" alt="<%= vendor.vendor_name %>" style="width: 90px; height: 90px; border-radius: 50%; border: 4px solid white; object-fit: cover; background: white;">
+                    <a href="/<%= slugify(vendor.vendor_name || vendor.username) %>" style="display: block;">
+                        <img src="<%= vendor.vendor_logo || '/images/default-vendor-logo.png' %>" alt="<%= vendor.vendor_name %>" style="width: 90px; height: 90px; border-radius: 50%; border: 4px solid white; object-fit: cover; background: white; transition: transform 0.2s ease;">
+                    </a>
                 </div>
                 
                 <!-- Vendor Info -->
