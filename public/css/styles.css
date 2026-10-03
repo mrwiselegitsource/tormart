@@ -335,40 +335,84 @@ footer ul li {
     100% { background-position: -100% 0; }
 }
 
+/* Ambient blue atmospheric glow (sits above hero bg, below content z-index:2) */
 .ambient-orb {
     position: absolute;
-    border-radius: 50%;
-    filter: blur(80px);
     pointer-events: none;
     z-index: 1;
+    border-radius: 50%;
+    filter: blur(90px);
+    mix-blend-mode: screen;
+    will-change: transform, opacity;
+    animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+    animation-iteration-count: infinite;
 }
 
+/* Primary electric-blue mass: drifts diagonally left -> right */
 .ambient-orb.orb-1 {
-    width: 400px;
-    height: 400px;
-    background: radial-gradient(circle, rgba(168,85,247,0.4) 0%, transparent 70%);
-    top: -50px;
-    left: 10%;
-    animation: floatOrb1 8s ease-in-out infinite alternate;
+    width: 70vw; height: 55vw;
+    top: -25%; left: -25%;
+    background:
+        radial-gradient(ellipse 45% 40% at 40% 45%, rgba(30, 110, 255, 0.55) 0%, transparent 70%),
+        radial-gradient(ellipse 35% 45% at 62% 58%, rgba(0, 170, 255, 0.35) 0%, transparent 72%),
+        radial-gradient(ellipse 55% 35% at 50% 40%, rgba(20, 40, 160, 0.45) 0%, transparent 75%);
+    animation-name: ambientDrift1;
+    animation-duration: 38s;
 }
 
+/* Deep blue / blue-violet mass: counter-drift right -> left */
 .ambient-orb.orb-2 {
-    width: 500px;
-    height: 500px;
-    background: radial-gradient(circle, rgba(0, 60, 255, 0.5) 0%, transparent 70%);
-    bottom: -150px;
-    right: 5%;
-    animation: floatOrb2 9s ease-in-out infinite alternate;
+    width: 65vw; height: 50vw;
+    bottom: -30%; right: -25%;
+    background:
+        radial-gradient(ellipse 45% 40% at 55% 50%, rgba(80, 70, 230, 0.45) 0%, transparent 70%),
+        radial-gradient(ellipse 40% 30% at 38% 42%, rgba(15, 50, 190, 0.5) 0%, transparent 72%),
+        radial-gradient(ellipse 30% 40% at 65% 62%, rgba(110, 90, 255, 0.25) 0%, transparent 70%);
+    animation-name: ambientDrift2;
+    animation-duration: 46s;
 }
 
-@keyframes floatOrb1 {
-    0% { transform: translate(0, 0) scale(1); opacity: 0.4; }
-    100% { transform: translate(60px, 40px) scale(1.2); opacity: 0.7; }
+/* Soft highlight that brightens areas as it passes */
+.ambient-orb.orb-3 {
+    width: 45vw; height: 35vw;
+    top: 20%; left: 25%;
+    filter: blur(110px);
+    background:
+        radial-gradient(ellipse 50% 45% at 50% 50%, rgba(60, 150, 255, 0.4) 0%, transparent 70%),
+        radial-gradient(ellipse 35% 30% at 35% 60%, rgba(40, 90, 255, 0.3) 0%, transparent 72%);
+    animation-name: ambientDrift3;
+    animation-duration: 54s;
 }
 
-@keyframes floatOrb2 {
-    0% { transform: translate(0, 0) scale(1.1); opacity: 0.6; }
-    100% { transform: translate(-70px, -50px) scale(0.9); opacity: 0.4; }
+/* Keyframes start and end identically so the loop is seamless */
+@keyframes ambientDrift1 {
+    0%   { transform: translate3d(0, 0, 0) scale(1) rotate(0deg); opacity: 0.55; }
+    25%  { transform: translate3d(22vw, 8vh, 0) scale(1.15) rotate(8deg); opacity: 0.85; }
+    50%  { transform: translate3d(48vw, 22vh, 0) scale(1.05) rotate(14deg); opacity: 0.6; }
+    75%  { transform: translate3d(24vw, 14vh, 0) scale(1.22) rotate(6deg); opacity: 0.35; }
+    100% { transform: translate3d(0, 0, 0) scale(1) rotate(0deg); opacity: 0.55; }
+}
+
+@keyframes ambientDrift2 {
+    0%   { transform: translate3d(0, 0, 0) scale(1.1) rotate(0deg); opacity: 0.4; }
+    30%  { transform: translate3d(-20vw, -10vh, 0) scale(0.95) rotate(-10deg); opacity: 0.7; }
+    55%  { transform: translate3d(-42vw, -20vh, 0) scale(1.2) rotate(-16deg); opacity: 0.8; }
+    80%  { transform: translate3d(-18vw, -6vh, 0) scale(1.05) rotate(-6deg); opacity: 0.45; }
+    100% { transform: translate3d(0, 0, 0) scale(1.1) rotate(0deg); opacity: 0.4; }
+}
+
+@keyframes ambientDrift3 {
+    0%   { transform: translate3d(-20vw, -8vh, 0) scale(0.9); opacity: 0; }
+    20%  { transform: translate3d(-8vw, -2vh, 0) scale(1.05); opacity: 0.5; }
+    45%  { transform: translate3d(10vw, 8vh, 0) scale(1.25); opacity: 0.75; }
+    70%  { transform: translate3d(22vw, 4vh, 0) scale(1.1); opacity: 0.35; }
+    100% { transform: translate3d(-20vw, -8vh, 0) scale(0.9); opacity: 0; }
+}
+
+@media (max-width: 768px) {
+    .ambient-orb { filter: blur(60px); }
+    .ambient-orb.orb-1, .ambient-orb.orb-2 { width: 120vw; height: 100vw; }
+    .ambient-orb.orb-3 { width: 90vw; height: 70vw; filter: blur(70px); }
 }
 
 @media (prefers-reduced-motion: reduce) {
