@@ -1332,7 +1332,11 @@ app.get('/partner/dashboard', requireAuth, (req, res) => {
 });
 
 app.post('/partner/links/add', requireAuth, (req, res) => {
-    const linkName = req.body.link_name || 'NO NAME';
+    let linkName = req.body.link_name;
+    if (!linkName || linkName.trim() === '') {
+        const randomSuffix = crypto.randomBytes(2).toString('hex').toLowerCase();
+        linkName = `${req.session.user.username}-${randomSuffix}`;
+    }
     const linkCode = crypto.randomBytes(3).toString('hex').toUpperCase(); // 6 chars
     db.run("INSERT INTO referral_links (user_id, link_name, link_code) VALUES (?, ?, ?)", [req.session.user.id, linkName, linkCode], (err) => {
         res.redirect('/partner/dashboard');

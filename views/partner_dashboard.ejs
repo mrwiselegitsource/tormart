@@ -99,7 +99,10 @@
                                 <% referral_links.forEach(link => { %>
                                     <tr>
                                         <td style="color: #666;"><%= link.link_name %></td>
-                                        <td><strong>http://<%= host %>/invite/<%= link.link_code %></strong></td>
+                                        <td style="display: flex; align-items: center; gap: 10px;">
+                                            <input type="text" value="http://<%= host %>/invite/<%= link.link_code %>" class="dash-input" style="margin: 0; padding: 6px 12px; font-weight: bold; width: 100%; max-width: 320px; color: #333; background: #f8fafc; border: 1px solid #e2e8f0;" readonly id="link-<%= link.link_code %>">
+                                            <button onclick="copyLink('<%= link.link_code %>')" class="btn" style="background: #22c55e; color: white; padding: 7px 14px; font-size: 13px; font-weight: bold; border-radius: 4px; white-space: nowrap; cursor: pointer; border: none;">Copy</button>
+                                        </td>
                                     </tr>
                                 <% }) %>
                             <% } else { %>
@@ -214,5 +217,25 @@
         </a>
     </div>
 
+    <script>
+        function copyLink(code) {
+            const input = document.getElementById('link-' + code);
+            input.select();
+            input.setSelectionRange(0, 99999);
+            document.execCommand("copy");
+            
+            const btn = input.nextElementSibling;
+            const originalText = btn.innerText;
+            const originalBg = btn.style.background;
+            
+            btn.innerText = "Copied!";
+            btn.style.background = "#059669";
+            
+            setTimeout(() => {
+                btn.innerText = originalText;
+                btn.style.background = originalBg;
+            }, 2000);
+        }
+    </script>
 </body>
 </html>
