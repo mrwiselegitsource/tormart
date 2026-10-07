@@ -295,12 +295,33 @@
                 <div class="dash-panel">
                     <div class="dash-panel-header">Quick Categories</div>
                     <div class="dash-panel-content">
-                        <div class="category-badges">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 15px;">
                             <% 
-                                const safeCategories = (typeof categories !== 'undefined' && categories) ? categories : ['Gift Cards', 'Software', 'Digital'];
-                                safeCategories.forEach(cat => { 
+                                const catImages = {
+                                    "Carding": "cat-carding.jpg",
+                                    "PayPal Transfers": "cat-paypal.jpg",
+                                    "Gift Cards": "cat-giftcards.jpg",
+                                    "Crypto currency": "cat-crypto.jpg",
+                                    "Fake money": "cat-money.jpg",
+                                    "Fake Money": "cat-money.jpg",
+                                    "Accounts": "cat-accounts.jpg",
+                                    "Documents": "cat-documents.jpg",
+                                    "Electronics": "cat-electronics.jpg",
+                                    "18+ items": "cat-18plus.jpg",
+                                    "Casino / Bets": "cat-casino.jpg",
+                                    "Casino Betting": "cat-casino.jpg"
+                                };
+                                const safeCategories = (typeof categories !== 'undefined' && categories && categories.length > 0) ? categories : ['Carding', 'Gift Cards', 'Crypto currency', 'Accounts'];
+                                
+                                safeCategories.slice(0, 8).forEach(cat => { 
+                                    const imgName = catImages[cat] || 'cat-giftcards.jpg';
                             %>
-                                <a href="/category/<%= encodeURIComponent(cat) %>" class="cat-badge"><%= cat %></a>
+                                <a href="/category/<%= encodeURIComponent(cat) %>" class="category-tile" style="position: relative; height: 120px; border-radius: 8px; overflow: hidden; display: block; text-decoration: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.03)'" onmouseout="this.style.transform='scale(1)'">
+                                    <img src="/images/<%= imgName %>" alt="<%= cat %>" style="width: 100%; height: 100%; object-fit: cover;">
+                                    <div style="position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 60%); display: flex; align-items: flex-end; padding: 12px;">
+                                        <span style="color: white; font-weight: bold; font-size: 13px;"><%= cat %></span>
+                                    </div>
+                                </a>
                             <% }) %>
                         </div>
                     </div>
