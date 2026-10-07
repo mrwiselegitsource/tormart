@@ -1603,9 +1603,10 @@ app.post('/profile/change-password', requireAuth, (req, res) => {
 
 app.get('/dashboard', requireAuth, (req, res) => {
     db.all(`
-        SELECT orders.*, products.name, products.image, products.price 
+        SELECT orders.*, products.name, products.image, products.price, users.username as vendor_name
         FROM orders 
         JOIN products ON orders.product_id = products.id 
+        LEFT JOIN users ON products.vendor_id = users.id
         WHERE orders.user_id = ? ORDER BY orders.created_at DESC
     `, [req.session.user.id], (err, orders) => {
         const wishlistIds = req.session.wishlist || [];
