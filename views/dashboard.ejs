@@ -1,83 +1,270 @@
 <%- include('header') %>
 
-<div class="container">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <h2 style="color: #111;">My Profile</h2>
+<style>
+    .dashboard-container {
+        max-width: 1200px;
+        margin: 40px auto;
+        padding: 0 20px;
+        color: #e2e8f0;
+        font-family: 'Inter', sans-serif;
+    }
+    
+    .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        margin-bottom: 30px;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+        padding-bottom: 20px;
+    }
+
+    .welcome-text h1 {
+        font-size: 2.5rem;
+        margin: 0;
+        color: #fff;
+        font-weight: 800;
+        letter-spacing: -1px;
+    }
+    .welcome-text p {
+        margin: 5px 0 0 0;
+        color: #94a3b8;
+    }
+
+    /* Cards */
+    .glass-card {
+        background: rgba(30, 15, 45, 0.6); /* Deep Violet */
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 12px;
+        padding: 25px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Order Table */
+    .table-responsive {
+        overflow-x: auto;
+    }
+    
+    .orders-table {
+        width: 100%;
+        border-collapse: collapse;
+        color: #cbd5e1;
+    }
+    
+    .orders-table th {
+        text-align: left;
+        padding: 15px;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+        color: #fff;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        letter-spacing: 1px;
+    }
+    
+    .orders-table td {
+        padding: 15px;
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+        vertical-align: middle;
+    }
+
+    .orders-table tr:hover {
+        background: rgba(255,255,255,0.02);
+    }
+
+    .status-badge {
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        display: inline-block;
+    }
+
+    .status-completed, .status-paid_out {
+        background: rgba(16, 185, 129, 0.2);
+        color: #6ee7b7;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    
+    .status-pending {
+        background: rgba(245, 158, 11, 0.2);
+        color: #fcd34d;
+        border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+    
+    .status-disputed, .status-refunded {
+        background: rgba(239, 68, 68, 0.2);
+        color: #fca5a5;
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+    
+    .status-default {
+        background: rgba(168, 85, 247, 0.2);
+        color: #d8b4fe;
+        border: 1px solid rgba(168, 85, 247, 0.3);
+    }
+
+    /* Actions and Modals */
+    .btn-action {
+        background: #a855f7;
+        color: #fff;
+        border: none;
+        padding: 8px 15px;
+        font-weight: bold;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: 0.2s;
+        font-size: 0.85rem;
+    }
+    .btn-action:hover {
+        background: #9333ea;
+    }
+    .btn-danger-text {
+        background: none;
+        border: none;
+        color: #fca5a5;
+        text-decoration: underline;
+        cursor: pointer;
+        font-size: 0.8rem;
+        padding: 0;
+        transition: 0.2s;
+    }
+    .btn-danger-text:hover {
+        color: #ef4444;
+    }
+
+    .delivery-data {
+        background: rgba(0,0,0,0.3);
+        padding: 15px;
+        border: 1px solid rgba(255,255,255,0.05);
+        border-radius: 8px;
+        font-family: monospace;
+        font-size: 0.85rem;
+        margin-top: 10px;
+        color: #38bdf8;
+        word-break: break-all;
+    }
+
+    .review-form {
+        margin-top: 15px;
+        background: rgba(255,255,255,0.02);
+        padding: 15px;
+        border-radius: 8px;
+        border: 1px solid rgba(255,255,255,0.05);
+    }
+    .review-form select, .review-form input[type="text"] {
+        width: 100%;
+        margin-bottom: 10px;
+        padding: 10px;
+        background: rgba(0,0,0,0.2);
+        border: 1px solid rgba(255,255,255,0.1);
+        color: #fff;
+        border-radius: 6px;
+    }
+    .review-form input[type="file"] {
+        width: 100%;
+        margin-bottom: 10px;
+        font-size: 0.85rem;
+        color: #94a3b8;
+    }
+</style>
+
+<div class="dashboard-container">
+    <div class="dashboard-header">
+        <div class="welcome-text">
+            <h1>Detailed Order History</h1>
+            <p>Track your purchases, view delivery data, and manage disputes.</p>
+        </div>
+        <div>
+            <a href="/profile" style="color: #a855f7; text-decoration: none; font-weight: bold; border: 1px solid #a855f7; padding: 10px 20px; border-radius: 6px; transition: 0.2s;">&larr; Back to Profile</a>
+        </div>
     </div>
 
-    <% if (orders.length === 0) { %>
-        <div class="form-panel" style="text-align: center;">
-            <p>You have no orders history.</p>
-        </div>
-    <% } else { %>
-        <table>
-            <thead>
-                <tr>
-                    <th>Order #</th>
-                    <th>Product</th>
-                    <th>Date</th>
-                    <th>Status</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                <% orders.forEach(order => { %>
-                    <tr>
-                        <td style="font-weight: bold;">#<%= order.id %></td>
-                        <td><%= order.name %></td>
-                        <td style="color: var(--text-muted); font-size: 12px;"><%= new Date(order.created_at).toLocaleString() %></td>
-                        <td>
-                            <span style="background: <%= (order.status === 'completed' || order.status === 'paid_out') ? 'var(--primary-green)' : (order.status === 'disputed' || order.status === 'refunded' ? 'red' : '#f59e0b') %>; color: white; padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; text-transform: uppercase;">
-                                <%= order.status %>
-                            </span>
-                        </td>
-                        <td>
-                            <% if (order.status === 'shipped' || order.status === 'completed' || order.status === 'paid_out') { %>
-                                <div style="background: #f8fafc; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; font-family: monospace; font-size: 12px; margin-top: 5px; word-break: break-all;">
-                                    <strong>Delivery Data / Digital Key:</strong><br>
-                                    <%= order.download_key || order.delivery_note || 'No data provided' %>
-                                </div>
-                            <% } %>
-
-                            <% if (order.status === 'shipped') { %>
-                                <div style="margin-top: 10px;">
-                                    <form action="/order/complete/<%= order.id %>?_csrf=<%= csrfToken %>" method="POST" enctype="multipart/form-data" style="display: flex; gap: 5px; flex-direction: column;">
-                                        <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                                        <select name="rating" required style="padding: 5px;">
-                                            <option value="5">★★★★★ (5/5)</option>
-                                            <option value="4">★★★★☆ (4/5)</option>
-                                            <option value="3">★★★☆☆ (3/5)</option>
-                                            <option value="2">★★☆☆☆ (2/5)</option>
-                                            <option value="1">★☆☆☆☆ (1/5)</option>
-                                        </select>
-                                        <input type="text" name="comment" placeholder="Leave a review..." required style="padding: 5px;">
-                                        <div style="font-size: 11px; color: #555;">Optional: Upload proof photo or video</div>
-                                        <input type="file" name="review_photo" accept="image/*,video/*" style="padding: 5px; font-size: 11px;">
-                                        <button type="submit" class="btn" style="background: #28a745; color: white; border: none; padding: 5px; font-weight: bold; cursor: pointer;">Finalize & Release Escrow</button>
-                                    </form>
-                                </div>
-                            <% } else if (order.status === 'completed' || order.status === 'paid_out') { %>
-                                <span style="font-size: 12px; color: #28a745; font-weight: bold; display: block; margin-top: 10px;">Escrow Released (Complete)</span>
-                            <% } else if (order.status === 'pending') { %>
-                                <span style="font-size: 12px; color: var(--text-muted); display: block; margin-top: 10px;">Awaiting Seller Fulfillment</span>
-                            <% } else if (order.status === 'disputed') { %>
-                                <span style="font-size: 12px; color: red; font-weight: bold; display: block; margin-top: 10px;">In Dispute Resolution</span>
-                            <% } else if (order.status === 'refunded') { %>
-                                <span style="font-size: 12px; color: red; font-weight: bold; display: block; margin-top: 10px;">Refunded</span>
-                            <% } %>
-
-                            <% if (order.status === 'pending' || order.status === 'shipped') { %>
-                                <form action="/order/dispute/<%= order.id %>" method="POST" style="margin-top: 5px;" onsubmit="confirmDispute(event, this)">
-                                    <input type="hidden" name="_csrf" value="<%= csrfToken %>">
-                                    <button type="submit" style="background: none; border: none; color: red; text-decoration: underline; cursor: pointer; font-size: 11px; padding: 0;">Dispute Order</button>
-                                </form>
-                            <% } %>
-                        </td>
-                    </tr>
-                <% }) %>
-            </tbody>
-        </table>
-    <% } %>
+    <div class="glass-card">
+        <% if (orders.length === 0) { %>
+            <div style="text-align: center; padding: 40px 20px;">
+                <h3 style="color: #94a3b8; margin: 0;">You have no order history yet.</h3>
+                <a href="/" style="display: inline-block; margin-top: 20px; color: #a855f7; text-decoration: none; font-weight: bold;">Start browsing the market</a>
+            </div>
+        <% } else { %>
+            <div class="table-responsive">
+                <table class="orders-table">
+                    <thead>
+                        <tr>
+                            <th>Order #</th>
+                            <th>Product</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% orders.forEach(order => { %>
+                            <tr>
+                                <td style="font-weight: 700; color: #fff;">#<%= order.id %></td>
+                                <td><%= order.name %></td>
+                                <td style="font-size: 0.85rem; color: #94a3b8;"><%= new Date(order.created_at).toLocaleString() %></td>
+                                <td>
+                                    <% 
+                                        let badgeClass = 'status-default';
+                                        if (order.status === 'completed' || order.status === 'paid_out') badgeClass = 'status-completed';
+                                        else if (order.status === 'pending') badgeClass = 'status-pending';
+                                        else if (order.status === 'disputed' || order.status === 'refunded') badgeClass = 'status-disputed';
+                                    %>
+                                    <span class="status-badge <%= badgeClass %>"><%= order.status %></span>
+                                </td>
+                                <td>
+                                    <% if (order.status === 'shipped' || order.status === 'completed' || order.status === 'paid_out') { %>
+                                        <div class="delivery-data">
+                                            <strong style="color: #fff;">Delivery Data / Digital Key:</strong><br>
+                                            <%= order.download_key || order.delivery_note || 'No data provided' %>
+                                        </div>
+                                    <% } %>
+        
+                                    <% if (order.status === 'shipped') { %>
+                                        <div class="review-form">
+                                            <form action="/order/complete/<%= order.id %>?_csrf=<%= csrfToken %>" method="POST" enctype="multipart/form-data">
+                                                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                                                <select name="rating" required>
+                                                    <option value="5">★★★★★ (5/5)</option>
+                                                    <option value="4">★★★★☆ (4/5)</option>
+                                                    <option value="3">★★★☆☆ (3/5)</option>
+                                                    <option value="2">★★☆☆☆ (2/5)</option>
+                                                    <option value="1">★☆☆☆☆ (1/5)</option>
+                                                </select>
+                                                <input type="text" name="comment" placeholder="Leave a review..." required>
+                                                <div style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 5px;">Optional: Upload proof photo/video</div>
+                                                <input type="file" name="review_photo" accept="image/*,video/*">
+                                                <button type="submit" class="btn-action" style="width: 100%; margin-top: 10px;">Finalize & Release Escrow</button>
+                                            </form>
+                                        </div>
+                                    <% } else if (order.status === 'completed' || order.status === 'paid_out') { %>
+                                        <span style="font-size: 0.85rem; color: #6ee7b7; font-weight: 600; display: block; margin-top: 10px;">Escrow Released (Complete)</span>
+                                    <% } else if (order.status === 'pending') { %>
+                                        <span style="font-size: 0.85rem; color: #94a3b8; display: block; margin-top: 10px;">Awaiting Seller Fulfillment</span>
+                                    <% } else if (order.status === 'disputed') { %>
+                                        <span style="font-size: 0.85rem; color: #fca5a5; font-weight: 600; display: block; margin-top: 10px;">In Dispute Resolution</span>
+                                    <% } else if (order.status === 'refunded') { %>
+                                        <span style="font-size: 0.85rem; color: #fca5a5; font-weight: 600; display: block; margin-top: 10px;">Refunded</span>
+                                    <% } %>
+        
+                                    <% if (order.status === 'pending' || order.status === 'shipped') { %>
+                                        <form action="/order/dispute/<%= order.id %>" method="POST" style="margin-top: 15px;" onsubmit="confirmDispute(event, this)">
+                                            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                                            <button type="submit" class="btn-danger-text">Dispute Order</button>
+                                        </form>
+                                    <% } %>
+                                </td>
+                            </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+            </div>
+        <% } %>
+    </div>
 </div>
 
 <!-- Custom Dispute Modal -->
@@ -86,62 +273,64 @@
         display: none;
         position: fixed;
         top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(0, 0, 0, 0.6);
+        background: rgba(0, 0, 0, 0.8);
         z-index: 1000;
         justify-content: center;
         align-items: center;
     }
     .custom-modal-content {
-        background: #fff;
-        padding: 25px;
-        border-radius: 8px;
-        width: 320px;
-        color: #333;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        background: #1e1233;
+        padding: 30px;
+        border-radius: 12px;
+        width: 350px;
+        color: #fff;
+        border: 1px solid rgba(255,255,255,0.1);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     }
     .custom-modal-content h3 {
         margin-top: 0; 
         margin-bottom: 15px;
-        font-size: 18px;
+        font-size: 1.2rem;
+        color: #fca5a5;
     }
     .custom-modal-content p {
         margin-bottom: 25px;
-        font-size: 14px;
-        color: #555;
+        font-size: 0.95rem;
+        color: #cbd5e1;
         line-height: 1.5;
     }
     .modal-btn-container {
         display: flex;
         justify-content: flex-end;
-        gap: 10px;
+        gap: 15px;
     }
     .btn-modal {
-        padding: 8px 16px;
+        padding: 10px 20px;
         border: none;
-        border-radius: 4px;
+        border-radius: 6px;
         cursor: pointer;
-        font-weight: bold;
-        transition: background 0.2s;
+        font-weight: 600;
+        transition: 0.2s;
     }
     .btn-cancel {
-        background: #e2e8f0;
-        color: #334155;
+        background: rgba(255,255,255,0.1);
+        color: #cbd5e1;
     }
-    .btn-cancel:hover { background: #cbd5e1; }
+    .btn-cancel:hover { background: rgba(255,255,255,0.15); color: #fff; }
     .btn-confirm {
-        background: #0056b3; /* Darker blue to match typical modern confirm buttons */
+        background: #ef4444; 
         color: white;
     }
-    .btn-confirm:hover { background: #004494; }
+    .btn-confirm:hover { background: #dc2626; }
 </style>
 
 <div id="disputeModal" class="custom-modal-overlay">
     <div class="custom-modal-content">
-        <h3>Confirm Action</h3>
-        <p>Are you sure you want to open a dispute? Admin will step in.</p>
+        <h3>Confirm Dispute</h3>
+        <p>Are you sure you want to open a dispute for this order? Our administration team will step in to resolve the issue.</p>
         <div class="modal-btn-container">
             <button class="btn-modal btn-cancel" onclick="closeDisputeModal()">Cancel</button>
-            <button class="btn-modal btn-confirm" onclick="submitDispute()">OK</button>
+            <button class="btn-modal btn-confirm" onclick="submitDispute()">Open Dispute</button>
         </div>
     </div>
 </div>

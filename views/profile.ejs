@@ -49,7 +49,7 @@
 
     /* Cards */
     .glass-card {
-        background: rgba(15, 23, 42, 0.6);
+        background: rgba(30, 15, 45, 0.6); /* Deep Violet */
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
         border: 1px solid rgba(255, 255, 255, 0.05);
@@ -89,9 +89,9 @@
         border: 1px solid transparent;
     }
     .nav-menu a:hover, .nav-menu a.active {
-        background: rgba(56, 189, 248, 0.1);
-        color: #38bdf8;
-        border-color: rgba(56, 189, 248, 0.2);
+        background: rgba(167, 139, 250, 0.15); /* Light Violet/Purple hover */
+        color: #d8b4fe;
+        border-color: rgba(167, 139, 250, 0.3);
     }
 
     /* Stats Grid */
@@ -123,8 +123,8 @@
 
     /* Call to Action Button */
     .btn-primary {
-        background: #38bdf8;
-        color: #0f172a;
+        background: #a855f7; /* Purple */
+        color: #fff;
         padding: 12px 25px;
         border-radius: 6px;
         text-decoration: none;
@@ -135,13 +135,13 @@
         cursor: pointer;
     }
     .btn-primary:hover {
-        background: #0ea5e9;
+        background: #9333ea;
         transform: translateY(-1px);
     }
     
     .btn-outline {
-        border: 1px solid #38bdf8;
-        color: #38bdf8;
+        border: 1px solid #a855f7;
+        color: #d8b4fe;
         padding: 12px 25px;
         border-radius: 6px;
         text-decoration: none;
@@ -150,7 +150,7 @@
         transition: all 0.2s;
     }
     .btn-outline:hover {
-        background: rgba(56, 189, 248, 0.1);
+        background: rgba(168, 85, 247, 0.15);
     }
 
     /* Category Badges */
@@ -238,7 +238,7 @@
     }
     .form-control:focus {
         outline: none;
-        border-color: #38bdf8;
+        border-color: #a855f7;
     }
 </style>
 
@@ -327,7 +327,7 @@
                 </div>
                 <% } %>
 
-                <div class="glass-card" style="background: linear-gradient(135deg, rgba(15,23,42,0.8), rgba(30,41,59,0.8));">
+                <div class="glass-card" style="background: linear-gradient(135deg, rgba(30,15,45,0.8), rgba(45,20,70,0.8));">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 15px;">
                         <h3 style="margin: 0; border: none; padding: 0;">Vendor Partnership</h3>
                         <% if (user.is_vendor === 1) { %>
@@ -378,7 +378,7 @@
                             <div class="lbl">Shipping</div>
                         </div>
                         <div class="stat-box">
-                            <div class="val" style="color: #38bdf8;"><%= orderStats.waiting_review %></div>
+                            <div class="val" style="color: #d8b4fe;"><%= orderStats.waiting_review %></div>
                             <div class="lbl">Waiting Review</div>
                         </div>
                     </div>
