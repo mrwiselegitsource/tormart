@@ -240,8 +240,14 @@
         outline: none;
         border-color: #a855f7;
     }
+    .profile-wrapper {
+        background-color: #130822; /* Very deep violet */
+        min-height: calc(100vh - 100px);
+        padding: 1px 0 40px 0;
+    }
 </style>
 
+<div class="profile-wrapper">
 <div class="profile-dashboard">
     
     <% if (typeof req !== 'undefined' && req.query && req.query.error) { %>
@@ -414,6 +420,7 @@
             
         </div>
     </div>
+</div>
 </div>
 
 <script>
