@@ -253,6 +253,7 @@ function initializeSchema() {
         db.run(`ALTER TABLE users ADD COLUMN application_contact TEXT`, (err) => {});
         db.run(`ALTER TABLE users ADD COLUMN application_date DATETIME`, (err) => {});
         db.run(`ALTER TABLE users ADD COLUMN vendor_delivery_statement TEXT`, (err) => {});
+        db.run(`ALTER TABLE users ADD COLUMN application_crypto_address TEXT`, (err) => {});
 
         // Add bonus balance for profile dashboard
         db.run(`ALTER TABLE users ADD COLUMN bonus_balance_usd REAL DEFAULT 0.00`, (err) => {});
@@ -1821,15 +1822,14 @@ app.get('/support', requireAuth, (req, res) => {
 
 // Vendor Application System
 app.get('/apply-vendor', requireAuth, (req, res) => {
-    // If they already applied and are pending, we can send them to a status page or profile
     if (req.session.user.vendor_status === 'pending') {
-        return res.redirect('/profile');
+        return res.render('vendor-apply-status', { user: req.session.user });
     }
     res.render('vendor-apply-landing', { user: req.session.user });
 });
 
 app.get('/apply-vendor/step-1', requireAuth, (req, res) => {
-    if (req.session.user.vendor_status === 'pending') return res.redirect('/profile');
+    if (req.session.user.vendor_status === 'pending') return res.render('vendor-apply-status', { user: req.session.user });
     res.render('vendor-apply-step1', { user: req.session.user });
 });
 
@@ -1847,15 +1847,49 @@ app.post('/apply-vendor/step-1', requireAuth, (req, res) => {
 });
 
 app.get('/apply-vendor/step-2', requireAuth, (req, res) => {
-    if (req.session.user.vendor_status === 'pending') return res.redirect('/profile');
+    if (req.session.user.vendor_status === 'pending') return res.render('vendor-apply-status', { user: req.session.user });
     
     db.all("SELECT * FROM site_settings", (err, sSettings) => {
         const siteSettings = {};
         if (sSettings) sSettings.forEach(s => siteSettings[s.setting_key] = s.setting_value);
         if (!siteSettings.partnership_fee) siteSettings.partnership_fee = "$150 in BTC";
-        if (!siteSettings.partnership_address) siteSettings.partnership_address = "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh";
+        
+        const fallbackAddress = siteSettings.partnership_address || "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh";
 
-        res.render('vendor-apply-step2', { user: req.session.user, siteSettings });
+        const renderStep2 = async (cryptoAddress) => {
+            let qrCodeDataUrl = '';
+            try {
+                qrCodeDataUrl = await QRCode.toDataURL(`bitcoin:${cryptoAddress}`);
+            } catch (err) {
+                console.error("QR Code Error:", err);
+            }
+            res.render('vendor-apply-step2', { 
+                user: req.session.user, 
+                siteSettings, 
+                application_crypto_address: cryptoAddress, 
+                qrCodeDataUrl 
+            });
+        };
+
+        db.get("SELECT application_crypto_address FROM users WHERE id = ?", [req.session.user.id], (err, row) => {
+            if (row && row.application_crypto_address) {
+                renderStep2(row.application_crypto_address);
+            } else {
+                db.get(`SELECT id, address FROM address_pool WHERE currency = 'BTC' AND is_used = 0 ORDER BY id ASC LIMIT 1`, (err, poolRow) => {
+                    if (poolRow) {
+                        const newAddress = poolRow.address;
+                        db.run(`UPDATE address_pool SET is_used = 1, assigned_order_id = ? WHERE id = ?`, [-req.session.user.id, poolRow.id], () => {
+                            db.run(`UPDATE users SET application_crypto_address = ? WHERE id = ?`, [newAddress, req.session.user.id], () => {
+                                req.session.user.application_crypto_address = newAddress;
+                                renderStep2(newAddress);
+                            });
+                        });
+                    } else {
+                        renderStep2(fallbackAddress);
+                    }
+                });
+            }
+        });
     });
 });
 

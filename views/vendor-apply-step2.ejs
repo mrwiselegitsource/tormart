@@ -19,11 +19,11 @@
             <h3 style="color: #0f172a; margin-bottom: 10px; font-size: 1.2rem;">One-Time Verification Fee</h3>
             <p style="color: #475569; font-size: 15px; margin-bottom: 20px; line-height: 1.5;">To ensure a high-quality marketplace and protect our community from spam, we require all new partners to pay a verification fee of <strong style="color: #111; font-size: 1.1rem;"><%= siteSettings.partnership_fee %></strong>.</p>
             
-            <img src="https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=<%= encodeURIComponent(siteSettings.partnership_address) %>" alt="QR Code" style="background: white; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+            <img src="<%= qrCodeDataUrl %>" alt="QR Code" style="background: white; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
             
             <div style="margin-bottom: 10px; font-weight: 600; color: #333; text-align: left;">Send Bitcoin to this address:</div>
             <div style="background: white; border: 1px dashed #cbd5e1; padding: 15px; border-radius: 4px; font-family: monospace; font-size: 16px; color: #1e293b; user-select: all; word-break: break-all; margin-bottom: 15px;">
-                <%= siteSettings.partnership_address %>
+                <%= application_crypto_address %>
             </div>
             
             <p style="color: #f59e0b; font-size: 0.9rem; font-weight: 600; margin: 0;">⚠️ Please make sure to send the exact amount.</p>
