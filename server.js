@@ -1449,7 +1449,7 @@ app.post('/login', (req, res) => {
                     });
                 }
 
-                const redirectUrl = returnTo || (user.role === 'admin' ? '/admin' : '/dashboard');
+                const redirectUrl = returnTo || (user.role === 'admin' ? '/admin' : '/profile');
                 return res.redirect(redirectUrl);
             });
         } else {
@@ -1561,7 +1561,24 @@ app.get('/profile', requireAuth, (req, res) => {
                 avatar = '/images/crown.png';
             }
             
-            res.render('profile', { bonusUsd, bonusBtc, orderStats, tier, avatar, username: req.session.user.username });
+            // Fetch categories
+            db.all("SELECT DISTINCT category FROM products WHERE category IS NOT NULL", (err, cats) => {
+                const categories = cats && cats.length > 0 ? cats.map(c => c.category) : ['Gift Cards', 'Software', 'Digital'];
+                
+                // Fetch top vendors for preview
+                db.all("SELECT id, vendor_name, vendor_logo, vendor_short_description FROM users WHERE is_vendor = 1 AND vendor_status = 'approved' ORDER BY RANDOM() LIMIT 4", (err, vendors) => {
+                    res.render('profile', { 
+                        bonusUsd, 
+                        bonusBtc, 
+                        orderStats, 
+                        tier, 
+                        avatar, 
+                        username: req.session.user.username,
+                        categories,
+                        vendors: vendors || []
+                    });
+                });
+            });
         });
     });
 });
