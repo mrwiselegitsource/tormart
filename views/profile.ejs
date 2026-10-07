@@ -301,17 +301,23 @@
                 <div class="glass-card" style="margin-bottom: 30px;">
                     <h3>Quick Categories</h3>
                     <div class="category-badges">
-                        <% categories.forEach(cat => { %>
+                        <% 
+                            const safeCategories = (typeof categories !== 'undefined' && categories) ? categories : ['Gift Cards', 'Software', 'Digital'];
+                            safeCategories.forEach(cat => { 
+                        %>
                             <a href="/category/<%= encodeURIComponent(cat) %>" class="cat-badge"><%= cat %></a>
                         <% }) %>
                     </div>
                 </div>
 
-                <% if (vendors && vendors.length > 0) { %>
+                <% 
+                    const safeVendors = (typeof vendors !== 'undefined' && vendors) ? vendors : [];
+                    if (safeVendors.length > 0) { 
+                %>
                 <div class="glass-card" style="margin-bottom: 30px;">
                     <h3>Verified Vendors Spotlight</h3>
                     <div class="vendors-row">
-                        <% vendors.forEach(v => { %>
+                        <% safeVendors.forEach(v => { %>
                             <a href="/vendor/<%= encodeURIComponent(v.vendor_name) %>" class="vendor-mini-card">
                                 <img src="<%= v.vendor_logo || '/images/default-vendor.png' %>" alt="<%= v.vendor_name %>" onerror="this.src='/images/default-vendor.png'">
                                 <div class="v-name"><%= v.vendor_name %></div>
