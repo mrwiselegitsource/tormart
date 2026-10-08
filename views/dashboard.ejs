@@ -17,6 +17,8 @@
         display: flex;
         justify-content: space-between;
         align-items: flex-end;
+        flex-wrap: wrap;
+        gap: 15px;
     }
 
     .dashboard-header h1 {
@@ -364,7 +366,7 @@
             <p>Track your purchases, view delivery data, and manage disputes.</p>
         </div>
         <div>
-            <a href="/profile" style="color: #7e22ce; text-decoration: none; font-weight: bold; border: 1px solid #7e22ce; padding: 10px 20px; border-radius: 6px; transition: 0.2s; background: #fff;">&larr; Back to Profile</a>
+            <a href="/profile" style="color: #7e22ce; text-decoration: none; font-weight: bold; border: 1px solid #7e22ce; padding: 10px 20px; border-radius: 6px; transition: 0.2s; background: #fff; display: inline-block; white-space: nowrap;">&larr; Back to Profile</a>
         </div>
     </div>
 
@@ -392,7 +394,7 @@
                             
                             <!-- Card Header (Always visible) -->
                             <div class="order-card-header">
-                                <img src="<%= order.image ? '/images/' + order.image : '/images/default-product.png' %>" class="order-thumb" alt="Product">
+                                <img src="<%= order.image ? order.image : '/images/default-vendor-logo.png' %>" class="order-thumb" alt="Product">
                                 <div class="order-meta">
                                     <div class="order-title"><%= order.name %></div>
                                     <div class="order-subtitle">
@@ -416,7 +418,7 @@
                             <div class="mobile-detail-wrapper detail-payload">
                                 
                                 <div class="desktop-hero-data" style="display: none;">
-                                    <img src="<%= order.image ? '/images/' + order.image : '/images/default-product.png' %>" alt="Product">
+                                    <img src="<%= order.image ? order.image : '/images/default-vendor-logo.png' %>" alt="Product">
                                     <div>
                                         <div class="detail-title"><%= order.name %></div>
                                         <div class="detail-seller">Seller: <strong><%= order.vendor_name || 'PartnerStore' %></strong></div>
