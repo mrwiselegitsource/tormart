@@ -31,7 +31,7 @@
         .catalog-grid { grid-template-columns: repeat(2, 1fr); }
     }
     
-    /* Moving Blue Gradient Effect (Ambient Orbs) */
+    /* Violet/Pink Ambient Effect (Square Perimeter) */
     .hero-wrapper {
         position: relative;
         overflow: hidden;
@@ -40,45 +40,38 @@
     .ambient-orb {
         position: absolute;
         border-radius: 50%;
-        filter: blur(50px);
-        opacity: 0.6;
+        filter: blur(35px);
+        opacity: 0.9;
         pointer-events: none;
         z-index: 1;
         mix-blend-mode: screen;
-        animation: orbitAntiClockwise 25s infinite linear;
     }
 
     .orb-1 {
-        width: 350px;
-        height: 350px;
-        background: radial-gradient(circle, rgba(168, 85, 247, 0.5) 0%, rgba(217, 70, 239, 0.2) 60%, transparent 100%);
-        top: -50px;
-        left: 20%;
-        animation-duration: 15s;
+        width: 180px;
+        height: 180px;
+        background: radial-gradient(circle, rgba(147, 51, 234, 1) 0%, rgba(168, 85, 247, 0.4) 60%, transparent 100%);
+        animation: perimeterWalk 20s infinite linear;
     }
 
     .orb-2 {
-        width: 450px;
-        height: 450px;
-        background: radial-gradient(circle, rgba(147, 51, 234, 0.4) 0%, rgba(192, 38, 211, 0.15) 60%, transparent 100%);
-        bottom: -100px;
-        right: 10%;
-        animation-duration: 20s;
+        width: 150px;
+        height: 150px;
+        background: radial-gradient(circle, rgba(217, 70, 239, 1) 0%, rgba(192, 38, 211, 0.4) 60%, transparent 100%);
+        animation: perimeterWalk 20s infinite linear;
+        animation-delay: -10s;
     }
     
     .orb-3 {
-        width: 300px;
-        height: 300px;
-        background: radial-gradient(circle, rgba(236, 72, 153, 0.4) 0%, rgba(168, 85, 247, 0.2) 60%, transparent 100%);
-        top: 40%;
-        left: 50%;
-        animation-duration: 18s;
+        display: none;
     }
 
-    @keyframes orbitAntiClockwise {
-        0% { transform: rotate(360deg) translateX(120px) rotate(-360deg); opacity: 0.4; }
-        50% { opacity: 0.7; }
-        100% { transform: rotate(0deg) translateX(120px) rotate(0deg); opacity: 0.4; }
+    @keyframes perimeterWalk {
+        0%   { top: 0%; left: 0%; transform: translate(-50%, -50%); }
+        25%  { top: 0%; left: 100%; transform: translate(-50%, -50%); }
+        50%  { top: 100%; left: 100%; transform: translate(-50%, -50%); }
+        75%  { top: 100%; left: 0%; transform: translate(-50%, -50%); }
+        100% { top: 0%; left: 0%; transform: translate(-50%, -50%); }
     }
 </style>
 
