@@ -12,19 +12,30 @@ const crypto = require('crypto');
 const QRCode = require('qrcode');
 
 // Configure multer for static asset uploads (admin panel)
+const ALLOWED_ASSET_FILENAMES = ['logo.png', 'top-banner-1.jpg', 'top-banner-2.jpg', 'favicon.ico'];
 const assetStorage = multer.diskStorage({
     destination: function (req, file, cb) {
-        cb(null, path.join(__dirname, 'public/images'))
+        cb(null, path.join(__dirname, 'public/images'));
     },
     filename: function (req, file, cb) {
-        // Use the fieldname as the filename (e.g. logo.png, top-banner-1.jpg)
-        // We will expect the frontend to pass the exact filename in the field name
-        const ext = path.extname(file.originalname) || '.png';
-        const finalName = file.fieldname.includes('.') ? file.fieldname : file.fieldname + ext;
-        cb(null, finalName);
+        const cleanName = path.basename(file.fieldname);
+        if (!ALLOWED_ASSET_FILENAMES.includes(cleanName)) {
+            return cb(new Error('Invalid asset filename: not in allowed whitelist.'));
+        }
+        cb(null, cleanName);
     }
 });
-const assetUpload = multer({ storage: assetStorage });
+const assetUpload = multer({
+    storage: assetStorage,
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        const cleanName = path.basename(file.fieldname);
+        if (!ALLOWED_ASSET_FILENAMES.includes(cleanName)) {
+            return cb(new Error('Invalid asset filename: not in allowed whitelist.'));
+        }
+        cb(null, true);
+    }
+});
 
 // Configure multer for advert uploads (admin and vendor)
 const advertStorage = multer.diskStorage({
@@ -83,6 +94,61 @@ app.use(express.json());
 // Global template helpers
 app.locals.slugify = (text) => text ? text.toString().toLowerCase().trim().replace(/[\s\W-]+/g, '-') : '';
 
+// HTML sanitization helper to prevent Stored XSS
+function sanitizeHtmlMarkup(html) {
+    if (!html || typeof html !== 'string') return '';
+    let clean = html.replace(/<\s*(script|style|iframe|object|embed|svg|math|form|input|button|textarea|meta|link)\b[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, '');
+    clean = clean.replace(/<\s*(script|style|iframe|object|embed|svg|math|form|input|button|textarea|meta|link)\b[^>]*\/?>/gi, '');
+    clean = clean.replace(/\s*on\w+\s*=\s*(?:'[^']*'|"[^"]*"|[^\s>]+)/gi, '');
+    clean = clean.replace(/\b(href|src)\s*=\s*([\"\'])\s*(javascript:|vbscript:|data:)[^\"\']*\2/gi, '$1="#"');
+    clean = clean.replace(/\b(href|src)\s*=\s*(javascript:|vbscript:|data:)[^\s>]+/gi, '$1="#"');
+    const allowedTags = /^(a|b|blockquote|br|em|h1|h2|h3|h4|hr|i|li|ol|p|s|span|strike|strong|u|ul)$/i;
+    clean = clean.replace(/<\/?([a-z0-9]+)\b([^>]*)>/gi, (match, tagName, attrs) => {
+        if (!allowedTags.test(tagName)) return '';
+        if (match.startsWith('</')) return `</${tagName.toLowerCase()}>`;
+        let cleanAttrs = '';
+        if (tagName.toLowerCase() === 'a') {
+            const hrefMatch = attrs.match(/\bhref\s*=\s*(['"])(.*?)\1/i);
+            if (hrefMatch) {
+                const url = hrefMatch[2].trim();
+                if (url.startsWith('/') || /^https?:\/\//i.test(url) || url.startsWith('#') || url.startsWith('mailto:')) {
+                    cleanAttrs += ` href="${encodeURI(url)}"`;
+                }
+            }
+            cleanAttrs += ' rel="noopener noreferrer"';
+        }
+        return `<${tagName.toLowerCase()}${cleanAttrs}>`;
+    });
+    return clean;
+}
+app.locals.sanitizeHtml = sanitizeHtmlMarkup;
+
+// Safe file deletion helper to prevent directory traversal
+function safeDeleteFile(filePathOrRel) {
+    if (!filePathOrRel || typeof filePathOrRel !== 'string') return;
+    if (filePathOrRel.includes('..')) {
+        console.warn('Rejected file deletion containing traversal:', filePathOrRel);
+        return;
+    }
+    const cleanRel = filePathOrRel.startsWith('/') ? filePathOrRel.slice(1) : filePathOrRel;
+    const fullPath = path.resolve(__dirname, 'public', cleanRel);
+    const uploadsPath = path.resolve(__dirname, 'public', 'uploads');
+    const imagesPath = path.resolve(__dirname, 'public', 'images');
+    const isInside = (fullPath.startsWith(uploadsPath + path.sep) || fullPath === uploadsPath ||
+                      fullPath.startsWith(imagesPath + path.sep) || fullPath === imagesPath);
+    if (!isInside) {
+        console.warn('Rejected file deletion outside public/uploads or public/images:', fullPath);
+        return;
+    }
+    try {
+        if (fs.existsSync(fullPath)) {
+            fs.unlinkSync(fullPath);
+        }
+    } catch (err) {
+        console.error('safeDeleteFile error:', fullPath, err);
+    }
+}
+
 if (!process.env.SESSION_SECRET) {
     console.error("FATAL ERROR: SESSION_SECRET environment variable is required.");
     process.exit(1);
@@ -101,36 +167,65 @@ app.use(session({
     }
 }));
 
-// Setup Multer for file uploads
+// Setup Multer for standard file uploads with extension & MIME whitelists and 5MB size limit
+const ALLOWED_IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
+const ALLOWED_IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+
+function standardImageFileFilter(req, file, cb) {
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (!ALLOWED_IMAGE_EXTS.includes(ext)) {
+        return cb(new Error('Disallowed file extension. Allowed: .jpg, .jpeg, .png, .webp, .gif'));
+    }
+    if (!ALLOWED_IMAGE_MIMES.includes(file.mimetype)) {
+        return cb(new Error('Invalid file MIME type.'));
+    }
+    cb(null, true);
+}
+
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         cb(null, uploadsDir);
     },
     filename: function (req, file, cb) {
-        cb(null, Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname));
+        const ext = path.extname(file.originalname).toLowerCase();
+        cb(null, Date.now() + '-' + Math.round(Math.random() * 1E9) + (ALLOWED_IMAGE_EXTS.includes(ext) ? ext : '.jpg'));
     }
 });
-const upload = multer({ storage: storage });
+const upload = multer({
+    storage: storage,
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: standardImageFileFilter
+});
 
 const imageStorage = multer.diskStorage({
     destination: function (req, file, cb) {
         cb(null, imagesDir);
     },
     filename: function (req, file, cb) {
-        cb(null, Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname));
+        const ext = path.extname(file.originalname).toLowerCase();
+        cb(null, Date.now() + '-' + Math.round(Math.random() * 1E9) + (ALLOWED_IMAGE_EXTS.includes(ext) ? ext : '.jpg'));
     }
 });
-const imageUpload = multer({ storage: imageStorage });
+const imageUpload = multer({
+    storage: imageStorage,
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: standardImageFileFilter
+});
 
 const messageImageStorage = multer.diskStorage({
     destination: function (req, file, cb) {
         cb(null, messagesDir);
     },
     filename: function (req, file, cb) {
-        cb(null, 'msg-' + Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname));
+        const ext = path.extname(file.originalname).toLowerCase();
+        cb(null, 'msg-' + Date.now() + '-' + Math.round(Math.random() * 1E9) + (ALLOWED_IMAGE_EXTS.includes(ext) ? ext : '.jpg'));
     }
 });
-const messageImageUpload = multer({ storage: messageImageStorage });
+const messageImageUpload = multer({
+    storage: messageImageStorage,
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: standardImageFileFilter
+});
 
 const proofsDir = isVercel ? '/tmp/proofs' : path.join(__dirname, 'public', 'images', 'proofs');
 if (!fs.existsSync(proofsDir)) fs.mkdirSync(proofsDir, { recursive: true });
@@ -139,10 +234,15 @@ const proofsStorage = multer.diskStorage({
         cb(null, proofsDir);
     },
     filename: function (req, file, cb) {
-        cb(null, 'proof-' + Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname));
+        const ext = path.extname(file.originalname).toLowerCase();
+        cb(null, 'proof-' + Date.now() + '-' + Math.round(Math.random() * 1E9) + (ALLOWED_IMAGE_EXTS.includes(ext) ? ext : '.jpg'));
     }
 });
-const proofsUpload = multer({ storage: proofsStorage });
+const proofsUpload = multer({
+    storage: proofsStorage,
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: standardImageFileFilter
+});
 
 const reviewsDir = isVercel ? '/tmp/reviews' : path.join(__dirname, 'public', 'images', 'reviews');
 if (!fs.existsSync(reviewsDir)) fs.mkdirSync(reviewsDir, { recursive: true });
@@ -151,10 +251,15 @@ const reviewsStorage = multer.diskStorage({
         cb(null, reviewsDir);
     },
     filename: function (req, file, cb) {
-        cb(null, 'review-' + Date.now() + '-' + Math.round(Math.random() * 1E9) + path.extname(file.originalname));
+        const ext = path.extname(file.originalname).toLowerCase();
+        cb(null, 'review-' + Date.now() + '-' + Math.round(Math.random() * 1E9) + (ALLOWED_IMAGE_EXTS.includes(ext) ? ext : '.jpg'));
     }
 });
-const reviewsUpload = multer({ storage: reviewsStorage });
+const reviewsUpload = multer({
+    storage: reviewsStorage,
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: standardImageFileFilter
+});
 
 // Database Initialization
 const dbPath = isVercel ? '/tmp/neobyte.db' : './neobyte.db';
@@ -326,6 +431,13 @@ function initializeSchema() {
             image_url TEXT,
             is_system INTEGER DEFAULT 0,
             is_read INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )`);
+
+        db.run(`CREATE TABLE IF NOT EXISTS message_templates (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT,
+            content TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )`);
         
@@ -805,6 +917,12 @@ app.get('/', (req, res) => {
     });
 });
 
+app.get('/sellers/list', (req, res) => {
+    db.all("SELECT * FROM users WHERE is_vendor = 1 AND vendor_status = 'approved' ORDER BY id DESC", [], (err, vendors) => {
+        res.render('sellers', { vendors: vendors || [] });
+    });
+});
+
 app.get('/category/:name', (req, res) => {
     const categoryName = req.params.name;
     db.get("SELECT * FROM category_banners WHERE LOWER(category) = LOWER(?)", [categoryName], (err, banner) => {
@@ -1003,10 +1121,14 @@ app.get('/checkout', requireAuth, (req, res) => {
 });
 
 app.post('/checkout', requireAuth, (req, res) => {
-    const { payment_method, comment } = req.body;
+    const { payment_method, comment, email } = req.body;
     const cartObj = req.session.cart || {};
     const productIds = Object.keys(cartObj);
     const userId = req.session.user.id;
+
+    if (email) {
+        db.run("UPDATE users SET email = ? WHERE id = ?", [email, userId]);
+    }
 
     if (productIds.length === 0) {
         return res.redirect('/cart');
@@ -1196,7 +1318,17 @@ app.post('/payment/:invoice_id/verify', requireAuth, async (req, res) => {
         });
         if (!intent) return res.redirect(`/payment/${invoiceId}?error=IntentNotFound`);
         
-        await paymentWorker.manualVerifyTxid(intent.id, txid);
+        // Update intent status to CHECKING immediately
+        await new Promise((resolve, reject) => {
+            db.run(`UPDATE payment_intents SET status = 'CHECKING' WHERE id = ?`, [intent.id], (err) => {
+                if (err) reject(err); else resolve();
+            });
+        });
+
+        // Spawn verification asynchronously without awaiting
+        paymentWorker.manualVerifyTxid(intent.id, txid).catch(err => {
+            console.error(`Async manual verify error for intent ${intent.id}:`, err);
+        });
         
         if (req.headers.accept && req.headers.accept.includes('application/json')) {
             res.json({ success: true, message: 'Transaction submitted for verification. Checking...' });
@@ -1603,10 +1735,11 @@ app.post('/profile/change-password', requireAuth, (req, res) => {
 
 app.get('/dashboard', requireAuth, (req, res) => {
     db.all(`
-        SELECT orders.*, products.name, products.image, products.price, users.username as vendor_name
+        SELECT orders.*, products.name, products.image, products.price, users.username as vendor_name, payment_intents.status as payment_status
         FROM orders 
         JOIN products ON orders.product_id = products.id 
         LEFT JOIN users ON products.vendor_id = users.id
+        LEFT JOIN payment_intents ON orders.id = payment_intents.order_id
         WHERE orders.user_id = ? ORDER BY orders.created_at DESC
     `, [req.session.user.id], (err, orders) => {
         const wishlistIds = req.session.wishlist || [];
@@ -2041,6 +2174,10 @@ app.get('/cooperation', (req, res) => {
     res.render('cooperation');
 });
 
+app.get('/advertising', (req, res) => {
+    res.render('advertising');
+});
+
 app.get('/about', (req, res) => {
     res.render('about');
 });
@@ -2424,6 +2561,64 @@ app.post('/admin/support/toggle-lock', requireAdmin, (req, res) => {
     db.run("UPDATE users SET admin_chat_unlocked = ? WHERE id = ?", [unlockStatus, userId], function(err) {
         if (err) return res.status(500).json({error: err.message});
         res.json({success: true, unlocked: unlockStatus});
+    });
+});
+
+// Admin User Management Routes
+app.get('/admin/users', requireAdmin, (req, res) => {
+    db.all("SELECT id, username, email, role, is_vendor, created_at FROM users ORDER BY created_at DESC", (err, users) => {
+        db.all("SELECT * FROM message_templates ORDER BY created_at DESC", (err, templates) => {
+            if (err) return res.status(500).send("Database error");
+            
+            const totalUsers = users.length;
+            const now = new Date();
+            const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+            const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+            
+            const newToday = users.filter(u => new Date(u.created_at) > oneDayAgo).length;
+            const newThisMonth = users.filter(u => new Date(u.created_at) > thirtyDaysAgo).length;
+            
+            res.render('admin_users', {
+                users,
+                templates: templates || [],
+                stats: { totalUsers, newToday, newThisMonth },
+                csrfToken: req.session.csrfToken,
+                user: req.session.user
+            });
+        });
+    });
+});
+
+app.post('/admin/users/message', requireAdmin, (req, res) => {
+    const { user_id, message_body } = req.body;
+    const adminId = req.session.user.id;
+    const userId = parseInt(user_id);
+    
+    if (!message_body || !userId) {
+        return res.status(400).send("Missing required fields");
+    }
+    
+    const conversationId = adminId < userId ? `${adminId}-${userId}` : `${userId}-${adminId}`;
+    
+    db.run("INSERT INTO messages (sender_id, receiver_id, body, conversation_id, is_read, is_system) VALUES (?, ?, ?, ?, 0, 0)", 
+    [adminId, userId, message_body, conversationId], function(err) {
+        if (err) return res.status(500).send("Error sending message");
+        res.redirect('/admin/users?msg_success=1');
+    });
+});
+
+app.post('/admin/templates/add', requireAdmin, (req, res) => {
+    const { title, content } = req.body;
+    if (!title || !content) return res.status(400).send("Missing fields");
+    
+    db.run("INSERT INTO message_templates (title, content) VALUES (?, ?)", [title, content], (err) => {
+        res.redirect('/admin/users');
+    });
+});
+
+app.post('/admin/templates/delete/:id', requireAdmin, (req, res) => {
+    db.run("DELETE FROM message_templates WHERE id = ?", [req.params.id], (err) => {
+        res.redirect('/admin/users');
     });
 });
 

@@ -7,7 +7,8 @@
 <% if (adverts.length > 0) { %>
     <div class="advert-carousel" data-count="<%= count %>">
         <% adverts.forEach(ad => { %>
-            <a href="<%= ad.target_url %>" class="advert-item">
+            <% const safeTarget = (ad.target_url && (ad.target_url.startsWith('/') || /^https?:\/\//i.test(ad.target_url)) && !/^\s*javascript:/i.test(ad.target_url)) ? ad.target_url : '#'; %>
+            <a href="<%= safeTarget %>" class="advert-item">
                 <img src="<%= ad.image_url %>" alt="Advertisement">
             </a>
         <% }) %>

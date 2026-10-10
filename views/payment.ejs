@@ -66,11 +66,20 @@
                 
                 <div style="margin-top: 20px; text-align:left;">
                     <div style="font-size: 13px; font-weight:bold; margin-bottom: 5px;">Already paid? Submit TXID</div>
-                    <form method="POST" action="/payment/<%= invoiceId %>/verify" style="display:flex; gap: 10px;">
+                    <form id="txidForm" onsubmit="event.preventDefault(); submitTxid();" style="display:<%= locals.intent && locals.intent.status === 'CHECKING' ? 'none' : 'flex' %>; gap: 10px;">
                         <input type="hidden" name="_csrf" value="<%= locals.csrfToken %>">
                         <input type="text" name="txid" id="txidInput" placeholder="Transaction Hash" required style="flex-grow:1; padding: 8px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px;">
                         <button type="submit" style="background:#3b82f6; color:white; border:none; border-radius:4px; padding: 0 15px; cursor:pointer; font-size: 12px;">Verify</button>
                     </form>
+                    
+                    <div id="loadingOverlay" style="display:<%= locals.intent && locals.intent.status === 'CHECKING' ? 'block' : 'none' %>; margin-top: 10px; padding: 15px; background: rgba(59, 130, 246, 0.1); border: 1px solid #3b82f6; border-radius: 6px; text-align: center;">
+                        <div style="width: 24px; height: 24px; border: 3px solid #3b82f6; border-top: 3px solid transparent; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 10px auto;"></div>
+                        <div style="font-weight: bold; color: #3b82f6; font-size: 13px;">Verifying Payment...</div>
+                        <div style="font-size: 11px; color: #64748b; margin-top: 5px;">Please wait or feel free to leave this page. We'll keep checking in the background.</div>
+                    </div>
+                    <style>
+                        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                    </style>
                 </div>
                 <% } else if (locals.intent) { %>
                 <div style="margin-top: 20px; text-align:left;">
@@ -192,7 +201,7 @@
     
     <% if (locals.intent && locals.intent.status !== 'CONFIRMED' && locals.intent.status !== 'PAID' && locals.intent.status !== 'OVERPAID') { %>
     // Status polling
-    setInterval(() => {
+    function checkStatus() {
         fetch(`/payment/<%= invoiceId %>/status`)
             .then(res => res.json())
             .then(data => {
@@ -204,9 +213,14 @@
                     if (data.status === 'TRANSACTION_DETECTED') {
                         badge.style.background = '#fef08a';
                         msg.innerText = 'Transaction seen, waiting for blocks.';
-                    } else if (data.status === 'CONFIRMING') {
+                    } else if (data.status === 'CONFIRMING' || data.status === 'CHECKING') {
                         badge.style.background = '#bfdbfe';
-                        msg.innerText = 'Confirmations in progress...';
+                        msg.innerText = data.status === 'CHECKING' ? 'Verifying transaction...' : 'Confirmations in progress...';
+                        
+                        if (data.status === 'CHECKING') {
+                            document.getElementById('txidForm').style.display = 'none';
+                            document.getElementById('loadingOverlay').style.display = 'block';
+                        }
                     } else if (data.status === 'CONFIRMED' || data.status === 'OVERPAID') {
                         badge.style.background = '#bbf7d0';
                         msg.innerText = 'Payment Confirmed!';
@@ -217,30 +231,47 @@
                     } else if (data.status === 'EXPIRED') {
                         badge.style.background = '#fecaca';
                         msg.innerText = 'Payment expired. If you paid, submit TXID.';
+                    } else if (data.status === 'WAITING_FOR_PAYMENT') {
+                        document.getElementById('txidForm').style.display = 'flex';
+                        document.getElementById('loadingOverlay').style.display = 'none';
                     }
                 }
             })
             .catch(e => console.error("Polling error", e));
-    }, 15000); // Poll every 15s
+    }
+    setInterval(checkStatus, 15000); // Poll every 15s
     
     function submitTxid() {
         const txid = document.getElementById('txidInput').value.trim();
+        const csrfToken = document.querySelector('input[name="_csrf"]').value;
         if(!txid) return alert('Enter a transaction hash');
         
+        document.getElementById('txidForm').style.display = 'none';
+        document.getElementById('loadingOverlay').style.display = 'block';
+
         fetch(`/payment/<%= invoiceId %>/verify`, {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ txid: txid })
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ txid: txid, _csrf: csrfToken })
         })
         .then(res => res.json())
         .then(data => {
-            alert(data.message);
             if(data.success) {
-                // Instantly trigger a poll check after 2 seconds
-                setTimeout(() => fetch(`/payment/<%= invoiceId %>/status`), 2000);
+                setTimeout(checkStatus, 2000);
+            } else {
+                alert(data.message || "Error verifying TXID");
+                document.getElementById('txidForm').style.display = 'flex';
+                document.getElementById('loadingOverlay').style.display = 'none';
             }
         })
-        .catch(err => alert("Error verifying TXID"));
+        .catch(err => {
+            alert("Error verifying TXID");
+            document.getElementById('txidForm').style.display = 'flex';
+            document.getElementById('loadingOverlay').style.display = 'none';
+        });
     }
     <% } %>
 </script>

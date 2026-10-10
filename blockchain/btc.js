@@ -6,9 +6,11 @@ class BitcoinAdapter {
         // Primary and fallback APIs for resilience
         this.apiEndpoints = [
             'https://mempool.space/api',
-            'https://blockstream.info/api'
+            'https://blockstream.info/api',
+            'https://mempool.emzy.de/api',
+            'https://mempool.observer/api'
         ];
-        this.timeout = 10000; // 10 second timeout
+        this.timeout = 20000; // 20 second timeout
     }
 
     btcToSatoshis(btcValue) {

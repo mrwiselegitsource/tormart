@@ -75,7 +75,8 @@
                                 </td>
                                 <td><%= ad.vendor_name %></td>
                                 <td><span style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px; font-size: 12px;"><%= ad.page_key %></span></td>
-                                <td><a href="<%= ad.target_url %>" target="_blank" style="color: #3b82f6;"><%= ad.target_url %></a></td>
+                                <% const safeTarget = (ad.target_url && (ad.target_url.startsWith('/') || /^https?:\/\//i.test(ad.target_url)) && !/^\s*javascript:/i.test(ad.target_url)) ? ad.target_url : '#'; %>
+                                <td><a href="<%= safeTarget %>" target="_blank" rel="noopener noreferrer" style="color: #3b82f6;"><%= ad.target_url %></a></td>
                                 <td>
                                     <% if (ad.is_active) { %>
                                         <span class="text-green">Active</span>

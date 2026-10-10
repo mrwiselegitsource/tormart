@@ -136,7 +136,7 @@
             
             <div class="ql-editor" style="padding:0; font-size: 14px; line-height: 1.6; color: #333;">
                 <% if (product.description && product.description.trim() !== '') { %>
-                    <%- product.description %>
+                    <%- (typeof sanitizeHtml === 'function') ? sanitizeHtml(product.description) : product.description %>
                 <% } else { %>
                     <p style="color: #666; font-style: italic;">Description not found.</p>
                 <% } %>

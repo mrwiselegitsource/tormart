@@ -172,7 +172,7 @@
         
         <div style="font-size: 15px; color: #333; line-height: 1.6;">
 
-            <div class="ql-editor" style="padding:0;"><%- (vendor.vendor_description || '') %></div>
+            <div class="ql-editor" style="padding:0;"><%- (typeof sanitizeHtml === 'function') ? sanitizeHtml(vendor.vendor_description || '') : (vendor.vendor_description || '') %></div>
             
             <% if (proofs && proofs.length > 0) { %>
             <div class="vp-proofs-grid" style="margin-top: 20px;">

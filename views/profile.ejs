@@ -199,12 +199,173 @@
         margin-bottom: 10px;
         object-fit: cover;
     }
-    .vendor-mini-card .v-name {
-        font-size: 0.9rem;
-        font-weight: 600;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+    /* Trusted Banner */
+    .trusted-banner {
+        background: #5d428e; /* Violet background matching screenshot */
+        border-radius: 6px;
+        padding: 20px 30px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+        color: white;
+    }
+    .trusted-banner-left {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+    }
+    .trusted-banner-icon {
+        width: 45px;
+        height: 45px;
+    }
+    .trusted-banner-text h2 {
+        margin: 0 0 5px 0;
+        font-size: 1.3rem;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+    }
+    .trusted-banner-text p {
+        margin: 0;
+        font-size: 0.85rem;
+        color: #d1c4e9;
+    }
+    .trusted-banner-right {
+        display: flex;
+        align-items: center;
+    }
+    .trusted-banner-right img {
+        max-height: 35px;
+        object-fit: contain;
+    }
+    
+    @media (max-width: 768px) {
+        .trusted-banner {
+            flex-direction: column;
+            gap: 20px;
+            text-align: center;
+            padding: 20px 15px;
+        }
+        .trusted-banner-left {
+            flex-direction: column;
+            gap: 15px;
+        }
+        .sidebar-profile {
+            flex-direction: column;
+            text-align: center;
+        }
+    }
+    
+    /* Sidebar Overhaul */
+    .sidebar-card {
+        background: #fff;
+        border-radius: 8px;
+        padding: 25px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .sidebar-profile {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        margin-bottom: 30px;
+    }
+    .sidebar-profile img {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        object-fit: cover;
+        background: #e2e8f0;
+    }
+    .sidebar-profile-info h3 {
+        margin: 0 0 5px 0;
+        font-size: 1.1rem;
+        color: #111;
+        font-weight: 700;
+    }
+    .sidebar-profile-info p {
+        margin: 0;
+        font-size: 0.75rem;
+        color: #666;
+    }
+    
+    .sidebar-nav {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    .sidebar-nav li {
+        margin-bottom: 20px;
+    }
+    .sidebar-nav a {
+        color: #888;
+        text-decoration: none;
+        font-size: 0.85rem;
+        font-weight: 500;
+        transition: color 0.2s;
+    }
+    .sidebar-nav a:hover, .sidebar-nav a.active {
+        color: #111;
+    }
+
+    /* Main Content Overhaul */
+    .section-title {
+        font-size: 1.2rem;
+        color: #111;
+        margin: 0 0 15px 0;
+        font-weight: 700;
+    }
+    .content-card {
+        background: #fff;
+        border-radius: 8px;
+        padding: 25px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        margin-bottom: 25px;
+    }
+    
+    .wallet-box {
+        background: #9d72ff; /* Bright violet for wallet */
+        border-radius: 8px;
+        padding: 25px 30px;
+        color: white;
+    }
+    .wallet-box h3 {
+        margin: 0 0 8px 0;
+        font-size: 1.2rem;
+        font-weight: 700;
+    }
+    .wallet-box p {
+        margin: 0;
+        font-size: 0.85rem;
+        opacity: 0.9;
+    }
+
+    .order-box {
+        background: #f4f5f7;
+        border-radius: 8px;
+        padding: 20px;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    .order-icon-wrap {
+        width: 40px;
+        height: 40px;
+        background: #9d72ff;
+        border-radius: 6px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    .order-box-info h4 {
+        margin: 0 0 5px 0;
+        font-size: 0.95rem;
+        color: #111;
+        font-weight: 700;
+    }
+    .order-box-info p {
+        margin: 0;
+        font-size: 0.8rem;
+        color: #888;
     }
 
     /* Panels */
@@ -228,6 +389,24 @@
         outline: none;
         border-color: #7e22ce;
     }
+    
+    .profile-dashboard {
+        background: #f8f9fa; 
+        margin: 0 auto; 
+        padding: 30px 20px; 
+        max-width: 1200px; 
+        min-height: 80vh;
+    }
+
+    @media (max-width: 768px) {
+        .profile-dashboard {
+            padding: 15px 10px;
+        }
+        .order-box {
+            flex-direction: column;
+            text-align: center;
+        }
+    }
 </style>
 
 <div class="profile-dashboard">
@@ -243,17 +422,21 @@
         </div>
     <% } %>
 
-    <div class="dashboard-header">
-        <div class="welcome-text">
-            <h1>Welcome back, <%= username %></h1>
-            <p>Access your orders, support, and account settings.</p>
-        </div>
-        <div style="display: flex; gap: 15px; align-items: center;">
-            <div style="text-align: right; margin-right: 15px;">
-                <div style="color: var(--text-muted); font-size: 0.9rem;">Bonus Balance</div>
-                <div style="color: #2e2a5c; font-size: 1.2rem; font-weight: 700;"><%= bonusBtc %> BTC</div>
+    <!-- Trusted Banner -->
+    <div class="trusted-banner">
+        <div class="trusted-banner-left">
+            <svg class="trusted-banner-icon" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <!-- Simple open book SVG matching screenshot colors -->
+                <path d="M50 85 L20 65 L20 20 L50 40 Z" fill="#fde047" />
+                <path d="M50 85 L80 65 L80 20 L50 40 Z" fill="#2dd4bf" />
+            </svg>
+            <div class="trusted-banner-text">
+                <h2>Trusted by verified buyers worldwide</h2>
+                <p>Trusted globally for safe and hassle-free shopping</p>
             </div>
-            <a href="/" class="btn-primary">Browse Market</a>
+        </div>
+        <div class="trusted-banner-right">
+            <img src="/images/logo.png" alt="TorMart" onerror="this.outerHTML='<span style=\'font-size:24px; font-weight:bold;\'>TorMart</span>'">
         </div>
     </div>
 
@@ -261,27 +444,27 @@
         
         <!-- Left Sidebar -->
         <div class="sidebar">
-            <div class="dash-panel" style="text-align: center;">
-                <div class="dash-panel-content">
-                    <img src="<%= avatar %>" alt="<%= tier %>" style="width: 80px; height: 80px; border-radius: 50%; margin-bottom: 15px; border: 2px solid #e2e8f0; padding: 5px;">
-                    <h3 style="margin-bottom: 5px; font-size: 1.2rem; color: #140d1c;"><%= tier %> Member</h3>
-                    <p style="color: var(--text-muted); font-size: 0.9rem; margin: 0;">Level up by completing orders.</p>
+            <div class="sidebar-card">
+                <div class="sidebar-profile">
+                    <img src="<%= avatar %>" alt="<%= username %>">
+                    <div class="sidebar-profile-info">
+                        <h3><%= username %></h3>
+                        <p>Regular Buyer</p>
+                    </div>
                 </div>
-            </div>
 
-            <div class="dash-panel">
-                <div class="dash-panel-header">Account Navigation</div>
-                <div class="dash-panel-content" style="padding: 15px;">
-                    <ul class="nav-menu">
-                        <li><a href="#" onclick="switchPanel('overview-panel', this)" class="nav-link active">Dashboard Overview</a></li>
-                        <li><a href="/messages">Messages</a></li>
-                        <li><a href="/support">Support Tickets</a></li>
-                        <li><a href="#" onclick="switchPanel('orders-panel', this)" class="nav-link">Order History</a></li>
-                        <li><a href="#" onclick="switchPanel('password-panel', this)" class="nav-link">Security Settings</a></li>
-                        <li style="margin-top: 15px; border-top: 1px solid var(--border-color); padding-top: 10px;">
-                            <a href="/logout" style="color: #ef4444;">Sign Out</a>
-                        </li>
-                    </ul>
+                <ul class="sidebar-nav">
+                    <li><a href="/messages">Messages</a></li>
+                    <li><a href="/support">Support</a></li>
+                    <li><a href="#" onclick="switchPanel('orders-panel', this)" class="nav-link">Order History</a></li>
+                    <li><a href="#" onclick="switchPanel('overview-panel', this)" class="nav-link">Edit Profile</a></li>
+                    <li><a href="#" onclick="switchPanel('password-panel', this)" class="nav-link">Change Password</a></li>
+                    <li><a href="/logout">LogOut</a></li>
+                </ul>
+                
+                <div style="margin-top: 30px;">
+                    <strong style="font-size: 0.75rem; color: #111;">Membership Status:</strong>
+                    <!-- Status indicator could go here -->
                 </div>
             </div>
         </div>
@@ -292,38 +475,60 @@
             <!-- OVERVIEW PANEL -->
             <div id="overview-panel" class="dynamic-panel active">
                 
-                <div class="dash-panel">
-                    <div class="dash-panel-header">Quick Categories</div>
-                    <div class="dash-panel-content">
-                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 15px;">
-                            <% 
-                                const catImages = {
-                                    "Carding": "cat-carding.jpg",
-                                    "PayPal Transfers": "cat-paypal.jpg",
-                                    "Gift Cards": "cat-giftcards.jpg",
-                                    "Crypto currency": "cat-crypto.jpg",
-                                    "Fake money": "cat-money.jpg",
-                                    "Fake Money": "cat-money.jpg",
-                                    "Accounts": "cat-accounts.jpg",
-                                    "Documents": "cat-documents.jpg",
-                                    "Electronics": "cat-electronics.jpg",
-                                    "18+ items": "cat-18plus.jpg",
-                                    "Casino / Bets": "cat-casino.jpg",
-                                    "Casino Betting": "cat-casino.jpg"
-                                };
-                                const safeCategories = (typeof categories !== 'undefined' && categories && categories.length > 0) ? categories : ['Carding', 'Gift Cards', 'Crypto currency', 'Accounts'];
-                                
-                                safeCategories.slice(0, 8).forEach(cat => { 
-                                    const imgName = catImages[cat] || 'cat-giftcards.jpg';
-                            %>
-                                <a href="/category/<%= encodeURIComponent(cat) %>" class="category-tile" style="position: relative; height: 120px; border-radius: 8px; overflow: hidden; display: block; text-decoration: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.03)'" onmouseout="this.style.transform='scale(1)'">
-                                    <img src="/images/<%= imgName %>" alt="<%= cat %>" style="width: 100%; height: 100%; object-fit: cover;">
-                                    <div style="position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 60%); display: flex; align-items: flex-end; padding: 12px;">
-                                        <span style="color: white; font-weight: bold; font-size: 13px;"><%= cat %></span>
-                                    </div>
-                                </a>
-                            <% }) %>
+                <div class="content-card">
+                    <h2 class="section-title">Wallet</h2>
+                    <div class="wallet-box">
+                        <h3>Bonus Balance: $<%= (typeof bonus_balance_usd !== 'undefined') ? bonus_balance_usd : '0' %></h3>
+                        <p><%= typeof bonusBtc !== 'undefined' ? bonusBtc : '0.000000' %> BTC</p>
+                    </div>
+                </div>
+
+                <div class="content-card">
+                    <h2 class="section-title">Orders</h2>
+                    <div class="order-box">
+                        <div class="order-icon-wrap">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="2" y="5" width="20" height="14" rx="2" ry="2"></rect>
+                                <line x1="2" y1="10" x2="22" y2="10"></line>
+                            </svg>
                         </div>
+                        <div class="order-box-info">
+                            <h4>Unpaid (<%= typeof orderStats !== 'undefined' ? orderStats.unpaid : 0 %>)</h4>
+                            <p>Pay now so the seller starts processing your order.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="content-card" style="padding-top: 0; background: transparent; box-shadow: none;">
+                    <h2 class="section-title">Quick Categories</h2>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 15px;">
+                        <% 
+                            const catImages = {
+                                "Carding": "cat-carding.jpg",
+                                "PayPal Transfers": "cat-paypal.jpg",
+                                "Gift Cards": "cat-giftcards.jpg",
+                                "Crypto currency": "cat-crypto.jpg",
+                                "Fake money": "cat-money.jpg",
+                                "Fake Money": "cat-money.jpg",
+                                "Accounts": "cat-accounts.jpg",
+                                "Documents": "cat-documents.jpg",
+                                "Electronics": "cat-electronics.jpg",
+                                "18+ items": "cat-18plus.jpg",
+                                "Casino / Bets": "cat-casino.jpg",
+                                "Casino Betting": "cat-casino.jpg"
+                            };
+                            const safeCategories = (typeof categories !== 'undefined' && categories && categories.length > 0) ? categories : ['Carding', 'Gift Cards', 'Crypto currency', 'Accounts'];
+                            
+                            safeCategories.slice(0, 8).forEach(cat => { 
+                                const imgName = catImages[cat] || 'cat-giftcards.jpg';
+                        %>
+                            <a href="/category/<%= encodeURIComponent(cat) %>" class="category-tile" style="position: relative; height: 120px; border-radius: 8px; overflow: hidden; display: block; text-decoration: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.03)'" onmouseout="this.style.transform='scale(1)'">
+                                <img src="/images/<%= imgName %>" alt="<%= cat %>" style="width: 100%; height: 100%; object-fit: cover;">
+                                <div style="position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 60%); display: flex; align-items: flex-end; padding: 12px;">
+                                    <span style="color: white; font-weight: bold; font-size: 13px;"><%= cat %></span>
+                                </div>
+                            </a>
+                        <% }) %>
                     </div>
                 </div>
 
@@ -331,52 +536,47 @@
                     const safeVendors = (typeof vendors !== 'undefined' && vendors) ? vendors : [];
                     if (safeVendors.length > 0) { 
                 %>
-                <div class="dash-panel">
-                    <div class="dash-panel-header">Verified Vendors Spotlight</div>
-                    <div class="dash-panel-content">
-                        <div class="vendors-row">
-                            <% safeVendors.forEach(v => { %>
-                                <a href="/vendor/<%= encodeURIComponent(v.vendor_name) %>" class="vendor-mini-card">
-                                    <img src="<%= v.vendor_logo || '/images/default-vendor.png' %>" alt="<%= v.vendor_name %>" onerror="this.src='/images/default-vendor.png'">
-                                    <div class="v-name"><%= v.vendor_name %></div>
-                                </a>
-                            <% }) %>
-                        </div>
+                <div class="content-card">
+                    <h2 class="section-title">Verified Vendors Spotlight</h2>
+                    <div class="vendors-row">
+                        <% safeVendors.forEach(v => { %>
+                            <a href="/<%= slugify(v.vendor_name || v.username) %>" class="vendor-mini-card">
+                                <img src="<%= v.vendor_logo || '/images/default-vendor.png' %>" alt="<%= v.vendor_name %>" onerror="this.src='/images/default-vendor.png'">
+                                <div class="v-name"><%= v.vendor_name %></div>
+                            </a>
+                        <% }) %>
                     </div>
                 </div>
                 <% } %>
 
-                <div class="dash-panel">
-                    <div class="dash-panel-header">Vendor Partnership</div>
-                    <div class="dash-panel-content">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                            <h3 style="margin: 0; font-size: 18px;">Become a Seller</h3>
-                            <% if (user.is_vendor === 1) { %>
-                                <span style="background: #ecfdf5; color: #047857; padding: 4px 10px; border-radius: 4px; font-size: 0.85rem; font-weight: bold; border: 1px solid #10b981;">Active Vendor</span>
-                            <% } else if (user.vendor_status === 'pending') { %>
-                                <span style="background: #fffbeb; color: #b45309; padding: 4px 10px; border-radius: 4px; font-size: 0.85rem; font-weight: bold; border: 1px solid #f59e0b;">Review Pending</span>
-                            <% } %>
-                        </div>
-                        
-                        <p style="color: var(--text-main); margin-bottom: 20px; line-height: 1.6;">
-                            <% if (user.is_vendor === 1) { %>
-                                Manage your digital products, view incoming orders, and handle customer support inquiries directly from your isolated Vendor Area.
-                            <% } else if (user.vendor_status === 'pending') { %>
-                                Your application is currently being reviewed by our administration team. We will notify you once your vendor status is approved.
-                            <% } else { %>
-                                Want to sell on Tormart? Apply to become a verified vendor, reach our massive buyer network, and benefit from our secure escrow system.
-                            <% } %>
-                        </p>
+                <div class="content-card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 20px;">
+                        <h2 class="section-title" style="margin:0;">Become a Seller</h2>
+                        <% if (user.is_vendor === 1) { %>
+                            <span style="background: #ecfdf5; color: #047857; padding: 4px 10px; border-radius: 4px; font-size: 0.85rem; font-weight: bold; border: 1px solid #10b981;">Active Vendor</span>
+                        <% } else if (user.vendor_status === 'pending') { %>
+                            <span style="background: #fffbeb; color: #b45309; padding: 4px 10px; border-radius: 4px; font-size: 0.85rem; font-weight: bold; border: 1px solid #f59e0b;">Review Pending</span>
+                        <% } %>
+                    </div>
+                    
+                    <p style="color: var(--text-main); margin-bottom: 20px; line-height: 1.6;">
+                        <% if (user.is_vendor === 1) { %>
+                            Manage your digital products, view incoming orders, and handle customer support inquiries directly from your isolated Vendor Area.
+                        <% } else if (user.vendor_status === 'pending') { %>
+                            Your application is currently being reviewed by our administration team. We will notify you once your vendor status is approved.
+                        <% } else { %>
+                            Want to sell on Tormart? Apply to become a verified vendor, reach our massive buyer network, and benefit from our secure escrow system.
+                        <% } %>
+                    </p>
 
-                        <div>
-                            <% if (user.is_vendor === 1) { %>
-                                <a href="/vendor" class="btn-primary">Access Vendor Area &rarr;</a>
-                            <% } else if (user.vendor_status === 'pending') { %>
-                                <a href="/apply-vendor" class="btn-outline">Check Application Status</a>
-                            <% } else { %>
-                                <a href="/apply-vendor" class="btn-primary">Apply Now</a>
-                            <% } %>
-                        </div>
+                    <div>
+                        <% if (user.is_vendor === 1) { %>
+                            <a href="/vendor" class="btn-primary">Access Vendor Area &rarr;</a>
+                        <% } else if (user.vendor_status === 'pending') { %>
+                            <a href="/apply-vendor" class="btn-outline">Check Application Status</a>
+                        <% } else { %>
+                            <a href="/apply-vendor" class="btn-primary" style="background:#2e2a5c;">Apply Now</a>
+                        <% } %>
                     </div>
                 </div>
 

@@ -553,11 +553,16 @@ function timeAgo(dateString) {
     // Chat Messages Logic
     if (activePartnerId) {
         const chatMessages = document.getElementById('chatMessages');
-        const pAvatar = "<%- (typeof partner !== 'undefined' && partner) ? getAvatar(partner) : '/images/default-avatar.png' %>";
-        const pNameStr = "<%- (typeof pName !== 'undefined') ? pName : 'Partner' %>";
+        const pAvatar = <%- JSON.stringify((typeof partner !== 'undefined' && partner) ? getAvatar(partner) : '/images/default-avatar.png').replace(/</g, '\\u003c') %>;
+        const pNameStr = <%- JSON.stringify(typeof pName !== 'undefined' ? pName : 'Partner').replace(/</g, '\\u003c') %>;
         
         // Immediately mark as read when chat is opened
         markAsRead(activePartnerId);
+        
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
         
         function formatMsgTime(dStr) {
             try {
@@ -620,9 +625,13 @@ function timeAgo(dateString) {
                     var timeStr = formatMsgTime(msg.created_at);
                     
                     if (msg.is_system) {
+                        var cleanContent = content.replace(/^System Message:\s*/i, '');
                         var sysDiv = document.createElement('div');
-                        sysDiv.style.cssText = 'margin: 5px auto; padding: 8px 15px; background: #fffbeb; color: #b45309; border-radius: 2px; font-size: 11px; text-align: center; border: 1px solid #fef3c7;';
-                        sysDiv.innerHTML = '<strong>System:</strong> ' + content;
+                        sysDiv.className = 'chat-bubble-row';
+                        sysDiv.innerHTML = '<div style="margin: 15px auto; width: 90%; max-width: 500px; padding: 15px; background: #1e1b4b; border-left: 5px solid #f59e0b; border-radius: 8px; color: #fff; text-align: left; font-size: 13px;">' +
+                            '<strong style="color: #f59e0b; display: block; margin-bottom: 5px; font-size: 14px;">TorMart System (' + timeStr + ')</strong>' +
+                            cleanContent +
+                            '</div>';
                         chatMessages.appendChild(sysDiv);
                         return;
                     }
@@ -630,7 +639,7 @@ function timeAgo(dateString) {
                     msgRow.innerHTML = '<img src="' + (isMe ? '<%= user.vendor_logo || ("https://ui-avatars.com/api/?name=" + encodeURIComponent(user.username) + "&rounded=false") %>' : pAvatar) + '" class="chat-bubble-avatar">' +
                         '<div class="chat-bubble-content">' +
                             '<div class="chat-bubble-name">' +
-                                (isMe ? '<%= user.username %>' : pNameStr) +
+                                (isMe ? '<%= user.username %>' : escapeHtml(pNameStr)) +
                                 ' <span class="chat-time-inline">' + timeStr + '</span>' +
                             '</div>' +
                             '<div class="chat-bubble">' + content + '</div>' +

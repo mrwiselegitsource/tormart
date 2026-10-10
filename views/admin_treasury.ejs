@@ -99,14 +99,20 @@ details.tidy-panel[open] > summary::after { transform: rotate(180deg); }
             })();
         </script>
     <% } %>
-    <div id="t-url-error" class="t-alert t-alert-error" style="display:none;">
-        <script>
-            (function(){
-                var p = new URLSearchParams(window.location.search);
-                if(p.get('error')) document.write(p.get('error'));
-            })();
-        </script>
-    </div>
+    <div id="t-url-error" class="t-alert t-alert-error" style="display:none;"></div>
+    <script>
+        (function(){
+            var p = new URLSearchParams(window.location.search);
+            var err = p.get('error');
+            if (err) {
+                var el = document.getElementById('t-url-error');
+                if (el) {
+                    el.textContent = err;
+                    el.style.display = 'block';
+                }
+            }
+        })();
+    </script>
 
     <%
     function formatSmallest(val, currency) {

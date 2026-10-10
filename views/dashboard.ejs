@@ -176,6 +176,8 @@
     .status-pending { background: #fffbeb; color: #b45309; border: 1px solid #f59e0b; }
     .status-shipped { background: #f3e8ff; color: #7e22ce; border: 1px solid #a855f7; }
     .status-disputed, .status-refunded { background: #fef2f2; color: #b91c1c; border: 1px solid #ef4444; }
+    .status-checking { background: #e0f2fe; color: #0284c7; border: 1px solid #38bdf8; animation: pulseChecking 2s infinite; }
+    @keyframes pulseChecking { 0% { opacity: 1; } 50% { opacity: 0.6; } 100% { opacity: 1; } }
 
     /* Progress Bar */
     .progress-track {
@@ -401,12 +403,16 @@
                                         <span>ID: <%= order.id.toString().padStart(5, '0') %></span>
                                         <% 
                                             let badgeClass = 'status-default';
-                                            if (order.status === 'completed' || order.status === 'paid_out') badgeClass = 'status-completed';
+                                            let displayText = order.status;
+                                            if (order.payment_status === 'CHECKING') {
+                                                badgeClass = 'status-checking';
+                                                displayText = 'Verifying Payment';
+                                            } else if (order.status === 'completed' || order.status === 'paid_out') badgeClass = 'status-completed';
                                             else if (order.status === 'pending') badgeClass = 'status-pending';
                                             else if (order.status === 'shipped') badgeClass = 'status-shipped';
                                             else if (order.status === 'disputed' || order.status === 'refunded') badgeClass = 'status-disputed';
                                         %>
-                                        <span class="status-badge <%= badgeClass %>"><%= order.status %></span>
+                                        <span class="status-badge <%= badgeClass %>"><%= displayText %></span>
                                     </div>
                                 </div>
                                 <div class="chevron">

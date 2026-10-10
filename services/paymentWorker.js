@@ -213,16 +213,22 @@ class PaymentWorker {
         const adapter = this.adapters[intent.currency];
         if (!adapter) throw new Error("Adapter not configured");
 
-        const result = await adapter.verifyTransaction(txid, intent.payment_address, intent.expected_amount_crypto, intent.network, intent.required_confirmations);
-        
         try {
-            await this.paymentService.recordTransaction(intent.id, intent.currency, txid, result.receivedAmountCrypto || "0");
-        } catch (err) {
-            if (err.message !== PaymentStatus.ALREADY_USED) throw err;
-        }
+            const result = await adapter.verifyTransaction(txid, intent.payment_address, intent.expected_amount_crypto, intent.network, intent.required_confirmations);
+            
+            try {
+                await this.paymentService.recordTransaction(intent.id, intent.currency, txid, result.receivedAmountCrypto || "0");
+            } catch (err) {
+                if (err.message !== PaymentStatus.ALREADY_USED) throw err;
+            }
 
-        // Trigger an immediate process to update the intent status
-        await this.processIntent(intent);
+            // Trigger an immediate process to update the intent status
+            await this.processIntent(intent);
+        } catch (error) {
+            // Revert status to WAITING_FOR_PAYMENT if verification fails
+            await this.getQuery(`UPDATE payment_intents SET status = 'WAITING_FOR_PAYMENT' WHERE id = ? AND status = 'CHECKING'`, [intentId]);
+            throw error;
+        }
         
         return await this.getQuery(`SELECT * FROM payment_intents WHERE id = ?`, [intentId]);
     }

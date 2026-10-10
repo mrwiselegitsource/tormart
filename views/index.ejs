@@ -31,55 +31,77 @@
         .catalog-grid { grid-template-columns: repeat(2, 1fr); }
     }
     
-    /* Violet/Pink Ambient Effect (Square Perimeter) */
+    :root {
+        --violet: 168, 85, 247;
+        --blue:   96, 165, 250;
+    }
+
+    /* Violet/Pink Ambient Effect (Square Edge Glow) */
     .hero-wrapper {
         position: relative;
         overflow: hidden;
+        isolation: isolate;
     }
     
-    .ambient-orb {
+    .edge-glow {
         position: absolute;
-        border-radius: 50%;
-        filter: blur(20px);
-        opacity: 1;
+        inset: 0;
         pointer-events: none;
         z-index: 1;
+        border-radius: 0;
+        padding: 4px; /* Thickness of the glowing edge */
+        background: conic-gradient(
+            from var(--angle, 0deg),
+            transparent 0deg,
+            rgba(var(--violet), 0)   40deg,
+            rgba(var(--violet), .95) 70deg,
+            rgba(var(--blue),   .95) 90deg,
+            rgba(var(--violet), 0)   120deg,
+            transparent 360deg
+        );
+        -webkit-mask:
+            linear-gradient(#000 0 0) content-box,
+            linear-gradient(#000 0 0);
+        -webkit-mask-composite: xor;
+                mask-composite: exclude;
+        filter: blur(6px) saturate(1.4);
+        animation: spin 8s linear infinite;
     }
 
-    .orb-1 {
-        width: 250px;
-        height: 250px;
-        background: radial-gradient(circle, rgba(147, 51, 234, 0.9) 0%, rgba(168, 85, 247, 0.6) 50%, transparent 80%);
-        animation: perimeterWalk 20s infinite linear;
+    .edge-glow.soft {
+        padding: 0;
+        filter: blur(45px);
+        opacity: .8;
+        -webkit-mask: none;
+                mask: none;
+        background: conic-gradient(
+            from var(--angle, 0deg),
+            transparent 0deg,
+            rgba(var(--violet), 0)   30deg,
+            rgba(var(--violet), .55) 70deg,
+            rgba(var(--blue),   .55) 95deg,
+            rgba(var(--violet), 0)   130deg,
+            transparent 360deg
+        );
+        animation-duration: 8s;
     }
 
-    .orb-2 {
-        width: 200px;
-        height: 200px;
-        background: radial-gradient(circle, rgba(217, 70, 239, 0.9) 0%, rgba(192, 38, 211, 0.6) 50%, transparent 80%);
-        animation: perimeterWalk 20s infinite linear;
-        animation-delay: -10s;
-    }
-    
-    .orb-3 {
-        display: none;
+    @property --angle {
+        syntax: '<angle>';
+        initial-value: 0deg;
+        inherits: false;
     }
 
-    @keyframes perimeterWalk {
-        0%   { top: 0%; left: 0%; transform: translate(-50%, -50%); }
-        25%  { top: 0%; left: 100%; transform: translate(-50%, -50%); }
-        50%  { top: 100%; left: 100%; transform: translate(-50%, -50%); }
-        75%  { top: 100%; left: 0%; transform: translate(-50%, -50%); }
-        100% { top: 0%; left: 0%; transform: translate(-50%, -50%); }
+    @keyframes spin {
+        to { --angle: 360deg; }
     }
 </style>
 
 <!-- FULL WIDTH HERO SECTION -->
 <div class="hero-wrapper" style="background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.8)), url('/images/hero-bg.jpg'); background-size: cover; background-position: center; padding: 100px 20px; text-align: center; color: white;">
-    <!-- Ambient Light Orbs -->
-    <div class="ambient-orb orb-1"></div>
-    <div class="ambient-orb orb-2"></div>
-    <div class="ambient-orb orb-3"></div>
+    <!-- Ambient Edge Glow Effect -->
+    <div class="edge-glow soft"></div>
+    <div class="edge-glow"></div>
     
     <div style="position: relative; z-index: 2;">
         <h1 class="hero-title" style="font-size: 46px; margin-bottom: 25px; font-weight: 800; text-transform: uppercase;">YOUR SECURE SHOPPING</h1>

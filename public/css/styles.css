@@ -18,6 +18,11 @@
     padding: 0;
 }
 
+html, body {
+    max-width: 100vw;
+    overflow-x: hidden;
+}
+
 body {
     background-color: var(--bg-page);
     color: var(--text-main);
@@ -93,9 +98,25 @@ a:hover {
     font-weight: 800;
     font-size: 15px;
     color: #000;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+}
+.sub-nav a {
+    flex-shrink: 0;
 }
 .sub-nav a:hover {
     color: var(--primary-purple);
+}
+
+@media (max-width: 768px) {
+    .top-header {
+        padding: 10px 15px;
+    }
+    .sub-nav {
+        padding: 12px 15px;
+        justify-content: flex-start;
+    }
 }
 
 /* Container */
