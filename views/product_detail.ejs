@@ -25,6 +25,54 @@
         padding: 25px 0;
         margin-bottom: 30px;
     }
+    .buyer-protection-icon-wrap {
+        flex-shrink: 0;
+        width: 60px;
+    }
+    .buyer-protection-content {
+        flex: 1;
+        min-width: 0;
+        text-align: left;
+    }
+    .buyer-protection-title {
+        color: #43a047;
+        font-size: 24px;
+        font-weight: 700;
+        margin-top: 0;
+        margin-bottom: 14px;
+        text-align: left;
+    }
+    .buyer-protection-list {
+        font-size: 15px;
+        color: #333;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        text-align: left;
+    }
+    .buyer-protection-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        text-align: left;
+    }
+    .buyer-protection-checkbox {
+        width: 17px;
+        height: 17px;
+        box-sizing: border-box;
+        border: 1px solid #cbd5e1;
+        border-radius: 3px;
+        padding: 2px;
+        flex-shrink: 0;
+        margin-top: 2px;
+        background: #fff;
+    }
+    .buyer-protection-text {
+        flex: 1;
+        min-width: 0;
+        text-align: left;
+        line-height: 1.45;
+    }
     .total-price-flex {
         background: #f5f5f5;
         padding: 15px;
@@ -36,11 +84,18 @@
         .product-detail-grid { grid-template-columns: 1fr; gap: 20px; }
         .product-top-flex { flex-direction: column; align-items: stretch; }
         .product-image-container { width: 100%; max-width: 100%; margin: 0; }
-        .buyer-protection-flex { flex-direction: column; align-items: center; text-align: center; }
+        .buyer-protection-flex { flex-direction: row; align-items: flex-start; text-align: left; gap: 15px; }
         .total-price-flex { flex-direction: column; align-items: stretch; gap: 10px; text-align: center; }
         #addToCartForm { width: 100%; }
         #addToCartForm button { width: 100%; }
         .main-content-card { padding: 15px !important; }
+    }
+    @media (max-width: 480px) {
+        .buyer-protection-flex { gap: 12px; }
+        .buyer-protection-icon-wrap { width: 45px; }
+        .buyer-protection-title { font-size: 20px; margin-bottom: 10px; }
+        .buyer-protection-text { font-size: 13.5px; }
+        .buyer-protection-checkbox { width: 15px; height: 15px; margin-top: 2px; }
     }
 </style>
 
@@ -104,23 +159,23 @@
         
         <!-- Buyer Protection -->
         <div class="buyer-protection-flex">
-            <div style="flex-shrink: 0; width: 60px;">
-                <img src="/images/buyer-protection.png" alt="Buyer Protection Shield" style="width: 100%; height: auto;">
+            <div class="buyer-protection-icon-wrap">
+                <img src="/images/buyer-protection.png" alt="Buyer Protection Shield" style="width: 100%; height: auto; display: block;">
             </div>
-            <div>
-                <h3 style="color: #43a047; font-size: 24px; font-weight: 700; margin-top: 0; margin-bottom: 15px;">Buyer Protection</h3>
-                <div style="font-size: 15px; color: #333; display: flex; flex-direction: column; gap: 10px;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2" style="border: 1px solid #ccc; border-radius: 2px; padding: 2px;">
+            <div class="buyer-protection-content">
+                <h3 class="buyer-protection-title">Buyer Protection</h3>
+                <div class="buyer-protection-list">
+                    <div class="buyer-protection-item">
+                        <svg class="buyer-protection-checkbox" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <polyline points="20 6 9 17 4 12"></polyline>
                         </svg>
-                        <span><strong>Full Refund</strong> if you don't receive your order</span>
+                        <span class="buyer-protection-text"><strong>Full Refund</strong> if you don't receive your order</span>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2" style="border: 1px solid #ccc; border-radius: 2px; padding: 2px;">
+                    <div class="buyer-protection-item">
+                        <svg class="buyer-protection-checkbox" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <polyline points="20 6 9 17 4 12"></polyline>
                         </svg>
-                        <span><strong>Full or Partial Refund</strong>, if the item is not as described</span>
+                        <span class="buyer-protection-text"><strong>Full or Partial Refund</strong>, if the item is not as described</span>
                     </div>
                 </div>
             </div>
@@ -147,11 +202,7 @@
     <!-- Sidebar Right Side -->
     <div>
         <!-- Sidebar Widgets -->
-        <div style="margin-bottom: 20px;">
-            <a href="/refunds">
-                <img src="/images/sidebar-trust.jpg" alt="Shop with Confidence - Money Back Guarantee" style="width: 100%; border-radius: 4px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-            </a>
-        </div>
+        <!-- (Sidebar trust widget removed because the banner image was missing) -->
 
         <!-- Smart Advert System -->
         <%- include('_advert_carousel', { advert_count: 1, pageKey: 'product_detail' }) %>

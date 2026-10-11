@@ -48,7 +48,7 @@ details.tidy-panel[open] > summary::after {
     <details class="tidy-panel" open>
         <summary>My Vendor Profile</summary>
         <div class="tidy-content">
-            <form action="/vendor/profile/edit?_csrf=<%= csrfToken %>" method="POST" enctype="multipart/form-data" style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
+            <form id="vendorProfileForm" action="/vendor/profile/edit?_csrf=<%= csrfToken %>" method="POST" enctype="multipart/form-data" style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
                 <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                 <div style="width: 100px; height: 100px; border-radius: 50%; background: #eee; overflow: hidden; border: 2px solid var(--primary-purple); flex-shrink: 0;">
                     <img src="<%= user.vendor_logo || '/images/default-vendor-logo.png' %>" alt="Vendor Logo" style="width: 100%; height: 100%; object-fit: cover;">
@@ -519,8 +519,10 @@ var addDescQuill = new Quill('#add_description_editor', quillOptions);
 var editDescQuill = new Quill('#edit_description_editor', quillOptions);
 
 // Sync Quill to hidden textarea on profile form submit
-document.querySelector('form[action="/vendor/profile/edit"]').addEventListener('submit', function() {
-    document.getElementById('vendor_description_hidden').value = vendorDescQuill.root.innerHTML;
+document.getElementById('vendorProfileForm').addEventListener('submit', function() {
+    var content = vendorDescQuill.root.innerHTML;
+    if (content === '<p><br></p>') content = '';
+    document.getElementById('vendor_description_hidden').value = content;
 });
 
 // Sync Quill to hidden textarea on add product form submit
