@@ -74,7 +74,7 @@ class PaymentService {
     async createPaymentIntent(data) {
         const validated = createPaymentSchema.parse(data);
         const paymentIntentId = crypto.randomUUID();
-        const expiresAt = new Date(Date.now() + 30 * 60 * 1000); // 30 mins from now
+        const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 60 mins from now
         const now = new Date();
 
         await this.runQuery(

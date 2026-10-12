@@ -24,7 +24,10 @@
                 <a href="/dashboard">Order History</a>
                 <a href="/escrow">Escrow</a>
                 <a href="/support">Support</a>
-                <a href="/messages">Messages</a>
+                <a href="/messages" class="nav-msg-link" style="position: relative; display: inline-flex; align-items: center; gap: 5px;">
+                    Messages
+                    <span class="msg-nav-badge" id="navMsgBadge" style="<%= (locals.unreadMessagesCount && locals.unreadMessagesCount > 0) ? '' : 'display: none;' %>"><%= locals.unreadMessagesCount || 0 %></span>
+                </a>
                 <% if (user.role === 'admin') { %>
                     <a href="/admin" style="color: #ff9800;">Admin</a>
                 <% } %>
@@ -85,3 +88,137 @@
         <a href="/category/Casino Betting">Casino/Betting</a>
     </div>
     </div> <!-- End Sticky Navigation Wrapper -->
+
+    <!-- Toast Notification Container & Styles -->
+    <div id="tmNotificationToastContainer" style="position: fixed; top: 75px; right: 20px; z-index: 99999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; max-width: 350px; width: calc(100% - 40px);"></div>
+
+    <style>
+        .msg-nav-badge {
+            background: #ef4444;
+            color: #ffffff;
+            font-size: 11px;
+            font-weight: 800;
+            min-width: 18px;
+            height: 18px;
+            border-radius: 9px;
+            padding: 0 5px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+            box-shadow: 0 0 8px rgba(239, 68, 68, 0.7);
+            animation: pulseBadge 2.2s infinite;
+            vertical-align: middle;
+        }
+        @keyframes pulseBadge {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.12); box-shadow: 0 0 12px rgba(239, 68, 68, 0.95); }
+        }
+        .tm-msg-toast {
+            background: linear-gradient(135deg, #1e1b4b, #312e81);
+            border: 1px solid rgba(245, 158, 11, 0.5);
+            border-left: 4px solid #f59e0b;
+            color: #ffffff;
+            padding: 12px 16px;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.45);
+            pointer-events: auto;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            cursor: pointer;
+            transform: translateY(-20px);
+            opacity: 0;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+        }
+        .tm-msg-toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    </style>
+
+    <% if (user) { %>
+    <script>
+    (function() {
+        let lastUnreadCount = <%= locals.unreadMessagesCount || 0 %>;
+        let lastNotifiedMsgId = null;
+
+        function playMessageChime() {
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (!AudioCtx) return;
+                const ctx = new AudioCtx();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+                osc.frequency.setValueAtTime(880, ctx.currentTime + 0.08);
+                gain.gain.setValueAtTime(0.12, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.3);
+            } catch(e) {}
+        }
+
+        function showToast(senderName, snippet, chatUrl) {
+            playMessageChime();
+            const container = document.getElementById('tmNotificationToastContainer');
+            if (!container) return;
+            const toast = document.createElement('div');
+            toast.className = 'tm-msg-toast';
+            toast.innerHTML = `
+                <div style="background: #f59e0b; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #1e1b4b; flex-shrink: 0; font-weight: bold;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+                </div>
+                <div style="flex: 1; min-width: 0;">
+                    <div style="font-weight: 700; font-size: 13px; color: #f59e0b; margin-bottom: 2px;">New Message from ${senderName}</div>
+                    <div style="font-size: 12px; color: #e2e8f0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px;">${snippet}</div>
+                    <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">Click to view conversation &rarr;</div>
+                </div>
+                <div style="color: #94a3b8; font-size: 18px; line-height: 1; cursor: pointer; padding: 2px;" onclick="event.stopPropagation(); this.parentElement.remove();">&times;</div>
+            `;
+            toast.onclick = function() {
+                window.location.href = chatUrl;
+            };
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 20);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 350);
+            }, 7000);
+        }
+
+        function pollUnreadMessages() {
+            if (window.location.pathname.startsWith('/messages')) return;
+
+            fetch('/api/messages/unread-count', {
+                headers: { 'Accept': 'application/json' }
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (typeof data.unreadCount === 'number') {
+                    const badge = document.getElementById('navMsgBadge');
+                    if (badge) {
+                        badge.innerText = data.unreadCount;
+                        badge.style.display = data.unreadCount > 0 ? 'inline-flex' : 'none';
+                    }
+
+                    if (data.unreadCount > lastUnreadCount && data.latest) {
+                        if (data.latest.id !== lastNotifiedMsgId) {
+                            lastNotifiedMsgId = data.latest.id;
+                            const bodySnippet = data.latest.body ? data.latest.body.replace(/<[^>]*>/g, '').substring(0, 50) : 'You received a new message';
+                            showToast(data.latest.sender_name || 'Support/Vendor', bodySnippet, '/messages?chat=' + data.latest.sender_id);
+                        }
+                    }
+                    lastUnreadCount = data.unreadCount;
+                }
+            })
+            .catch(() => {});
+        }
+
+        setInterval(pollUnreadMessages, 10000);
+    })();
+    </script>
+    <% } %>

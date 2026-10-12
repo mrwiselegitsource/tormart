@@ -813,10 +813,14 @@ app.use((req, res, next) => {
             if (req.session.user) {
                 db.get("SELECT COUNT(*) AS count FROM orders WHERE user_id = ?", [req.session.user.id], (err, row) => {
                     res.locals.hasPurchased = row && row.count > 0;
-                    next();
+                    db.get("SELECT COUNT(*) AS count FROM messages WHERE receiver_id = ? AND is_read = 0", [req.session.user.id], (err, mRow) => {
+                        res.locals.unreadMessagesCount = mRow ? mRow.count : 0;
+                        next();
+                    });
                 });
             } else {
                 res.locals.hasPurchased = false;
+                res.locals.unreadMessagesCount = 0;
                 next();
             }
         });
@@ -1249,9 +1253,10 @@ app.get('/payment/:invoice_id', requireAuth, (req, res) => {
     const invoiceId = req.params.invoice_id;
     const userId = req.session.user.id;
     
-    db.all(`SELECT o.*, p.name, p.price, p.image 
+    db.all(`SELECT o.*, p.name, p.price, p.image, p.category, p.delivery_type, p.vendor_id, u.username as vendor_name 
             FROM orders o 
             JOIN products p ON o.product_id = p.id 
+            LEFT JOIN users u ON p.vendor_id = u.id
             WHERE o.invoice_id = ? AND o.user_id = ?`, [invoiceId, userId], (err, orders) => {
         if (err || !orders || orders.length === 0) {
             return res.redirect('/dashboard');
@@ -1264,6 +1269,8 @@ app.get('/payment/:invoice_id', requireAuth, (req, res) => {
         const currencyCodes = { bitcoin: 'BTC', litecoin: 'LTC', bitcoincash: 'BCH', dash: 'DASH' };
         const currency = currencyCodes[method];
         
+        const hasShippedItem = orders.some(o => (o.delivery_type && o.delivery_type.toLowerCase() === 'shipped') || (o.category && o.category.toLowerCase().includes('electronic')));
+
         db.get(`SELECT * FROM payment_intents WHERE order_id = ?`, [orders[0].id], async (err, intent) => {
             let cryptoAmount = 0;
             let walletAddress = "N/A";
@@ -1294,7 +1301,8 @@ app.get('/payment/:invoice_id', requireAuth, (req, res) => {
                 cryptoAmount,
                 currencySymbol: currency || method.toUpperCase(),
                 intent: intent || null,
-                qrCodeBase64
+                qrCodeBase64,
+                hasShippedItem
             });
         });
     });
@@ -1302,7 +1310,7 @@ app.get('/payment/:invoice_id', requireAuth, (req, res) => {
 
 app.post('/payment/:invoice_id/verify', requireAuth, async (req, res) => {
     const invoiceId = req.params.invoice_id;
-    const { txid } = req.body;
+    const { txid } = req.body || {};
     try {
         const order = await new Promise((resolve, reject) => {
             db.get(`SELECT id FROM orders WHERE invoice_id = ? AND user_id = ?`, [invoiceId, req.session.user.id], (err, row) => {
@@ -1318,20 +1326,25 @@ app.post('/payment/:invoice_id/verify', requireAuth, async (req, res) => {
         });
         if (!intent) return res.redirect(`/payment/${invoiceId}?error=IntentNotFound`);
         
-        // Update intent status to CHECKING immediately
+        // Update intent status to CHECKING immediately so verifying persists
         await new Promise((resolve, reject) => {
             db.run(`UPDATE payment_intents SET status = 'CHECKING' WHERE id = ?`, [intent.id], (err) => {
                 if (err) reject(err); else resolve();
             });
         });
 
-        // Spawn verification asynchronously without awaiting
-        paymentWorker.manualVerifyTxid(intent.id, txid).catch(err => {
-            console.error(`Async manual verify error for intent ${intent.id}:`, err);
-        });
+        if (txid && txid.trim()) {
+            paymentWorker.manualVerifyTxid(intent.id, txid.trim()).catch(err => {
+                console.error(`Async manual verify error for intent ${intent.id}:`, err);
+            });
+        } else {
+            paymentWorker.processIntent(intent).catch(err => {
+                console.error(`Async background process error for intent ${intent.id}:`, err);
+            });
+        }
         
         if (req.headers.accept && req.headers.accept.includes('application/json')) {
-            res.json({ success: true, message: 'Transaction submitted for verification. Checking...' });
+            res.json({ success: true, message: 'Payment verification initiated.' });
         } else {
             res.redirect(`/payment/${invoiceId}?status=checking`);
         }
@@ -1735,7 +1748,7 @@ app.post('/profile/change-password', requireAuth, (req, res) => {
 
 app.get('/dashboard', requireAuth, (req, res) => {
     db.all(`
-        SELECT orders.*, products.name, products.image, products.price, users.username as vendor_name, payment_intents.status as payment_status
+        SELECT orders.*, products.name, products.image, products.price, products.delivery_type, products.vendor_id, users.username as vendor_name, payment_intents.status as payment_status
         FROM orders 
         JOIN products ON orders.product_id = products.id 
         LEFT JOIN users ON products.vendor_id = users.id
@@ -1870,6 +1883,26 @@ app.get('/api/conversations', requireAuth, (req, res) => {
     `, [userId, userId, userId, userId, userId, userId, userId, userId], (err, conversations) => {
         if (err) return res.status(500).json({error: err.message});
         res.json(conversations || []);
+    });
+});
+
+app.get('/api/messages/unread-count', requireAuth, (req, res) => {
+    const userId = req.session.user.id;
+    db.get(`SELECT COUNT(*) as count FROM messages WHERE receiver_id = ? AND is_read = 0`, [userId], (err, row) => {
+        if (err) return res.status(500).json({ error: err.message });
+        const count = row ? row.count : 0;
+        db.get(`
+            SELECT m.id, m.sender_id, m.body, m.created_at, u.username as sender_name
+            FROM messages m
+            JOIN users u ON m.sender_id = u.id
+            WHERE m.receiver_id = ? AND m.is_read = 0
+            ORDER BY m.created_at DESC LIMIT 1
+        `, [userId], (err, latest) => {
+            res.json({
+                unreadCount: count,
+                latest: latest || null
+            });
+        });
     });
 });
 
