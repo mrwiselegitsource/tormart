@@ -64,6 +64,29 @@ details.tidy-panel[open] > summary::after {
                             <input type="date" name="created_at" value="<%= user.created_at ? (() => { try { return new Date(user.created_at).toISOString().split('T')[0] } catch(e) { return '' } })() : '' %>" class="form-control">
                         </div>
                         <div style="flex: 1; min-width: 150px;">
+                            <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px;">Primary Store Category</label>
+                            <select name="category" class="form-control" style="border: 1px solid #ccc; padding: 8px; border-radius: 4px; width: 100%;">
+                                <% 
+                                    const availableStoreCats = [
+                                        'Carding',
+                                        'Money Transfers',
+                                        'Gift Cards',
+                                        'Cryptocurrency',
+                                        'Fake money',
+                                        'Hacking',
+                                        'Documents',
+                                        'Electronics',
+                                        'Porn',
+                                        'Casino Betting'
+                                    ];
+                                    const vendorCat = user.category || 'General';
+                                %>
+                                <% availableStoreCats.forEach(cat => { %>
+                                    <option value="<%= cat %>" <%= (vendorCat.toLowerCase() === cat.toLowerCase()) ? 'selected' : '' %>><%= cat %></option>
+                                <% }); %>
+                            </select>
+                        </div>
+                        <div style="flex: 1; min-width: 150px;">
                             <label style="display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px;">Update Logo</label>
                             <input type="file" name="vendor_logo" accept="image/*" class="form-control">
                             <% if (user.vendor_logo) { %>
@@ -239,16 +262,14 @@ details.tidy-panel[open] > summary::after {
                             <input type="text" name="name" class="form-control" required>
                         </div>
                         <div class="form-group" style="flex: 1;">
-                            <label>Category</label>
+                            <label>Category <span style="font-weight: normal; font-size: 11px; color: #666;">(Defaults to your Store Category)</span></label>
                             <select name="category" class="form-control" required style="border: 1px solid #ccc; padding: 8px; border-radius: 2px;">
-                                <option value="Carding">Carding</option>
-                                <option value="Money Transfers">Money Transfers</option>
-                                <option value="Gift Cards">Gift Cards</option>
-                                <option value="Cryptocurrency">Cryptocurrency</option>
-                                <option value="Fake money">Fake money</option>
-                                <option value="Hacking">Hacking</option>
-                                <option value="Documents">Documents</option>
-                                <option value="Electronics">Electronics</option>
+                                <% 
+                                    const defaultProdCat = user.category || 'Gift Cards';
+                                %>
+                                <% availableStoreCats.forEach(cat => { %>
+                                    <option value="<%= cat %>" <%= (defaultProdCat.toLowerCase() === cat.toLowerCase()) ? 'selected' : '' %>><%= cat %></option>
+                                <% }); %>
                             </select>
                         </div>
                     </div>
@@ -448,20 +469,15 @@ details.tidy-panel[open] > summary::after {
                     <label>Product Name</label>
                     <input type="text" name="name" id="edit_name" class="form-control" required>
                 </div>
-                <div class="form-group" style="flex: 1;">
-                    <label>Category</label>
-                    <select name="category" id="edit_category" class="form-control" required style="border: 1px solid #ccc; padding: 8px; border-radius: 2px;">
-                        <option value="Carding">Carding</option>
-                        <option value="Money Transfers">Money Transfers</option>
-                        <option value="Gift Cards">Gift Cards</option>
-                        <option value="Cryptocurrency">Cryptocurrency</option>
-                        <option value="Fake money">Fake money</option>
-                        <option value="Hacking">Hacking</option>
-                        <option value="Documents">Documents</option>
-                        <option value="Electronics">Electronics</option>
-                    </select>
-                </div>
-            </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label>Category</label>
+                            <select name="category" id="edit_category" class="form-control" required style="border: 1px solid #ccc; padding: 8px; border-radius: 2px;">
+                                <% availableStoreCats.forEach(cat => { %>
+                                    <option value="<%= cat %>"><%= cat %></option>
+                                <% }); %>
+                            </select>
+                        </div>
+                    </div>
             
             <div style="display: flex; gap: 15px;">
                 <div class="form-group" style="flex: 1;">

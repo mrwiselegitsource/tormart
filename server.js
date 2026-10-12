@@ -1,4 +1,13 @@
 require('dotenv').config();
+
+// Global crash prevention for unexpected statement or async errors
+process.on('uncaughtException', (err) => {
+    console.error('[CRITICAL] Uncaught exception caught safely:', err);
+});
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('[CRITICAL] Unhandled rejection caught safely:', reason);
+});
+
 const express = require('express');
 const session = require('express-session');
 const svgCaptcha = require('svg-captcha');
@@ -362,6 +371,14 @@ function initializeSchema() {
 
         // Add bonus balance for profile dashboard
         db.run(`ALTER TABLE users ADD COLUMN bonus_balance_usd REAL DEFAULT 0.00`, (err) => {});
+
+        // Add vendor category to users table
+        db.run(`ALTER TABLE users ADD COLUMN category TEXT`, (err) => {});
+        db.run(`
+            UPDATE users 
+            SET category = (SELECT category FROM products WHERE vendor_id = users.id AND category IS NOT NULL LIMIT 1) 
+            WHERE is_vendor = 1 AND (category IS NULL OR category = '')
+        `, (err) => {});
 
         db.run(`CREATE TABLE IF NOT EXISTS address_pool (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -933,9 +950,11 @@ app.get('/category/:name', (req, res) => {
         db.all(`
             SELECT DISTINCT users.* 
             FROM users 
-            JOIN products ON users.id = products.vendor_id 
-            WHERE LOWER(products.category) = LOWER(?) AND users.vendor_status = 'approved'
-        `, [categoryName], (err, vendors) => {
+            LEFT JOIN products ON users.id = products.vendor_id 
+            WHERE (LOWER(users.category) = LOWER(?) OR LOWER(products.category) = LOWER(?)) 
+              AND users.is_vendor = 1 
+              AND users.vendor_status = 'approved'
+        `, [categoryName, categoryName], (err, vendors) => {
             res.render('vendors', { vendors: vendors || [], categoryName, categoryBanner: banner || null });
         });
     });
@@ -1130,8 +1149,13 @@ app.post('/checkout', requireAuth, (req, res) => {
     const productIds = Object.keys(cartObj);
     const userId = req.session.user.id;
 
-    if (email) {
-        db.run("UPDATE users SET email = ? WHERE id = ?", [email, userId]);
+    if (email && typeof email === 'string' && email.trim()) {
+        const cleanEmail = email.trim();
+        db.run("UPDATE users SET email = ? WHERE id = ?", [cleanEmail, userId], (err) => {
+            if (err) {
+                console.warn(`[Checkout] Email update skipped for user ${userId}:`, err.message);
+            }
+        });
     }
 
     if (productIds.length === 0) {
@@ -1172,7 +1196,9 @@ app.post('/checkout', requireAuth, (req, res) => {
                         const vendorId = product.vendor_id;
                         const convId = userId < vendorId ? `${userId}_${vendorId}` : `${vendorId}_${userId}`;
                         const body = `System Message: New order placed for ${quantity}x "${product.name}" (Invoice #${invoiceId}). Awaiting payment confirmation.`;
-                        db.run("INSERT INTO messages (conversation_id, sender_id, receiver_id, body, is_system) VALUES (?, ?, ?, ?, 1)", [convId, vendorId, userId, body]);
+                        db.run("INSERT INTO messages (conversation_id, sender_id, receiver_id, body, is_system) VALUES (?, ?, ?, ?, 1)", [convId, vendorId, userId, body], (err) => {
+                            if (err) console.warn("Notice: Message insert error in checkout:", err.message);
+                        });
                         
                         // If it's the first order, create the payment intent
                         if (index === 0 && currencyCodes[payment_method] && currencyCodes[payment_method] !== 'DASH') {
@@ -1228,7 +1254,9 @@ app.post('/checkout', requireAuth, (req, res) => {
                                         });
                                         
                                         req.session.cart = {};
-                                        db.run("UPDATE users SET is_vip = 1 WHERE id = ?", [userId]);
+                                        db.run("UPDATE users SET is_vip = 1 WHERE id = ?", [userId], (err) => {
+                                            if (err) console.warn("Notice: is_vip update error:", err.message);
+                                        });
                                         if (req.session.user) req.session.user.is_vip = 1;
                                         res.redirect(`/payment/${invoiceId}`);
                                     });
@@ -1237,7 +1265,9 @@ app.post('/checkout', requireAuth, (req, res) => {
                         } else if (index === 0) {
                             // Fallback for non-crypto or DASH
                             req.session.cart = {};
-                            db.run("UPDATE users SET is_vip = 1 WHERE id = ?", [userId]);
+                            db.run("UPDATE users SET is_vip = 1 WHERE id = ?", [userId], (err) => {
+                                if (err) console.warn("Notice: is_vip update error:", err.message);
+                            });
                             if (req.session.user) req.session.user.is_vip = 1;
                             res.redirect(`/payment/${invoiceId}`);
                         }
@@ -2314,18 +2344,24 @@ function requireVendor(req, res, next) {
 
 // Vendor Dashboard
 app.get('/vendor', requireVendor, (req, res) => {
-    db.all('SELECT * FROM products WHERE vendor_id = ? ORDER BY id DESC', [req.session.user.id], (err, products) => {
-        db.all(`
-            SELECT orders.*, products.name as product_name, products.delivery_type, users.username as customer_name 
-            FROM orders 
-            JOIN products ON orders.product_id = products.id 
-            JOIN users ON orders.user_id = users.id
-            WHERE products.vendor_id = ?
-            ORDER BY orders.created_at DESC
-        `, [req.session.user.id], (err, orders) => {
-            db.all('SELECT * FROM vendor_proofs WHERE vendor_id = ? ORDER BY id DESC', [req.session.user.id], (err, proofs) => {
-                db.all('SELECT * FROM adverts WHERE vendor_id = ? ORDER BY id DESC', [req.session.user.id], (err, adverts) => {
-                    res.render('vendor', { products: products || [], orders: orders || [], proofs: proofs || [], adverts: adverts || [] });
+    db.get('SELECT * FROM users WHERE id = ?', [req.session.user.id], (uErr, freshUser) => {
+        if (freshUser) {
+            req.session.user = { ...req.session.user, ...freshUser };
+            res.locals.user = req.session.user;
+        }
+        db.all('SELECT * FROM products WHERE vendor_id = ? ORDER BY id DESC', [req.session.user.id], (err, products) => {
+            db.all(`
+                SELECT orders.*, products.name as product_name, products.delivery_type, users.username as customer_name 
+                FROM orders 
+                JOIN products ON orders.product_id = products.id 
+                JOIN users ON orders.user_id = users.id
+                WHERE products.vendor_id = ?
+                ORDER BY orders.created_at DESC
+            `, [req.session.user.id], (err, orders) => {
+                db.all('SELECT * FROM vendor_proofs WHERE vendor_id = ? ORDER BY id DESC', [req.session.user.id], (err, proofs) => {
+                    db.all('SELECT * FROM adverts WHERE vendor_id = ? ORDER BY id DESC', [req.session.user.id], (err, adverts) => {
+                        res.render('vendor', { products: products || [], orders: orders || [], proofs: proofs || [], adverts: adverts || [] });
+                    });
                 });
             });
         });
@@ -2333,7 +2369,8 @@ app.get('/vendor', requireVendor, (req, res) => {
 });
 
 app.post('/vendor/products/add', requireVendor, imageUpload.single('product_image'), (req, res) => {
-    const { name, description, price, limit_amount, tier, category, delivery_type } = req.body;
+    const { name, description, price, limit_amount, tier, delivery_type } = req.body;
+    const category = req.body.category || req.session.user.category || 'General';
     const image = req.file ? '/images/' + req.file.filename : '/images/ai-asset.svg';
     db.run(
         "INSERT INTO products (vendor_id, name, description, price, limit_amount, image, tier, category, delivery_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
@@ -2404,11 +2441,16 @@ app.post('/vendor/adverts/delete/:id', requireVendor, requireCsrf, (req, res) =>
     });
 });
 app.post('/vendor/profile/edit', requireVendor, imageUpload.fields([{ name: 'vendor_logo', maxCount: 1 }, { name: 'vendor_banner', maxCount: 1 }, { name: 'vendor_video', maxCount: 1 }]), (req, res) => {
-    const { vendor_name, vendor_description, vendor_short_description, created_at, btc_wallet } = req.body;
+    const { vendor_name, vendor_description, vendor_short_description, created_at, btc_wallet, category } = req.body;
     
     let updates = ["vendor_name = ?", "vendor_description = ?", "vendor_short_description = ?"];
     let params = [vendor_name, vendor_description, vendor_short_description];
     
+    if (category !== undefined) {
+        updates.push("category = ?");
+        params.push(category);
+    }
+
     if (btc_wallet !== undefined) {
         updates.push("btc_wallet = ?");
         params.push(btc_wallet);
@@ -2451,8 +2493,13 @@ app.post('/vendor/profile/edit', requireVendor, imageUpload.fields([{ name: 'ven
             req.session.user.vendor_name = vendor_name;
             req.session.user.vendor_description = vendor_description;
             req.session.user.vendor_short_description = vendor_short_description;
+            if (category !== undefined) req.session.user.category = category;
             if (created_at) req.session.user.created_at = req.body.created_at;
             if (btc_wallet !== undefined) req.session.user.btc_wallet = btc_wallet;
+
+            if (category) {
+                db.run("UPDATE products SET category = ? WHERE vendor_id = ?", [category, req.session.user.id], () => {});
+            }
         }
         res.redirect('/vendor');
     });
