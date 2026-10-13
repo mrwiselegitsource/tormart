@@ -1,4 +1,17 @@
 <%- include('header') %>
+<%
+  /* ── Derive helper booleans from the viewState the server computed ──────── */
+  var vs            = locals.viewState || 'awaiting';
+  var showQR        = (vs === 'awaiting');           /* only show QR when awaiting payment */
+  var isAwaiting    = (vs === 'awaiting');
+  var isVerifying   = (vs === 'verifying');
+  var isConfirming  = (vs === 'confirming');
+  var isReview      = (vs === 'review');
+  var isPaid        = (vs === 'paid');
+  var isExpired     = (vs === 'expired');
+  var isRejected    = (vs === 'rejected');
+  var isClosed      = isPaid || isExpired || isRejected; /* no more action possible from buyer */
+%>
 
 <style>
     .payment-layout {
@@ -20,6 +33,11 @@
             margin: 0 auto;
         }
     }
+    .state-panel {
+        border-radius: 8px;
+        padding: 18px;
+        margin-top: 18px;
+    }
 </style>
 
 <div class="container" style="max-width: 1000px; margin: 40px auto; background: #fff; border: 1px solid #e2e8f0; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); padding-bottom: 20px;">
@@ -38,7 +56,11 @@
         <div class="payment-left-column">
             <div style="background: #f8fafc; border-radius: 4px; padding: 20px; text-align: center; margin-bottom: 20px;">
                 <div style="font-weight: bold; font-size: 16px; margin-bottom: 15px;">Payment details</div>
-                
+
+                <!-- ══════════════════════════════════════════════
+                     QR + wallet address — only shown while awaiting
+                     ══════════════════════════════════════════════ -->
+                <% if (showQR) { %>
                 <div style="margin-bottom: 15px;">
                     <% if (typeof qrCodeBase64 !== 'undefined' && qrCodeBase64) { %>
                         <img src="<%= qrCodeBase64 %>" alt="QR Code" style="width: 200px; height: 200px; border-radius: 4px;">
@@ -46,119 +68,205 @@
                         <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=<%= method %>:<%= walletAddress %>?amount=<%= cryptoAmount %>" alt="QR Code" style="width: 200px; height: 200px; border-radius: 4px;">
                     <% } %>
                 </div>
-                
                 <div style="font-size: 14px; color: #333; margin-bottom: 15px;">
                     To pay send exactly<br>
                     <strong><%= cryptoAmount %> <%= currencySymbol %></strong> to
                 </div>
-                
                 <div style="display:flex; gap: 10px; margin-bottom: 10px;">
-                    <input type="text" id="walletAddr" value="<%= walletAddress %>" readonly style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px; text-align: center;">
-                    <button onclick="navigator.clipboard.writeText(document.getElementById('walletAddr').value); alert('Address copied!');" style="background:#333; color:white; border:none; border-radius:4px; padding: 0 15px; cursor:pointer;">Copy</button>
+                    <input type="text" id="walletAddr" value="<%= walletAddress %>" readonly
+                           style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 13px; text-align: center;">
+                    <button onclick="navigator.clipboard.writeText(document.getElementById('walletAddr').value); alert('Address copied!');"
+                            style="background:#333; color:white; border:none; border-radius:4px; padding: 0 15px; cursor:pointer;">Copy</button>
                 </div>
-                
-                <% const isVerifying = locals.intent && (locals.intent.status === 'CHECKING' || locals.intent.status === 'CONFIRMING'); %>
-                <% const isPaid = locals.intent && (locals.intent.status === 'PAID' || locals.intent.status === 'CONFIRMED' || locals.intent.status === 'OVERPAID'); %>
+                <% } %>
 
-                <% if (!isPaid) { %>
-                <!-- Payment Action & Verification Area -->
-                <div style="margin-top: 25px; text-align: left;">
-                    
-                    <!-- Pre-Payment / "I Have Paid" Action Panel -->
-                    <div id="paymentActionPanel" style="display: <%= isVerifying ? 'none' : 'block' %>; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px; margin-bottom: 15px;">
-                        <button type="button" id="btnIHavePaid" onclick="handleIHavePaid()" style="width: 100%; background: linear-gradient(135deg, #16a34a, #15803d); color: white; border: none; border-radius: 6px; padding: 14px 20px; font-size: 15px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3); transition: transform 0.15s ease, filter 0.15s ease;">
+                <!-- ═══════════════════════════════════════
+                     STATE PANELS
+                     ═══════════════════════════════════════ -->
+
+                <% if (isAwaiting) { %>
+                <!-- ── AWAITING: "I Have Paid" + optional TXID ── -->
+                <div style="margin-top: 18px; text-align: left;">
+                    <div id="paymentActionPanel" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px; margin-bottom: 15px;">
+                        <button type="button" id="btnIHavePaid" onclick="handleIHavePaid()"
+                                style="width: 100%; background: linear-gradient(135deg, #16a34a, #15803d); color: white; border: none; border-radius: 6px; padding: 14px 20px; font-size: 15px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 12px rgba(22,163,74,0.3); transition: filter 0.15s;">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
                             I Have Paid
                         </button>
-
-                        <div style="text-align: center; margin: 14px 0 8px 0; color: #94a3b8; font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">
-                            Optional: Speed up with TXID
-                        </div>
-
-                        <form id="txidForm" onsubmit="event.preventDefault(); submitTxid();" style="display: flex; gap: 8px;">
+                        <div style="text-align:center; margin: 14px 0 8px; color:#94a3b8; font-size:11px; text-transform:uppercase; font-weight:700; letter-spacing:.5px;">Optional: Speed up with TXID</div>
+                        <form id="txidForm" onsubmit="event.preventDefault(); submitTxid();" style="display:flex; gap:8px;">
                             <input type="hidden" name="_csrf" value="<%= locals.csrfToken %>">
-                            <input type="text" name="txid" id="txidInput" placeholder="Paste Transaction Hash / TXID" style="flex-grow: 1; padding: 9px 12px; border: 1px solid #cbd5e1; border-radius: 5px; font-size: 12px; font-family: monospace;">
-                            <button type="submit" style="background: #475569; color: white; border: none; border-radius: 5px; padding: 0 14px; font-size: 12px; font-weight: 600; cursor: pointer;">Submit</button>
+                            <input type="text" id="txidInput" placeholder="Paste Transaction Hash / TXID"
+                                   style="flex-grow:1; padding:9px 12px; border:1px solid #cbd5e1; border-radius:5px; font-size:12px; font-family:monospace;">
+                            <button type="submit" style="background:#475569; color:white; border:none; border-radius:5px; padding:0 14px; font-size:12px; font-weight:600; cursor:pointer;">Submit</button>
                         </form>
                     </div>
-
-                    <!-- Modern Animated Verifying Payment State -->
-                    <div id="verifyingLoadingState" style="display: <%= isVerifying ? 'block' : 'none' %>; background: linear-gradient(135deg, #0f172a, #1e1b4b); border: 1px solid #3b82f6; border-radius: 10px; padding: 22px; color: #fff; text-align: center; box-shadow: 0 10px 25px rgba(15, 23, 42, 0.4); margin-bottom: 20px;">
-                        
-                        <!-- Pulse Radar Motion Animation -->
+                    <!-- Verifying overlay – shown dynamically by JS after clicking "I Have Paid" -->
+                    <div id="verifyingLoadingState" style="display:none; background:linear-gradient(135deg,#0f172a,#1e1b4b); border:1px solid #3b82f6; border-radius:10px; padding:22px; color:#fff; text-align:center; box-shadow:0 10px 25px rgba(15,23,42,.4); margin-top:10px;">
                         <div class="radar-box">
                             <div class="radar-ring r1"></div>
                             <div class="radar-ring r2"></div>
                             <div class="radar-center">
-                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-                                </svg>
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
                             </div>
                         </div>
-
-                        <div style="font-size: 17px; font-weight: 800; color: #38bdf8; margin-bottom: 6px; letter-spacing: 0.3px;">
-                            Verifying Payment...
+                        <div style="font-size:17px; font-weight:800; color:#38bdf8; margin-bottom:6px;">Verifying Payment...</div>
+                        <div style="font-size:12px; color:#94a3b8; line-height:1.5; margin-bottom:14px;">Blockchain confirmations in progress. Our system is actively monitoring the network.</div>
+                        <div style="display:inline-flex; align-items:center; gap:6px; background:rgba(56,189,248,.15); border:1px solid rgba(56,189,248,.4); padding:5px 12px; border-radius:20px; font-size:11px; font-weight:700; color:#7dd3fc; margin-bottom:14px;">
+                            <span style="width:7px; height:7px; background:#38bdf8; border-radius:50%; display:inline-block; animation:pulseDot 1.5s infinite;"></span>
+                            <span id="verifyingStatusText">CHECKING</span>
                         </div>
-                        <div style="font-size: 12px; color: #94a3b8; line-height: 1.5; margin-bottom: 16px;">
-                            Blockchain confirmations in progress. Our system is actively monitoring the network.
+                        <div style="background:rgba(255,255,255,.05); border-radius:6px; padding:12px; text-align:left; font-size:12px; color:#cbd5e1; line-height:1.5; margin-bottom:10px; display:flex; gap:10px;">
+                            <span style="color:#38bdf8;">ℹ</span>
+                            <div>You can safely close this page. The system will continue confirming in the background.</div>
                         </div>
-
-                        <!-- Status Badge -->
-                        <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.4); padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: 700; color: #7dd3fc; margin-bottom: 16px;">
-                            <span style="width: 7px; height: 7px; background: #38bdf8; border-radius: 50%; display: inline-block; animation: pulseDot 1.5s infinite;"></span>
-                            <span id="verifyingStatusText"><%= locals.intent ? locals.intent.status : 'CHECKING' %></span>
-                        </div>
-
-                        <!-- Reassuring Guidance Cards -->
-                        <div style="background: rgba(255, 255, 255, 0.05); border-radius: 6px; padding: 12px; text-align: left; font-size: 12px; color: #cbd5e1; line-height: 1.5; margin-bottom: 12px; display: flex; gap: 10px; align-items: flex-start;">
-                            <span style="color: #38bdf8; font-size: 14px;">ℹ</span>
-                            <div>
-                                You can safely leave or close this page. The system will continue confirming your payment automatically in the background.
+                        <div style="margin-top:10px; text-align:left;">
+                            <div style="font-size:11px; color:#94a3b8; margin-bottom:5px;">Have your TXID? Provide it to expedite:</div>
+                            <div style="display:flex; gap:6px;">
+                                <input type="text" id="txidOverlayInput" placeholder="TXID Hash"
+                                       style="flex:1; padding:7px 10px; border:1px solid rgba(255,255,255,.2); background:rgba(0,0,0,.3); color:#fff; border-radius:4px; font-size:11px; font-family:monospace;">
+                                <button onclick="submitTxidFromOverlay()" style="background:#3b82f6; color:white; border:none; border-radius:4px; padding:0 12px; font-size:11px; font-weight:600; cursor:pointer;">Speed Up</button>
                             </div>
-                        </div>
-
-                        <!-- Order History Tracking Card -->
-                        <div style="background: rgba(255, 255, 255, 0.05); border-radius: 6px; padding: 12px; text-align: left; font-size: 12px; color: #cbd5e1; line-height: 1.5; margin-bottom: 12px; display: flex; gap: 10px; align-items: flex-start;">
-                            <span style="color: #22c55e; font-size: 14px;">✓</span>
-                            <div>
-                                You can monitor live order progress anytime in your <a href="/dashboard" style="color: #38bdf8; font-weight: 700; text-decoration: underline;">Order History</a>.
-                            </div>
-                        </div>
-
-                        <!-- Dynamic Item Delivery Note (Digital vs Shipped) -->
-                        <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 6px; padding: 12px; text-align: left; font-size: 12px; color: #fde68a; line-height: 1.5;">
-                            <% if (locals.hasShippedItem) { %>
-                                <strong>Shipped Item:</strong> Your tracking number and dispatch details will be available in your Order History within 60 minutes (or as coordinated with the seller).
-                            <% } else { %>
-                                <strong>Digital Item:</strong> Your digital goods and instructions will be automatically delivered to your email address within 60 minutes of confirmation.
-                            <% } %>
-                        </div>
-
-                        <!-- Expedite TXID inside Verifying state if not provided yet -->
-                        <div style="margin-top: 14px; text-align: left;">
-                            <div style="font-size: 11px; color: #94a3b8; margin-bottom: 5px;">Have your transaction hash? Provide it to expedite:</div>
-                            <form onsubmit="event.preventDefault(); submitTxidFromOverlay();" style="display: flex; gap: 6px;">
-                                <input type="text" id="txidOverlayInput" placeholder="TXID Hash" style="flex: 1; padding: 7px 10px; border: 1px solid rgba(255,255,255,0.2); background: rgba(0,0,0,0.3); color: #fff; border-radius: 4px; font-size: 11px; font-family: monospace;">
-                                <button type="submit" style="background: #3b82f6; color: white; border: none; border-radius: 4px; padding: 0 12px; font-size: 11px; font-weight: 600; cursor: pointer;">Speed Up</button>
-                            </form>
                         </div>
                     </div>
 
                 </div>
-                <% } else { %>
-                <!-- Confirmed & Paid Celebration Panel -->
-                <div style="margin-top: 25px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; text-align: center;">
-                    <div style="width: 44px; height: 44px; background: #22c55e; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px auto; font-size: 24px;">✓</div>
-                    <div style="font-size: 17px; font-weight: 800; color: #15803d; margin-bottom: 6px;">Payment Confirmed!</div>
-                    <div style="font-size: 13px; color: #475569; margin-bottom: 16px;">
+
+                <% } else if (isVerifying) { %>
+                <!-- ── VERIFYING: radar animation ── -->
+                <div class="state-panel" style="background:linear-gradient(135deg,#0f172a,#1e1b4b); border:1px solid #3b82f6; color:#fff; text-align:center; box-shadow:0 10px 25px rgba(15,23,42,.4); margin-top:10px;">
+                    <div class="radar-box">
+                        <div class="radar-ring r1"></div>
+                        <div class="radar-ring r2"></div>
+                        <div class="radar-center">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#38bdf8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                        </div>
+                    </div>
+                    <div style="font-size:17px; font-weight:800; color:#38bdf8; margin-bottom:6px;">Verifying Payment...</div>
+                    <div style="font-size:12px; color:#94a3b8; line-height:1.5; margin-bottom:14px;">
+                        Blockchain confirmations in progress. Our system is actively monitoring the network.
+                    </div>
+                    <div style="display:inline-flex; align-items:center; gap:6px; background:rgba(56,189,248,.15); border:1px solid rgba(56,189,248,.4); padding:5px 12px; border-radius:20px; font-size:11px; font-weight:700; color:#7dd3fc; margin-bottom:14px;">
+                        <span style="width:7px; height:7px; background:#38bdf8; border-radius:50%; display:inline-block; animation:pulseDot 1.5s infinite;"></span>
+                        <span id="verifyingStatusText"><%= locals.intent ? locals.intent.status : 'CHECKING' %></span>
+                    </div>
+                    <div style="background:rgba(255,255,255,.05); border-radius:6px; padding:12px; text-align:left; font-size:12px; color:#cbd5e1; line-height:1.5; margin-bottom:10px; display:flex; gap:10px; align-items:flex-start;">
+                        <span style="color:#38bdf8; font-size:14px;">ℹ</span>
+                        <div>You can safely close this page. The system will continue confirming your payment in the background.</div>
+                    </div>
+                    <div style="background:rgba(245,158,11,.1); border:1px solid rgba(245,158,11,.3); border-radius:6px; padding:12px; text-align:left; font-size:12px; color:#fde68a; line-height:1.5; margin-bottom:10px;">
                         <% if (locals.hasShippedItem) { %>
-                            Your order is now being dispatched. Tracking details will be posted in your profile within 60 minutes.
+                            <strong>Shipped Item:</strong> Tracking number available within 60 minutes of confirmation.
                         <% } else { %>
-                            Your order is confirmed. Digital goods are being sent to your email address within 60 minutes.
+                            <strong>Digital Item:</strong> Delivered to your email within 60 minutes of confirmation.
                         <% } %>
                     </div>
-                    <a href="/dashboard" style="display: inline-block; background: #16a34a; color: white; text-decoration: none; padding: 10px 20px; border-radius: 6px; font-weight: 700; font-size: 13px;">View Order in History &rarr;</a>
+                    <!-- TXID expedite while verifying -->
+                    <div style="margin-top:12px; text-align:left;">
+                        <div style="font-size:11px; color:#94a3b8; margin-bottom:5px;">Have your TXID? Provide it to expedite:</div>
+                        <form onsubmit="event.preventDefault(); submitTxidFromOverlay();" style="display:flex; gap:6px;">
+                            <input type="text" id="txidOverlayInput" placeholder="TXID Hash"
+                                   style="flex:1; padding:7px 10px; border:1px solid rgba(255,255,255,.2); background:rgba(0,0,0,.3); color:#fff; border-radius:4px; font-size:11px; font-family:monospace;">
+                            <button type="submit" style="background:#3b82f6; color:white; border:none; border-radius:4px; padding:0 12px; font-size:11px; font-weight:600; cursor:pointer;">Speed Up</button>
+                        </form>
+                    </div>
                 </div>
+
+                <% } else if (isConfirming) { %>
+                <!-- ── CONFIRMING: getting the last confirmations ── -->
+                <div class="state-panel" style="background:#f0f9ff; border:1px solid #bae6fd; text-align:center; margin-top:10px;">
+                    <div style="font-size:28px; margin-bottom:8px;">⛓️</div>
+                    <div style="font-size:16px; font-weight:800; color:#0369a1; margin-bottom:6px;">Confirming on Blockchain</div>
+                    <div style="font-size:12px; color:#475569; line-height:1.5; margin-bottom:14px;">
+                        Your transaction has been detected! We are waiting for the required blockchain confirmations before releasing your order.
+                    </div>
+                    <div style="display:inline-flex; align-items:center; gap:6px; background:#e0f2fe; border:1px solid #7dd3fc; padding:5px 12px; border-radius:20px; font-size:11px; font-weight:700; color:#0284c7; margin-bottom:12px;">
+                        <span style="width:7px; height:7px; background:#0ea5e9; border-radius:50%; display:inline-block; animation:pulseDot 1.5s infinite;"></span>
+                        Awaiting Confirmations
+                    </div>
+                    <div style="font-size:12px; color:#64748b;">This page will update automatically. You can also check your <a href="/dashboard" style="color:#0ea5e9; font-weight:700;">Order History</a>.</div>
+                </div>
+
+                <% } else if (isReview) { %>
+                <!-- ── MANUAL REVIEW: under admin review ── -->
+                <div class="state-panel" style="background:#fffbeb; border:1px solid #fde68a; text-align:center; margin-top:10px;">
+                    <div style="font-size:28px; margin-bottom:8px;">🔍</div>
+                    <div style="font-size:16px; font-weight:800; color:#92400e; margin-bottom:6px;">Under Manual Review</div>
+                    <div style="font-size:12px; color:#78350f; line-height:1.5; margin-bottom:14px;">
+                        Our team is manually reviewing your payment. This usually takes less than 2 hours. You will receive a notification once it is resolved.
+                    </div>
+                    <!-- Late claim form -->
+                    <div style="background:#fef3c7; border:1px solid #fcd34d; border-radius:6px; padding:12px; text-align:left; font-size:12px; margin-top:10px;">
+                        <div style="font-weight:700; color:#92400e; margin-bottom:6px;">Already paid? Submit your Transaction ID to speed up review:</div>
+                        <form method="POST" action="/payment/<%= invoiceId %>/claim-late" style="display:flex; gap:6px; flex-wrap:wrap;">
+                            <input type="hidden" name="_csrf" value="<%= locals.csrfToken %>">
+                            <input type="text" name="txid" placeholder="Paste TXID / Transaction Hash"
+                                   style="flex:1; min-width:140px; padding:8px 10px; border:1px solid #fcd34d; border-radius:5px; font-size:12px; font-family:monospace;">
+                            <button type="submit" style="background:#d97706; color:white; border:none; border-radius:5px; padding:0 14px; font-size:12px; font-weight:600; cursor:pointer;">Submit Claim</button>
+                        </form>
+                    </div>
+                </div>
+
+                <% } else if (isPaid) { %>
+                <!-- ── PAID: success ── -->
+                <div class="state-panel" style="background:#f0fdf4; border:1px solid #bbf7d0; text-align:center; margin-top:10px;">
+                    <div style="width:44px; height:44px; background:#22c55e; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 12px; font-size:24px;">✓</div>
+                    <div style="font-size:17px; font-weight:800; color:#15803d; margin-bottom:6px;">Payment Confirmed!</div>
+                    <div style="font-size:13px; color:#475569; margin-bottom:16px;">
+                        <% if (locals.hasShippedItem) { %>
+                            Your order is now being dispatched. Tracking details will appear in your profile within 60 minutes.
+                        <% } else { %>
+                            Your order is confirmed. Digital goods will be sent to your email within 60 minutes.
+                        <% } %>
+                    </div>
+                    <a href="/dashboard" style="display:inline-block; background:#16a34a; color:white; text-decoration:none; padding:10px 20px; border-radius:6px; font-weight:700; font-size:13px;">View Order in History &rarr;</a>
+                </div>
+
+                <% } else if (isExpired) { %>
+                <!-- ── EXPIRED: show reorder option ── -->
+                <div class="state-panel" style="background:#f8fafc; border:1px solid #cbd5e1; text-align:center; margin-top:10px;">
+                    <div style="font-size:28px; margin-bottom:8px;">⏰</div>
+                    <div style="font-size:16px; font-weight:700; color:#334155; margin-bottom:6px;">Payment Window Expired</div>
+                    <div style="font-size:12px; color:#64748b; line-height:1.5; margin-bottom:14px;">
+                        The 60-minute payment window for this order has closed and no payment was detected.
+                    </div>
+                    <!-- Re-add to cart -->
+                    <form method="POST" action="/payment/<%= invoiceId %>/reorder">
+                        <input type="hidden" name="_csrf" value="<%= locals.csrfToken %>">
+                        <button type="submit" style="background:#334155; color:white; border:none; border-radius:6px; padding:12px 20px; font-size:13px; font-weight:700; cursor:pointer; width:100%; margin-bottom:10px;">
+                            &#128722; Re-add Items to Cart &amp; Try Again
+                        </button>
+                    </form>
+                    <!-- Late claim -->
+                    <div style="background:#fef3c7; border:1px solid #fcd34d; border-radius:6px; padding:12px; text-align:left; font-size:12px; margin-top:6px;">
+                        <div style="font-weight:700; color:#92400e; margin-bottom:6px;">Did you pay? Submit your TXID and we'll review manually:</div>
+                        <form method="POST" action="/payment/<%= invoiceId %>/claim-late" style="display:flex; gap:6px; flex-wrap:wrap;">
+                            <input type="hidden" name="_csrf" value="<%= locals.csrfToken %>">
+                            <input type="text" name="txid" placeholder="Paste TXID / Transaction Hash"
+                                   style="flex:1; min-width:140px; padding:8px 10px; border:1px solid #fcd34d; border-radius:5px; font-size:12px; font-family:monospace;">
+                            <button type="submit" style="background:#d97706; color:white; border:none; border-radius:5px; padding:0 14px; font-size:12px; font-weight:600; cursor:pointer;">Claim Payment</button>
+                        </form>
+                    </div>
+                </div>
+
+                <% } else if (isRejected) { %>
+                <!-- ── REJECTED ── -->
+                <div class="state-panel" style="background:#fef2f2; border:1px solid #fca5a5; text-align:center; margin-top:10px;">
+                    <div style="font-size:28px; margin-bottom:8px;">❌</div>
+                    <div style="font-size:16px; font-weight:700; color:#991b1b; margin-bottom:6px;">Payment Rejected</div>
+                    <div style="font-size:12px; color:#7f1d1d; line-height:1.5; margin-bottom:14px;">
+                        We were unable to verify a matching payment for this order. If you believe this is an error, please contact support with your transaction ID.
+                    </div>
+                    <a href="/support" style="display:inline-block; background:#dc2626; color:white; text-decoration:none; padding:10px 20px; border-radius:6px; font-weight:700; font-size:13px; margin-bottom:10px;">Contact Support</a>
+                    <!-- Re-add to cart -->
+                    <form method="POST" action="/payment/<%= invoiceId %>/reorder">
+                        <input type="hidden" name="_csrf" value="<%= locals.csrfToken %>">
+                        <button type="submit" style="background:#334155; color:white; border:none; border-radius:6px; padding:10px 20px; font-size:13px; font-weight:700; cursor:pointer; width:100%;">
+                            &#128722; Re-add Items to Cart
+                        </button>
+                    </form>
+                </div>
+
                 <% } %>
 
                 <style>
@@ -285,162 +393,146 @@
 </div>
 
 <script>
-    // 60 minute countdown timer based on order creation time
+    // ── Timer countdown ──────────────────────────────────────────────────────
+    const _viewState = '<%= vs %>';
+    const _isClosed  = Boolean(<%= isClosed %>);
+
     const intentExpiresAt = "<%= locals.intent ? locals.intent.expires_at : '' %>";
-    const createdAtStr = "<%= orders[0].created_at %>";
-    const createdAtIso = createdAtStr.replace(' ', 'T') + 'Z'; 
-    const createdAt = new Date(createdAtIso).getTime();
-    
-    // If intent exists, use its expiry, else 60 mins from created
+    const createdAtStr    = "<%= orders[0].created_at %>";
+    const createdAt       = new Date(createdAtStr.replace(' ', 'T') + 'Z').getTime();
+
     let expiresTime = createdAt + (60 * 60 * 1000);
     if (intentExpiresAt) {
         const cleanExpiry = intentExpiresAt.endsWith('Z') ? intentExpiresAt : (intentExpiresAt.replace(' ', 'T') + 'Z');
-        const parsedExp = new Date(cleanExpiry).getTime();
-        if (!isNaN(parsedExp)) {
-            expiresTime = parsedExp;
-        }
+        const parsedExp   = new Date(cleanExpiry).getTime();
+        if (!isNaN(parsedExp)) expiresTime = parsedExp;
     }
-    
-    const now = Date.now();
-    let timeRemaining = Math.floor((expiresTime - now) / 1000);
-    if (timeRemaining < 0) timeRemaining = 0;
-    
-    const totalTime = 60 * 60; // 60 mins scale
-    
-    const progressBar = document.getElementById('progressBar');
+
+    let timeRemaining = Math.max(0, Math.floor((expiresTime - Date.now()) / 1000));
+    const totalTime   = 60 * 60;
+    const progressBar    = document.getElementById('progressBar');
     const timeLeftDisplay = document.getElementById('timeLeftDisplay');
 
-    if (timeLeftDisplay && timeRemaining > 0) {
-        const initMins = Math.floor(timeRemaining / 60);
-        const initSecs = timeRemaining % 60;
-        timeLeftDisplay.innerText = 'Time Left ' + initMins.toString().padStart(2, '0') + ':' + initSecs.toString().padStart(2, '0');
-        const initPct = (timeRemaining / totalTime) * 100;
-        if (progressBar) progressBar.style.width = Math.min(100, Math.max(0, initPct)) + '%';
-    }
-    
-    setInterval(() => {
-        if (timeRemaining <= 0) {
-            timeLeftDisplay.innerText = 'Expired';
-            progressBar.style.width = '0%';
+    function updateTimer() {
+        if (!timeLeftDisplay) return;
+        if (_isClosed || timeRemaining <= 0) {
+            if (_viewState === 'paid') {
+                timeLeftDisplay.innerText = 'Paid ✓';
+                if (progressBar) { progressBar.style.background = '#22c55e'; progressBar.style.width = '100%'; }
+            } else {
+                timeLeftDisplay.innerText = 'Expired';
+                if (progressBar) { progressBar.style.background = '#e2e8f0'; progressBar.style.width = '0%'; }
+            }
             return;
         }
+        const m = Math.floor(timeRemaining / 60);
+        const s = timeRemaining % 60;
+        timeLeftDisplay.innerText = 'Time Left ' + m.toString().padStart(2,'0') + ':' + s.toString().padStart(2,'0');
+        const pct = (timeRemaining / totalTime) * 100;
+        if (progressBar) {
+            progressBar.style.background = pct < 20 ? '#ef4444' : pct < 40 ? '#f97316' : '#22c55e';
+            progressBar.style.width = Math.min(100, Math.max(0, pct)) + '%';
+        }
         timeRemaining--;
-        
-        const minutes = Math.floor(timeRemaining / 60);
-        const seconds = timeRemaining % 60;
-        
-        timeLeftDisplay.innerText = 'Time Left ' + 
-            minutes.toString().padStart(2, '0') + ':' + 
-            seconds.toString().padStart(2, '0');
-            
-        const percentage = (timeRemaining / totalTime) * 100;
-        progressBar.style.width = Math.min(100, Math.max(0, percentage)) + '%';
-        
-    }, 1000);
-    
-    <% if (locals.intent && locals.intent.status !== 'CONFIRMED' && locals.intent.status !== 'PAID' && locals.intent.status !== 'OVERPAID') { %>
-    // Status polling
+    }
+    updateTimer();
+    if (!_isClosed) setInterval(updateTimer, 1000);
+
+    // ── Polling (only when not fully closed) ─────────────────────────────
+    <% if (!isClosed && vs !== 'review') { %>
     function checkStatus() {
-        fetch(`/payment/<%= invoiceId %>/status`)
-            .then(res => res.json())
-            .then(data => {
-                if(data.status) {
-                    const statusText = document.getElementById('verifyingStatusText');
-                    if (statusText) statusText.innerText = data.status;
-                    
-                    if (data.status === 'CONFIRMING' || data.status === 'CHECKING') {
-                        document.getElementById('paymentActionPanel').style.display = 'none';
-                        document.getElementById('verifyingLoadingState').style.display = 'block';
-                    } else if (data.status === 'CONFIRMED' || data.status === 'PAID' || data.status === 'OVERPAID') {
-                        window.location.reload();
-                    } else if (data.status === 'WAITING_FOR_PAYMENT') {
-                        // Keep current view or allow retry
-                    }
+        fetch('/payment/<%= invoiceId %>/status')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (!data) return;
+                const vst = data.viewState || '';
+                const st  = data.status   || '';
+
+                const badge = document.getElementById('verifyingStatusText');
+                if (badge && st) badge.innerText = st;
+
+                // Reload on any state change that warrants a new page render
+                if (['paid','confirming','review','expired','rejected'].includes(vst) ||
+                    ['CONFIRMED','PAID','OVERPAID','MANUAL_REVIEW','EXPIRED','REJECTED','CONFIRMING'].includes(st)) {
+                    window.location.reload();
+                    return;
+                }
+                // Transition from awaiting -> verifying (no page reload, just show overlay)
+                if (vst === 'verifying' || st === 'CHECKING' || st === 'TRANSACTION_DETECTED') {
+                    const panel   = document.getElementById('paymentActionPanel');
+                    const overlay = document.getElementById('verifyingLoadingState');
+                    if (panel)   panel.style.display   = 'none';
+                    if (overlay) overlay.style.display = 'block';
                 }
             })
-            .catch(e => console.error("Polling error", e));
+            .catch(function(e) { console.error('Polling error', e); });
     }
-    setInterval(checkStatus, 12000); // Poll every 12s
-    
+    setInterval(checkStatus, 12000);
+
     function getCsrfToken() {
         const el = document.querySelector('input[name="_csrf"]');
         return (el && el.value) ? el.value : '<%= locals.csrfToken || "" %>';
     }
 
     function handleIHavePaid() {
-        const csrfToken = getCsrfToken();
         const btn = document.getElementById('btnIHavePaid');
-        btn.disabled = true;
-        btn.innerText = 'Starting Verification...';
+        if (btn) { btn.disabled = true; btn.innerText = 'Starting Verification...'; }
+        const panel   = document.getElementById('paymentActionPanel');
+        const overlay = document.getElementById('verifyingLoadingState');
 
-        fetch(`/payment/<%= invoiceId %>/verify`, {
+        fetch('/payment/<%= invoiceId %>/verify', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify({ _csrf: csrfToken })
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({ _csrf: getCsrfToken() })
         })
-        .then(res => res.json())
-        .then(data => {
-            document.getElementById('paymentActionPanel').style.display = 'none';
-            document.getElementById('verifyingLoadingState').style.display = 'block';
+        .then(function(r) { return r.json(); })
+        .then(function() {
+            if (panel)   panel.style.display   = 'none';
+            if (overlay) overlay.style.display = 'block';
             setTimeout(checkStatus, 2000);
         })
-        .catch(() => {
-            document.getElementById('paymentActionPanel').style.display = 'none';
-            document.getElementById('verifyingLoadingState').style.display = 'block';
+        .catch(function() {
+            if (panel)   panel.style.display   = 'none';
+            if (overlay) overlay.style.display = 'block';
         });
     }
 
     function submitTxid() {
-        const txid = document.getElementById('txidInput').value.trim();
-        const csrfToken = getCsrfToken();
-        if(!txid) return alert('Enter a transaction hash');
-        
-        document.getElementById('paymentActionPanel').style.display = 'none';
-        document.getElementById('verifyingLoadingState').style.display = 'block';
+        const el = document.getElementById('txidInput');
+        if (!el || !el.value.trim()) return alert('Enter a transaction hash');
+        const panel   = document.getElementById('paymentActionPanel');
+        const overlay = document.getElementById('verifyingLoadingState');
+        if (panel)   panel.style.display   = 'none';
+        if (overlay) overlay.style.display = 'block';
 
-        fetch(`/payment/<%= invoiceId %>/verify`, {
+        fetch('/payment/<%= invoiceId %>/verify', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify({ txid: txid, _csrf: csrfToken })
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({ txid: el.value.trim(), _csrf: getCsrfToken() })
         })
-        .then(res => res.json())
-        .then(data => {
-            setTimeout(checkStatus, 2000);
-        })
-        .catch(err => {
-            console.error("TXID submission error", err);
-        });
+        .then(function(r) { return r.json(); })
+        .then(function() { setTimeout(checkStatus, 2000); })
+        .catch(function(e) { console.error('TXID error', e); });
     }
 
     function submitTxidFromOverlay() {
-        const txid = document.getElementById('txidOverlayInput').value.trim();
-        const csrfToken = getCsrfToken();
-        if(!txid) return alert('Enter a transaction hash');
+        const el = document.getElementById('txidOverlayInput');
+        if (!el || !el.value.trim()) return alert('Enter a transaction hash');
 
-        fetch(`/payment/<%= invoiceId %>/verify`, {
+        fetch('/payment/<%= invoiceId %>/verify', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify({ txid: txid, _csrf: csrfToken })
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({ txid: el.value.trim(), _csrf: getCsrfToken() })
         })
-        .then(res => res.json())
-        .then(data => {
+        .then(function(r) { return r.json(); })
+        .then(function() {
             alert('TXID submitted! Verifying on the blockchain...');
             setTimeout(checkStatus, 2000);
         })
-        .catch(() => {
-            alert('TXID submitted for verification.');
-        });
+        .catch(function() { alert('TXID submitted for verification.'); });
     }
     <% } %>
 </script>
 
 <%- include('footer') %>
+

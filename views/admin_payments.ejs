@@ -1,0 +1,224 @@
+<%- include('header') %>
+<style>
+  .adm-pay-wrap{max-width:1200px;margin:30px auto;padding:0 16px}
+  .adm-title{font-size:22px;font-weight:700;color:#1e293b;margin-bottom:6px}
+  .adm-subtitle{font-size:13px;color:#64748b;margin-bottom:24px}
+  .tab-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px}
+  .tab-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:6px;font-size:13px;font-weight:600;text-decoration:none;color:#475569;background:#f1f5f9;border:1px solid #e2e8f0;transition:background .15s,color .15s}
+  .tab-btn:hover{background:#e2e8f0}
+  .tab-btn.active{background:#1e293b;color:#fff;border-color:#1e293b}
+  .tab-badge{background:#cbd5e1;color:#334155;border-radius:20px;padding:1px 7px;font-size:11px;font-weight:700}
+  .tab-btn.active .tab-badge{background:rgba(255,255,255,.25);color:#fff}
+  .tab-btn.tab-alert{background:#fef2f2;border-color:#fca5a5;color:#b91c1c}
+  .tab-btn.tab-alert.active{background:#b91c1c;color:#fff;border-color:#b91c1c}
+  .flash{padding:12px 16px;border-radius:6px;margin-bottom:18px;font-size:13px;font-weight:600}
+  .flash.ok{background:#f0fdf4;border:1px solid #86efac;color:#166534}
+  .flash.err{background:#fef2f2;border:1px solid #fca5a5;color:#991b1b}
+  .empty-state{text-align:center;padding:60px 20px;color:#94a3b8;font-size:14px}
+  .pay-table{width:100%;border-collapse:collapse;font-size:13px}
+  .pay-table thead th{background:#f8fafc;padding:10px 12px;text-align:left;font-weight:700;color:#475569;border-bottom:2px solid #e2e8f0;white-space:nowrap}
+  .pay-table tbody tr{border-bottom:1px solid #f1f5f9}
+  .pay-table tbody tr:hover{background:#f8fafc}
+  .pay-table td{padding:10px 12px;vertical-align:top;color:#334155}
+  .pill{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap}
+  .pill-review{background:#fef3c7;color:#92400e;border:1px solid #fde68a}
+  .pill-verifying{background:#eff6ff;color:#1e40af;border:1px solid #bfdbfe}
+  .pill-confirming{background:#f0fdf4;color:#166534;border:1px solid #bbf7d0}
+  .pill-paid{background:#dcfce7;color:#166534;border:1px solid #86efac}
+  .pill-expired{background:#f1f5f9;color:#64748b;border:1px solid #e2e8f0}
+  .pill-rejected{background:#fef2f2;color:#991b1b;border:1px solid #fca5a5}
+  .pill-waiting{background:#f8fafc;color:#94a3b8;border:1px solid #e2e8f0}
+  .action-btn{display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border-radius:5px;font-size:11px;font-weight:700;border:none;cursor:pointer;text-decoration:none;transition:filter .15s}
+  .action-btn:hover{filter:brightness(.88)}
+  .btn-approve{background:#16a34a;color:#fff}
+  .btn-reject{background:#dc2626;color:#fff}
+  .btn-recheck{background:#3b82f6;color:#fff}
+  .btn-extend{background:#7c3aed;color:#fff}
+  .btn-audit{background:#f1f5f9;color:#334155;border:1px solid #e2e8f0 !important}
+  .attempt-bar{display:flex;gap:3px;margin-top:4px}
+  .attempt-dot{width:8px;height:8px;border-radius:50%;background:#e2e8f0}
+  .attempt-dot.used{background:#f97316}
+  .attempt-dot.maxed{background:#dc2626}
+  .note-input{border:1px solid #e2e8f0;border-radius:4px;padding:4px 7px;font-size:11px;width:140px;font-family:inherit;display:block;margin-bottom:4px}
+  .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9000;align-items:center;justify-content:center}
+  .modal-overlay.open{display:flex}
+  .modal-box{background:#fff;border-radius:10px;width:min(560px,95vw);max-height:85vh;overflow-y:auto;box-shadow:0 20px 50px rgba(0,0,0,.35)}
+  .modal-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #e2e8f0;font-size:15px;font-weight:700;color:#1e293b;position:sticky;top:0;background:#fff;z-index:1}
+  .modal-close{background:none;border:none;cursor:pointer;font-size:20px;color:#94a3b8;line-height:1;padding:0 4px}
+  .modal-body{padding:20px}
+  .event-row{border-bottom:1px solid #f1f5f9;padding:10px 0}
+  .event-row:last-child{border-bottom:none}
+  .event-from{font-size:11px;color:#94a3b8}
+  .event-note{font-size:12px;color:#475569;margin-top:3px}
+</style>
+
+<div class="adm-pay-wrap">
+  <div class="adm-title">Payment Review Center</div>
+  <div class="adm-subtitle">Manual verification queue &bull; Manage blockchain payments awaiting review or action</div>
+
+  <% if (msg) { %>
+    <div class="flash <%= msg.startsWith('Error') ? 'err' : 'ok' %>"><%= msg %></div>
+  <% } %>
+
+  <%
+    var reviewCount  = (countMap['MANUAL_REVIEW']||0)+(countMap['UNDERPAID']||0);
+    var checkCount   = (countMap['CHECKING']||0)+(countMap['TRANSACTION_DETECTED']||0)+(countMap['CONFIRMING']||0);
+    var awaitCount   = (countMap['PAYMENT_CREATED']||0)+(countMap['WAITING_FOR_PAYMENT']||0);
+    var expiredCount = countMap['EXPIRED']||0;
+    var closedCount  = (countMap['PAID']||0)+(countMap['CONFIRMED']||0)+(countMap['OVERPAID']||0)+(countMap['REJECTED']||0);
+  %>
+
+  <div class="tab-bar">
+    <a href="/admin/payments?filter=review"    class="tab-btn tab-alert <%= filter==='review'    ? 'active' : '' %>">&#9888; Manual Review <span class="tab-badge"><%= reviewCount %></span></a>
+    <a href="/admin/payments?filter=verifying" class="tab-btn <%= filter==='verifying'?'active':'' %>">&#8635; Verifying <span class="tab-badge"><%= checkCount %></span></a>
+    <a href="/admin/payments?filter=awaiting"  class="tab-btn <%= filter==='awaiting' ?'active':'' %>">&#8987; Awaiting <span class="tab-badge"><%= awaitCount %></span></a>
+    <a href="/admin/payments?filter=expired"   class="tab-btn <%= filter==='expired'  ?'active':'' %>">&#10005; Expired <span class="tab-badge"><%= expiredCount %></span></a>
+    <a href="/admin/payments?filter=closed"    class="tab-btn <%= filter==='closed'   ?'active':'' %>">&#10003; Closed <span class="tab-badge"><%= closedCount %></span></a>
+    <a href="/admin/payments?filter=all"       class="tab-btn <%= filter==='all'      ?'active':'' %>">All</a>
+  </div>
+
+  <% if (!intents || intents.length === 0) { %>
+    <div class="empty-state">
+      <div style="font-size:40px;margin-bottom:12px;">&#128236;</div>
+      <div style="font-weight:700;color:#334155;margin-bottom:4px;">Nothing here</div>
+      <div>No payments match the current filter.</div>
+    </div>
+  <% } else { %>
+  <div style="overflow-x:auto;border:1px solid #e2e8f0;border-radius:8px;">
+    <table class="pay-table">
+      <thead>
+        <tr>
+          <th>Invoice / Buyer</th>
+          <th>Amount</th>
+          <th>Currency</th>
+          <th>Status</th>
+          <th>Attempts</th>
+          <th>Updated</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% intents.forEach(function(intent){
+          var pillMap={MANUAL_REVIEW:'pill-review',UNDERPAID:'pill-review',CHECKING:'pill-verifying',TRANSACTION_DETECTED:'pill-verifying',CONFIRMING:'pill-confirming',PAID:'pill-paid',CONFIRMED:'pill-paid',OVERPAID:'pill-paid',EXPIRED:'pill-expired',REJECTED:'pill-rejected',CANCELLED:'pill-rejected',PAYMENT_CREATED:'pill-waiting',WAITING_FOR_PAYMENT:'pill-waiting'};
+          var statusPillClass=pillMap[intent.status]||'pill-waiting';
+          var isFinal=['PAID','CONFIRMED','OVERPAID','REJECTED','CANCELLED'].includes(intent.status);
+          var isReview=['MANUAL_REVIEW','UNDERPAID'].includes(intent.status);
+          var amtCrypto=(Number(intent.expected_amount_crypto||0)/1e8).toFixed(8);
+          var updatedAgo='—';
+          try{var d=new Date(intent.updated_at);if(!isNaN(d)){var s=Math.floor((Date.now()-d)/1000);if(s<60)updatedAgo=s+'s ago';else if(s<3600)updatedAgo=Math.floor(s/60)+'m ago';else updatedAgo=Math.floor(s/3600)+'h ago';}}catch(e){}
+        %>
+        <tr>
+          <td>
+            <div style="font-weight:700;color:#1e293b;">#<%= intent.invoice_id %></div>
+            <div style="color:#64748b;font-size:11px;margin-top:2px;"><%= intent.buyer_name||'—' %><% if(intent.buyer_email){%> &middot; <span style="color:#94a3b8"><%= intent.buyer_email %></span><%}%></div>
+            <div style="font-size:11px;color:#94a3b8;margin-top:2px;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" title="<%= intent.items||'' %>"><%= intent.items?intent.items.substring(0,60)+(intent.items.length>60?'…':''):'—' %></div>
+            <% if(intent.submitted_txid){%><div style="font-size:10px;color:#7c3aed;font-family:monospace;margin-top:3px;" title="<%= intent.submitted_txid %>">TXID: <%= intent.submitted_txid.substring(0,22) %>…</div><%}%>
+          </td>
+          <td>
+            <div style="font-weight:700;">$<%= (intent.total_usd||0).toFixed(2) %></div>
+            <div style="font-size:11px;color:#64748b;margin-top:2px;"><%= amtCrypto %> <%= intent.currency %></div>
+          </td>
+          <td>
+            <span style="font-weight:700;font-size:13px;"><%= intent.currency||'—' %></span>
+            <div style="font-size:10px;color:#94a3b8;margin-top:2px;font-family:monospace;max-width:110px;word-break:break-all;"><%= (intent.payment_address||'').substring(0,16) %><%= (intent.payment_address||'').length>16?'…':'' %></div>
+          </td>
+          <td>
+            <span class="pill <%= statusPillClass %>"><%= intent.status.replace(/_/g,' ') %></span>
+            <% if(intent.txs){intent.txs.split('|').forEach(function(tx){var p=tx.split(':');if(p[0]){%><div style="font-size:10px;color:#94a3b8;margin-top:3px;font-family:monospace;"><%= p[0].substring(0,12) %>… (<%= p[1]||0 %> conf)</div><%}});} %>
+          </td>
+          <td>
+            <div class="attempt-bar">
+              <% for(var a=1;a<=maxAttempts;a++){%><div class="attempt-dot <%= a<=(intent.verify_attempts||0)?(a>=maxAttempts?'maxed':'used'):'' %>" title="Attempt <%=a%>"></div><%}%>
+            </div>
+            <div style="font-size:10px;color:#94a3b8;margin-top:4px;"><%= intent.verify_attempts||0 %> / <%= maxAttempts %></div>
+          </td>
+          <td><span style="font-size:12px;color:#64748b;"><%= updatedAgo %></span></td>
+          <td>
+            <div style="display:flex;flex-direction:column;gap:5px;min-width:155px;">
+              <%if(isReview){%>
+                <form method="POST" action="/admin/payments/<%= intent.id %>/approve">
+                  <input type="hidden" name="_csrf" value="<%= locals.csrfToken %>">
+                  <input type="hidden" name="filter" value="<%= filter %>">
+                  <input class="note-input" type="text" name="note" placeholder="Note (optional)">
+                  <button type="submit" class="action-btn btn-approve">&#10003; Approve</button>
+                </form>
+                <form method="POST" action="/admin/payments/<%= intent.id %>/reject">
+                  <input type="hidden" name="_csrf" value="<%= locals.csrfToken %>">
+                  <input type="hidden" name="filter" value="<%= filter %>">
+                  <input class="note-input" type="text" name="reason" placeholder="Reason…">
+                  <button type="submit" class="action-btn btn-reject">&#10005; Reject</button>
+                </form>
+              <%}%>
+              <%if(!isFinal){%>
+                <form method="POST" action="/admin/payments/<%= intent.id %>/recheck">
+                  <input type="hidden" name="_csrf" value="<%= locals.csrfToken %>">
+                  <input type="hidden" name="filter" value="<%= filter %>">
+                  <button type="submit" class="action-btn btn-recheck">&#8635; Re-check</button>
+                </form>
+                <form method="POST" action="/admin/payments/<%= intent.id %>/extend">
+                  <input type="hidden" name="_csrf" value="<%= locals.csrfToken %>">
+                  <input type="hidden" name="filter" value="<%= filter %>">
+                  <button type="submit" class="action-btn btn-extend">+30m Extend</button>
+                </form>
+              <%}%>
+              <button class="action-btn btn-audit" onclick="openAudit('<%= intent.id %>','#<%= intent.invoice_id %>')">&#128203; Audit Log</button>
+            </div>
+          </td>
+        </tr>
+        <%});%>
+      </tbody>
+    </table>
+  </div>
+  <%}%>
+</div>
+
+<!-- Audit Modal -->
+<div class="modal-overlay" id="auditModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <span id="auditModalTitle">Audit Log</span>
+      <button class="modal-close" onclick="closeAudit()">&#215;</button>
+    </div>
+    <div class="modal-body" id="auditModalBody">
+      <div style="text-align:center;color:#94a3b8;padding:30px;">Loading&hellip;</div>
+    </div>
+  </div>
+</div>
+
+<script>
+function openAudit(intentId,label){
+  document.getElementById('auditModalTitle').textContent='Audit Log – '+label;
+  document.getElementById('auditModalBody').innerHTML='<div style="text-align:center;color:#94a3b8;padding:30px;">Loading\u2026</div>';
+  document.getElementById('auditModal').classList.add('open');
+  fetch('/admin/payments/'+intentId+'/events')
+    .then(function(r){return r.json();})
+    .then(function(events){
+      if(!events||events.length===0){
+        document.getElementById('auditModalBody').innerHTML='<div style="text-align:center;color:#94a3b8;padding:30px;">No events recorded yet.</div>';
+        return;
+      }
+      var html=events.map(function(ev){
+        var meta={};try{meta=JSON.parse(ev.metadata||'{}');}catch(e){}
+        var when=new Date(ev.created_at);
+        var timeStr=isNaN(when)?'—':when.toLocaleString();
+        return '<div class="event-row">'+
+          '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'+
+          '<strong style="font-size:12px;color:#1e293b;">'+(ev.event_type||'—')+'</strong>'+
+          (ev.from_status?'<span style="font-size:11px;color:#94a3b8;">'+ev.from_status+' &rarr; '+(ev.to_status||'?')+'</span>':'')+
+          '</div>'+
+          (meta.reason||meta.note?'<div class="event-note">'+(meta.reason||meta.note)+'</div>':'')+
+          '<div class="event-from">'+timeStr+'</div>'+
+          '</div>';
+      }).join('');
+      document.getElementById('auditModalBody').innerHTML=html;
+    })
+    .catch(function(){
+      document.getElementById('auditModalBody').innerHTML='<div style="text-align:center;color:#dc2626;padding:30px;">Failed to load events.</div>';
+    });
+}
+function closeAudit(){document.getElementById('auditModal').classList.remove('open');}
+document.getElementById('auditModal').addEventListener('click',function(e){if(e.target===this)closeAudit();});
+<% if(filter==='review'||filter==='verifying'){%>setTimeout(function(){window.location.reload();},45000);<% } %>
+</script>
+
+<%- include('footer') %>
