@@ -285,7 +285,7 @@ const db = new sqlite3.Database(dbPath, (err) => {
 });
 
 // Initialize Payment System
-const { PaymentService, PaymentStatus } = require('./services/paymentService');
+const { PaymentService, PaymentStatus, computeViewState, VerificationConfig } = require('./services/paymentService');
 const { PaymentWorker } = require('./services/paymentWorker');
 const { BitcoinAdapter } = require('./blockchain/btc');
 const { LitecoinAdapter } = require('./blockchain/ltc');
@@ -300,7 +300,7 @@ const adapters = {
 };
 
 const paymentWorker = new PaymentWorker(db, paymentService, adapters);
-paymentWorker.start(120000); // Poll every 2 minutes to avoid API spam
+paymentWorker.start(30000); // 30s cycle; verification attempts are spaced internally
 
 // ---- TREASURY SYSTEM INITIALIZATION ----
 const { LoginRateLimiter, AuditLogger, StepUpAuth, RoleManager, ADMIN_ROLES, AUDIT_ACTIONS } = require('./services/adminAuth');
@@ -619,6 +619,16 @@ function initializeSchema() {
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(payment_intent_id) REFERENCES payment_intents(id)
         )`);
+
+        // Payment verification fail-safe / manual review columns
+        ['claimed_paid_at DATETIME', 'verify_attempts INTEGER DEFAULT 0', 'last_checked_at DATETIME',
+         'buyer_txid TEXT', 'review_reason TEXT', 'reviewed_by INTEGER', 'reviewed_at DATETIME', 'admin_note TEXT'
+        ].forEach(col => db.run(`ALTER TABLE payment_intents ADD COLUMN ${col}`, () => {}));
+
+        // One-time cleanup: intents stuck in CHECKING past their window (buyer clicked "I Have Paid")
+        db.run(`UPDATE payment_intents SET status = 'MANUAL_REVIEW', review_reason = 'Buyer claimed payment; stuck in verification past expiry'
+                WHERE status = 'CHECKING' AND expires_at < ?`,
+               [new Date(Date.now() - VerificationConfig.GRACE_MS).toISOString()], () => {});
 
         // ---- TREASURY SYSTEM TABLES ----
 
@@ -1302,6 +1312,12 @@ app.get('/payment/:invoice_id', requireAuth, (req, res) => {
         const hasShippedItem = orders.some(o => (o.delivery_type && o.delivery_type.toLowerCase() === 'shipped') || (o.category && o.category.toLowerCase().includes('electronic')));
 
         db.get(`SELECT * FROM payment_intents WHERE order_id = ?`, [orders[0].id], async (err, intent) => {
+            // Lazily correct a stale unclaimed intent that is past its window
+            if (intent && computeViewState(intent) === 'expired' && intent.status !== 'EXPIRED') {
+                try { await paymentService.expireIntent(intent.id); } catch (e) {}
+                intent.status = 'EXPIRED';
+            }
+            const viewState = computeViewState(intent);
             let cryptoAmount = 0;
             let walletAddress = "N/A";
             
@@ -1332,70 +1348,130 @@ app.get('/payment/:invoice_id', requireAuth, (req, res) => {
                 currencySymbol: currency || method.toUpperCase(),
                 intent: intent || null,
                 qrCodeBase64,
-                hasShippedItem
+                hasShippedItem,
+                viewState,
+                serverNow: Date.now(),
+                maxAttempts: VerificationConfig.MAX_ATTEMPTS,
+                reorderStatus: req.query.reorder || null,
+                claimStatus: req.query.claim || null
             });
         });
     });
 });
+
+// Helper: load the payment intent for an invoice owned by the current user
+function getOwnedIntent(invoiceId, userId) {
+    return new Promise((resolve, reject) => {
+        db.get(`SELECT i.* FROM payment_intents i JOIN orders o ON i.order_id = o.id
+                WHERE o.invoice_id = ? AND o.user_id = ? ORDER BY o.id ASC LIMIT 1`,
+            [invoiceId, userId], (err, row) => (err ? reject(err) : resolve(row)));
+    });
+}
+
+const wantsJson = (req) => req.headers.accept && req.headers.accept.includes('application/json');
 
 app.post('/payment/:invoice_id/verify', requireAuth, async (req, res) => {
     const invoiceId = req.params.invoice_id;
-    const { txid } = req.body || {};
+    const txid = (req.body && typeof req.body.txid === 'string') ? req.body.txid.trim() : '';
+    const fail = (code, message) => wantsJson(req)
+        ? res.status(code).json({ success: false, message })
+        : res.redirect(`/payment/${invoiceId}?error=` + encodeURIComponent(message));
     try {
-        const order = await new Promise((resolve, reject) => {
-            db.get(`SELECT id FROM orders WHERE invoice_id = ? AND user_id = ?`, [invoiceId, req.session.user.id], (err, row) => {
-                if (err) reject(err); else resolve(row);
-            });
-        });
-        if (!order) return res.redirect(`/payment/${invoiceId}?error=OrderNotFound`);
-        
-        const intent = await new Promise((resolve, reject) => {
-            db.get(`SELECT * FROM payment_intents WHERE order_id = ?`, [order.id], (err, row) => {
-                if (err) reject(err); else resolve(row);
-            });
-        });
-        if (!intent) return res.redirect(`/payment/${invoiceId}?error=IntentNotFound`);
-        
-        // Update intent status to CHECKING immediately so verifying persists
-        await new Promise((resolve, reject) => {
-            db.run(`UPDATE payment_intents SET status = 'CHECKING' WHERE id = ?`, [intent.id], (err) => {
-                if (err) reject(err); else resolve();
-            });
-        });
+        const intent = await getOwnedIntent(invoiceId, req.session.user.id);
+        if (!intent) return fail(404, 'Payment not found');
 
-        if (txid && txid.trim()) {
-            paymentWorker.manualVerifyTxid(intent.id, txid.trim()).catch(err => {
-                console.error(`Async manual verify error for intent ${intent.id}:`, err);
-            });
-        } else {
-            paymentWorker.processIntent(intent).catch(err => {
-                console.error(`Async background process error for intent ${intent.id}:`, err);
-            });
+        const state = computeViewState(intent);
+        if (state === 'paid') return fail(409, 'This invoice is already paid.');
+        if (state === 'rejected') return fail(409, 'This invoice has been closed. Please contact support.');
+        if (state === 'review') return fail(409, 'This payment is already under manual review.');
+        if (state === 'expired') return fail(410, 'The payment window has expired. Use "I already paid" to request a review.');
+        if (txid && txid !== 'test' && (txid.length < 10 || txid.length > 128 || !/^[A-Za-z0-9]+$/.test(txid))) return fail(400, 'Invalid transaction hash format.');
+
+        // Rate limit: one claim per 30s
+        if (intent.claimed_paid_at && Date.now() - new Date(intent.claimed_paid_at).getTime() < 30000 && !txid) {
+            return wantsJson(req) ? res.json({ success: true, viewState: 'verifying', message: 'Already verifying.' }) : res.redirect(`/payment/${invoiceId}`);
         }
-        
-        if (req.headers.accept && req.headers.accept.includes('application/json')) {
-            res.json({ success: true, message: 'Payment verification initiated.' });
-        } else {
-            res.redirect(`/payment/${invoiceId}?status=checking`);
-        }
+
+        const now = new Date().toISOString();
+        await new Promise((resolve, reject) => db.run(
+            `UPDATE payment_intents SET status = CASE WHEN status IN ('PAYMENT_CREATED','WAITING_FOR_PAYMENT') THEN 'CHECKING' ELSE status END,
+             claimed_paid_at = COALESCE(claimed_paid_at, ?), buyer_txid = COALESCE(?, buyer_txid), updated_at = ? WHERE id = ?`,
+            [now, txid || null, now, intent.id], (err) => (err ? reject(err) : resolve())));
+        paymentService._logEvent(intent.id, 'BUYER_CLAIMED_PAID', intent.status, 'CHECKING', { txid: txid || null }).catch(() => {});
+
+        const job = txid ? paymentWorker.manualVerifyTxid(intent.id, txid) : paymentWorker.processIntent({ id: intent.id });
+        job.catch(err => console.error(`Verify error for intent ${intent.id}:`, err.message));
+
+        if (wantsJson(req)) res.json({ success: true, viewState: 'verifying', message: 'Payment verification started.' });
+        else res.redirect(`/payment/${invoiceId}`);
     } catch (err) {
-        if (req.headers.accept && req.headers.accept.includes('application/json')) {
-            res.status(500).json({ success: false, message: err.message });
-        } else {
-            res.redirect(`/payment/${invoiceId}?error=` + encodeURIComponent(err.message));
-        }
+        fail(500, err.message);
     }
 });
 
-app.get('/payment/:invoice_id/status', requireAuth, (req, res) => {
+// Buyer paid after expiry (or wants human review): requires TXID, goes to admin queue
+app.post('/payment/:invoice_id/claim-late', requireAuth, async (req, res) => {
     const invoiceId = req.params.invoice_id;
-    db.get(`SELECT i.status, i.expires_at, i.expected_amount_crypto 
-            FROM payment_intents i
-            JOIN orders o ON i.order_id = o.id 
-            WHERE o.invoice_id = ? AND o.user_id = ?`, [invoiceId, req.session.user.id], (err, intent) => {
-        if (err || !intent) return res.json({ status: 'UNKNOWN' });
-        res.json(intent);
-    });
+    const txid = (req.body && typeof req.body.txid === 'string') ? req.body.txid.trim() : '';
+    try {
+        const intent = await getOwnedIntent(invoiceId, req.session.user.id);
+        if (!intent) return res.redirect('/dashboard');
+        const state = computeViewState(intent);
+        if (state !== 'expired') return res.redirect(`/payment/${invoiceId}`);
+        if (!txid || txid.length < 10 || txid.length > 128 || !/^[A-Za-z0-9]+$/.test(txid)) {
+            return res.redirect(`/payment/${invoiceId}?claim=invalid`);
+        }
+        await new Promise((resolve, reject) => db.run(
+            `UPDATE payment_intents SET status = 'CHECKING', buyer_txid = ?, claimed_paid_at = COALESCE(claimed_paid_at, ?) WHERE id = ?`,
+            [txid, new Date().toISOString(), intent.id], (err) => (err ? reject(err) : resolve())));
+        await paymentService.sendToReview(intent.id, `Late payment claim after expiry (TXID: ${txid})`);
+        // Also try an automatic check; if it confirms, markPaid will finalize it
+        paymentWorker.manualVerifyTxid(intent.id, txid).catch(() => {});
+        res.redirect(`/payment/${invoiceId}?claim=sent`);
+    } catch (err) {
+        console.error('claim-late error:', err.message);
+        res.redirect(`/payment/${invoiceId}?claim=error`);
+    }
+});
+
+// Expired/rejected invoice: put the items back in the cart
+app.post('/payment/:invoice_id/reorder', requireAuth, (req, res) => {
+    const invoiceId = req.params.invoice_id;
+    const userId = req.session.user.id;
+    db.all(`SELECT o.product_id, p.name FROM orders o JOIN products p ON o.product_id = p.id WHERE o.invoice_id = ? AND o.user_id = ?`,
+        [invoiceId, userId], async (err, rows) => {
+            if (err || !rows || rows.length === 0) return res.redirect('/dashboard');
+            const intent = await getOwnedIntent(invoiceId, userId).catch(() => null);
+            const state = computeViewState(intent);
+            if (state !== 'expired' && state !== 'rejected') return res.redirect(`/payment/${invoiceId}`);
+
+            req.session.cart = req.session.cart || {};
+            rows.forEach(r => { req.session.cart[r.product_id] = (req.session.cart[r.product_id] || 0) + 1; });
+            // Close the old pending orders so they don't linger
+            db.run(`UPDATE orders SET status = 'cancelled' WHERE invoice_id = ? AND user_id = ? AND status = 'pending'`, [invoiceId, userId], () => {});
+            const names = rows.map(r => `"${r.name}"`).join(', ');
+            paymentService.notifyUser(userId,
+                `Items from expired Invoice #${invoiceId} (${names}) were added back to your cart. Complete checkout to get a fresh 60-minute payment window.`);
+            req.session.save(() => res.redirect('/cart'));
+        });
+});
+
+app.get('/payment/:invoice_id/status', requireAuth, async (req, res) => {
+    try {
+        const intent = await getOwnedIntent(req.params.invoice_id, req.session.user.id);
+        if (!intent) return res.json({ viewState: 'unknown', status: 'UNKNOWN', serverNow: Date.now() });
+        res.json({
+            viewState: computeViewState(intent),
+            status: intent.status,
+            expiresAt: intent.expires_at,
+            serverNow: Date.now(),
+            attempts: intent.verify_attempts || 0,
+            maxAttempts: VerificationConfig.MAX_ATTEMPTS,
+            reviewReason: intent.review_reason || null
+        });
+    } catch (e) {
+        res.json({ viewState: 'unknown', status: 'UNKNOWN', serverNow: Date.now() });
+    }
 });
 
 
@@ -2703,6 +2779,104 @@ app.post('/admin/templates/delete/:id', requireAdmin, (req, res) => {
 });
 
 // Admin Dashboard
+// ---- ADMIN: PAYMENT VERIFICATION / MANUAL REVIEW ----
+app.use('/admin', (req, res, next) => {
+    if (!req.session.user || req.session.user.role !== 'admin') return next();
+    db.get(`SELECT COUNT(*) AS c FROM payment_intents WHERE status IN ('MANUAL_REVIEW','UNDERPAID')`, (err, row) => {
+        res.locals.pendingPaymentReviews = row ? row.c : 0;
+        next();
+    });
+});
+
+app.get('/admin/payments', requireAdmin, (req, res) => {
+    const filter = req.query.filter || 'review';
+    const filters = {
+        review: `i.status IN ('MANUAL_REVIEW','UNDERPAID')`,
+        verifying: `i.status IN ('CHECKING','TRANSACTION_DETECTED','CONFIRMING')`,
+        awaiting: `i.status IN ('PAYMENT_CREATED','WAITING_FOR_PAYMENT')`,
+        expired: `i.status = 'EXPIRED'`,
+        closed: `i.status IN ('PAID','CONFIRMED','OVERPAID','REJECTED')`,
+        all: `1=1`
+    };
+    const where = filters[filter] || filters.review;
+    db.all(`
+        SELECT i.*, o.invoice_id, o.user_id AS buyer_id, u.username AS buyer_name, u.email AS buyer_email,
+               (SELECT GROUP_CONCAT(p.name, ', ') FROM orders o2 JOIN products p ON o2.product_id = p.id
+                 WHERE o2.invoice_id = o.invoice_id AND o2.user_id = o.user_id) AS items,
+               (SELECT SUM(p.price) FROM orders o2 JOIN products p ON o2.product_id = p.id
+                 WHERE o2.invoice_id = o.invoice_id AND o2.user_id = o.user_id) AS total_usd,
+               (SELECT GROUP_CONCAT(t.txid || ':' || COALESCE(t.confirmations,0) || ':' || COALESCE(t.received_amount_crypto,'0'), '|')
+                  FROM payment_transactions t WHERE t.payment_intent_id = i.id) AS txs
+        FROM payment_intents i
+        JOIN orders o ON i.order_id = o.id
+        LEFT JOIN users u ON o.user_id = u.id
+        WHERE ${where}
+        ORDER BY CASE i.status WHEN 'MANUAL_REVIEW' THEN 0 WHEN 'UNDERPAID' THEN 0 WHEN 'CHECKING' THEN 1 ELSE 2 END, i.updated_at DESC
+        LIMIT 200`, [], (err, intents) => {
+        if (err) return res.status(500).send('Database error: ' + err.message);
+        db.all(`SELECT status, COUNT(*) AS c FROM payment_intents GROUP BY status`, (e2, counts) => {
+            const countMap = {};
+            (counts || []).forEach(r => countMap[r.status] = r.c);
+            res.render('admin_payments', {
+                intents: intents || [],
+                filter,
+                countMap,
+                msg: req.query.msg || null,
+                maxAttempts: VerificationConfig.MAX_ATTEMPTS
+            });
+        });
+    });
+});
+
+app.get('/admin/payments/:intentId/events', requireAdmin, (req, res) => {
+    db.all(`SELECT * FROM payment_events WHERE payment_intent_id = ? ORDER BY id DESC LIMIT 50`, [req.params.intentId], (err, rows) => {
+        res.json(rows || []);
+    });
+});
+
+const adminPaymentAction = (handler) => async (req, res) => {
+    const back = (msg) => res.redirect(`/admin/payments?filter=${encodeURIComponent(req.body.filter || 'review')}&msg=${encodeURIComponent(msg)}`);
+    try {
+        const msg = await handler(req);
+        try {
+            AuditLogger.log(db, req.session.user.id, 'PAYMENT_' + (req.path.split('/').pop() || '').toUpperCase(), 'payment_intent', req.params.intentId, { note: req.body.note || req.body.reason || null }, req.ip);
+        } catch (e) { /* audit is best-effort */ }
+        back(msg);
+    } catch (err) {
+        back('Error: ' + err.message);
+    }
+};
+
+app.post('/admin/payments/:intentId/approve', requireAdmin, adminPaymentAction(async (req) => {
+    await paymentService.markPaid(req.params.intentId, 'admin', (req.body.note || '').slice(0, 500) || null, req.session.user.id);
+    return 'Payment approved. Buyer and vendor notified; orders moved to processing.';
+}));
+
+app.post('/admin/payments/:intentId/reject', requireAdmin, adminPaymentAction(async (req) => {
+    const reason = (req.body.reason || '').trim().slice(0, 500) || 'No matching transaction found on the blockchain';
+    await paymentService.rejectIntent(req.params.intentId, reason, req.session.user.id);
+    return 'Payment rejected. Buyer notified.';
+}));
+
+app.post('/admin/payments/:intentId/recheck', requireAdmin, adminPaymentAction(async (req) => {
+    await paymentWorker.processIntent({ id: req.params.intentId }, { force: true });
+    const row = await new Promise(r => db.get(`SELECT status FROM payment_intents WHERE id = ?`, [req.params.intentId], (e, x) => r(x)));
+    return `Re-check finished. Current status: ${row ? row.status : 'unknown'}.`;
+}));
+
+app.post('/admin/payments/:intentId/extend', requireAdmin, adminPaymentAction(async (req) => {
+    const ctx = await paymentService.getIntentContext(req.params.intentId);
+    if (!ctx) throw new Error('Intent not found');
+    if (['PAID', 'CONFIRMED', 'OVERPAID'].includes(ctx.status)) throw new Error('Already paid');
+    const newExpiry = new Date(Date.now() + 30 * 60 * 1000).toISOString();
+    await paymentService.runQuery(
+        `UPDATE payment_intents SET status = 'CHECKING', expires_at = ?, verify_attempts = 0, last_checked_at = NULL, updated_at = ? WHERE id = ?`,
+        [newExpiry, new Date().toISOString(), ctx.id]);
+    await paymentService._logEvent(ctx.id, 'STATUS_UPDATE', ctx.status, 'CHECKING', { reason: 'Admin extended verification by 30 min' });
+    await paymentService.notifyUser(ctx.buyer_id, `Our team has extended automatic verification for Invoice #${ctx.invoice_id} by 30 minutes. We'll message you as soon as it is confirmed.`);
+    return 'Verification extended by 30 minutes.';
+}));
+
 app.get('/admin', requireAdmin, (req, res) => {
     db.all(`
         SELECT orders.*, users.username as customer_name, products.name as product_name, vendors.username as vendor_name, vendors.btc_wallet
