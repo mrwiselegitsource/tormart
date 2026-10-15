@@ -2853,6 +2853,26 @@ app.get('/admin/payments/:intentId/events', requireAdmin, (req, res) => {
     });
 });
 
+// Address blockchain info lookup for admin
+app.get('/admin/payments/:intentId/address-info', requireAdmin, async (req, res) => {
+    try {
+        const intent = await new Promise((resolve, reject) =>
+            db.get(`SELECT payment_address, currency FROM payment_intents WHERE id = ?`,
+                [req.params.intentId], (err, row) => err ? reject(err) : resolve(row)));
+        if (!intent || !intent.payment_address) {
+            return res.json({ error: 'Intent not found or has no payment address' });
+        }
+        const adapter = adapters[intent.currency];
+        if (!adapter || typeof adapter.getAddressInfo !== 'function') {
+            return res.json({ error: `No address info support for currency: ${intent.currency}` });
+        }
+        const info = await adapter.getAddressInfo(intent.payment_address);
+        res.json(info);
+    } catch (err) {
+        res.json({ error: err.message });
+    }
+});
+
 const adminPaymentAction = (handler) => async (req, res) => {
     const back = (msg) => res.redirect(`/admin/payments?filter=${encodeURIComponent(req.body.filter || 'review')}&msg=${encodeURIComponent(msg)}`);
     try {

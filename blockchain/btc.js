@@ -132,7 +132,76 @@ class BitcoinAdapter {
             throw new Error(`BTC verification failed: ${error.message}`);
         }
     }
+    /**
+     * Fetch rich summary for a Bitcoin address (for admin display).
+     * Returns: { address, confirmedBalanceSats, totalReceivedSats, totalSentSats,
+     *            confirmedTxCount, mempoolTxCount, confirmedBalanceBtc,
+     *            totalReceivedBtc, source }
+     */
+    async getAddressInfo(address) {
+        // ── Try Esplora first (blockstream → mempool) ─────────────────────────
+        try {
+            const res = await this.esploraGet(`/address/${address}`);
+            const d   = res.data;
+            const chain   = d.chain_stats   || {};
+            const mempool = d.mempool_stats  || {};
+
+            const totalReceivedSats  = BigInt(chain.funded_txo_sum  || 0);
+            const totalSentSats      = BigInt(chain.spent_txo_sum    || 0);
+            const balanceSats        = totalReceivedSats - totalSentSats;
+            // Add unconfirmed incoming
+            const mempoolInSats      = BigInt(mempool.funded_txo_sum || 0);
+            const mempoolOutSats     = BigInt(mempool.spent_txo_sum  || 0);
+            const unconfirmedSats    = mempoolInSats - mempoolOutSats;
+
+            return {
+                address,
+                confirmedBalanceSats : balanceSats.toString(),
+                totalReceivedSats    : totalReceivedSats.toString(),
+                totalSentSats        : totalSentSats.toString(),
+                unconfirmedSats      : unconfirmedSats.toString(),
+                confirmedBalanceBtc  : (Number(balanceSats)  / 1e8).toFixed(8),
+                totalReceivedBtc     : (Number(totalReceivedSats) / 1e8).toFixed(8),
+                unconfirmedBtc       : (Number(unconfirmedSats < 0n ? 0n : unconfirmedSats) / 1e8).toFixed(8),
+                confirmedTxCount     : chain.tx_count   || 0,
+                mempoolTxCount       : mempool.tx_count  || 0,
+                source               : 'esplora'
+            };
+        } catch (err) {
+            console.warn(`Esplora getAddressInfo failed for ${address}:`, err.message);
+        }
+
+        // ── blockchain.info fallback ─────────────────────────────────────────
+        try {
+            const res = await axios.get(
+                `https://blockchain.info/rawaddr/${encodeURIComponent(address)}?limit=0`,
+                { timeout: this.timeout }
+            );
+            const d = res.data || {};
+            const totalReceivedSats = BigInt(d.total_received || 0);
+            const totalSentSats     = BigInt(d.total_sent     || 0);
+            const balanceSats       = BigInt(d.final_balance  || 0);
+
+            return {
+                address,
+                confirmedBalanceSats : balanceSats.toString(),
+                totalReceivedSats    : totalReceivedSats.toString(),
+                totalSentSats        : totalSentSats.toString(),
+                unconfirmedSats      : '0',
+                confirmedBalanceBtc  : (Number(balanceSats)       / 1e8).toFixed(8),
+                totalReceivedBtc     : (Number(totalReceivedSats) / 1e8).toFixed(8),
+                unconfirmedBtc       : '0.00000000',
+                confirmedTxCount     : d.n_tx || 0,
+                mempoolTxCount       : 0,
+                source               : 'blockchain.info'
+            };
+        } catch (err) {
+            console.warn(`blockchain.info getAddressInfo failed for ${address}:`, err.message);
+        }
+
+        // All failed
+        return { address, error: 'Could not reach any blockchain API', source: 'none' };
+    }
 }
 
 module.exports = { BitcoinAdapter };
-

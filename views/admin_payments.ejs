@@ -35,6 +35,8 @@
   .btn-recheck{background:#3b82f6;color:#fff}
   .btn-extend{background:#7c3aed;color:#fff}
   .btn-audit{background:#f1f5f9;color:#334155;border:1px solid #e2e8f0 !important}
+  .btn-addr-info{background:#0f172a;color:#38bdf8;border:1px solid #38bdf8 !important}
+  .btn-addr-info:hover{filter:brightness(1.2)}
   .attempt-bar{display:flex;gap:3px;margin-top:4px}
   .attempt-dot{width:8px;height:8px;border-radius:50%;background:#e2e8f0}
   .attempt-dot.used{background:#f97316}
@@ -120,7 +122,10 @@
           </td>
           <td>
             <span style="font-weight:700;font-size:13px;"><%= intent.currency||'—' %></span>
-            <div style="font-size:10px;color:#94a3b8;margin-top:2px;font-family:monospace;max-width:110px;word-break:break-all;"><%= (intent.payment_address||'').substring(0,16) %><%= (intent.payment_address||'').length>16?'…':'' %></div>
+            <div style="font-size:10px;color:#94a3b8;margin-top:2px;font-family:monospace;max-width:110px;word-break:break-all;" title="<%= intent.payment_address||'' %>"><%= (intent.payment_address||'').substring(0,16) %><%= (intent.payment_address||'').length>16?'…':'' %></div>
+            <% if(intent.payment_address){ %>
+            <button class="action-btn btn-addr-info" style="margin-top:5px;font-size:10px;padding:3px 8px;" onclick="openAddrInfo('<%= intent.id %>','<%= intent.payment_address %>','<%= intent.currency %>')" title="View live blockchain info for this address">&#128269; Chain Info</button>
+            <% } %>
           </td>
           <td>
             <span class="pill <%= statusPillClass %>"><%= intent.status.replace(/_/g,' ') %></span>
@@ -185,6 +190,19 @@
   </div>
 </div>
 
+<!-- Address Info Modal -->
+<div class="modal-overlay" id="addrInfoModal">
+  <div class="modal-box" style="background:#0f172a;border:1px solid #1e3a5f;">
+    <div class="modal-header" style="background:#0f172a;border-bottom:1px solid #1e3a5f;">
+      <span id="addrInfoTitle" style="color:#38bdf8;font-family:monospace;font-size:13px;">Address Info</span>
+      <button class="modal-close" onclick="closeAddrInfo()" style="color:#38bdf8;">&#215;</button>
+    </div>
+    <div class="modal-body" id="addrInfoBody">
+      <div style="text-align:center;color:#38bdf8;padding:30px;">Fetching blockchain data&hellip;</div>
+    </div>
+  </div>
+</div>
+
 <script>
 function openAudit(intentId,label){
   document.getElementById('auditModalTitle').textContent='Audit Log – '+label;
@@ -218,6 +236,63 @@ function openAudit(intentId,label){
 }
 function closeAudit(){document.getElementById('auditModal').classList.remove('open');}
 document.getElementById('auditModal').addEventListener('click',function(e){if(e.target===this)closeAudit();});
+
+function openAddrInfo(intentId, address, currency) {
+  document.getElementById('addrInfoTitle').textContent = currency + ' \u2022 ' + address;
+  document.getElementById('addrInfoBody').innerHTML = '<div style="text-align:center;color:#38bdf8;padding:30px;">Fetching blockchain data&hellip;</div>';
+  document.getElementById('addrInfoModal').classList.add('open');
+
+  fetch('/admin/payments/' + intentId + '/address-info')
+    .then(function(r){ return r.json(); })
+    .then(function(d) {
+      if (d.error) {
+        document.getElementById('addrInfoBody').innerHTML =
+          '<div style="text-align:center;color:#f87171;padding:30px;">' + d.error + '</div>';
+        return;
+      }
+      var hasActivity = parseInt(d.confirmedTxCount||0) > 0 || parseInt(d.mempoolTxCount||0) > 0;
+      var balColor = parseFloat(d.confirmedBalanceBtc||0) > 0 ? '#4ade80' : '#94a3b8';
+      var srcBadge = '<span style="background:rgba(56,189,248,.15);color:#38bdf8;border:1px solid rgba(56,189,248,.35);border-radius:20px;padding:2px 9px;font-size:10px;font-weight:700;">via ' + (d.source||'?') + '</span>';
+
+      function row(label, val, color, mono) {
+        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06);">'+
+          '<span style="font-size:12px;color:#94a3b8;">'+label+'</span>'+
+          '<span style="font-size:13px;font-weight:700;color:'+(color||'#e2e8f0')+';'+(mono?'font-family:monospace;':'')+'">'+val+'</span>'+
+          '</div>';
+      }
+
+      var html =
+        '<div style="margin-bottom:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">'+
+          '<span style="font-size:11px;color:#64748b;font-family:monospace;word-break:break-all;">'+d.address+'</span>'+
+          srcBadge+
+        '</div>'+
+        '<div style="background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.2);border-radius:8px;padding:16px;margin-bottom:16px;text-align:center;">'+
+          '<div style="font-size:11px;color:#94a3b8;margin-bottom:4px;">CONFIRMED BALANCE</div>'+
+          '<div style="font-size:28px;font-weight:900;color:'+balColor+';font-family:monospace;">'+(d.confirmedBalanceBtc||'0.00000000')+'</div>'+
+          '<div style="font-size:11px;color:#64748b;margin-top:2px;">'+currency+'</div>'+
+        '</div>'+
+        row('Total Received', (d.totalReceivedBtc||'0.00000000')+' '+currency, '#4ade80', true)+
+        row('Total Sent',     (parseFloat(d.totalSentSats||0)/1e8).toFixed(8)+' '+currency, '#f87171', true)+
+        (parseFloat(d.unconfirmedBtc||0) > 0
+          ? row('Unconfirmed (mempool)', (d.unconfirmedBtc)+' '+currency, '#fbbf24', true)
+          : '') +
+        row('Confirmed Txs', (d.confirmedTxCount||0).toString(), '#e2e8f0')+
+        (parseInt(d.mempoolTxCount||0) > 0
+          ? row('Pending in Mempool', d.mempoolTxCount+' tx(s)', '#fbbf24')
+          : '')+
+        (hasActivity ? '' :
+          '<div style="text-align:center;padding:14px 0 4px;color:#64748b;font-size:12px;">&#9898; No transactions found on this address yet</div>');
+
+      document.getElementById('addrInfoBody').innerHTML = html;
+    })
+    .catch(function() {
+      document.getElementById('addrInfoBody').innerHTML =
+        '<div style="text-align:center;color:#f87171;padding:30px;">Failed to fetch blockchain data. API may be temporarily unavailable.</div>';
+    });
+}
+function closeAddrInfo(){document.getElementById('addrInfoModal').classList.remove('open');}
+document.getElementById('addrInfoModal').addEventListener('click',function(e){if(e.target===this)closeAddrInfo();});
+
 <% if(filter==='review'||filter==='verifying'){%>setTimeout(function(){window.location.reload();},45000);<% } %>
 </script>
 
