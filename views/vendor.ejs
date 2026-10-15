@@ -285,6 +285,20 @@ details.tidy-panel[open] > summary::after {
                         </div>
                     </div>
 
+                    <div style="display: flex; gap: 15px;">
+                        <div class="form-group" style="flex: 1;">
+                            <label>Discount % <span style="font-weight: normal; font-size: 11px; color: #e53e3e;">(0 = no discount)</span></label>
+                            <input type="number" step="1" min="0" max="99" name="discount_percent" class="form-control" placeholder="e.g. 20" value="0">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label>Delivery Type</label>
+                            <select name="delivery_type" class="form-control" style="border: 1px solid #ccc; padding: 8px; border-radius: 2px;">
+                                <option value="Digital">💻 Digital (Instant Delivery)</option>
+                                <option value="Physical">📦 Physical / Shipping</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <div class="form-group">
                         <label>Description</label>
                         <textarea name="description" id="add_description_hidden" style="display:none;" required></textarea>
@@ -299,14 +313,6 @@ details.tidy-panel[open] > summary::after {
                     <div class="form-group">
                         <label>Tier/Type</label>
                         <input type="text" name="tier" class="form-control" placeholder="e.g. Standard, Premium">
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Delivery Type</label>
-                        <select name="delivery_type" class="form-control" style="border: 1px solid #ccc; padding: 8px; border-radius: 2px;">
-                            <option value="Digital">💻 Digital (Instant Delivery)</option>
-                            <option value="Physical">📦 Physical / Shipping</option>
-                        </select>
                     </div>
                     
                     <button type="submit" class="btn btn-purple">Add Listing</button>
@@ -490,6 +496,20 @@ details.tidy-panel[open] > summary::after {
                 </div>
             </div>
 
+            <div style="display: flex; gap: 15px;">
+                <div class="form-group" style="flex: 1;">
+                    <label>Discount % <span style="font-weight: normal; font-size: 11px; color: #e53e3e;">(0 = no discount)</span></label>
+                    <input type="number" step="1" min="0" max="99" name="discount_percent" id="edit_discount" class="form-control" placeholder="e.g. 20" value="0">
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label>Delivery Type</label>
+                    <select name="delivery_type" id="edit_delivery_type" class="form-control" style="border: 1px solid #ccc; padding: 8px; border-radius: 2px;">
+                        <option value="Digital">💻 Digital (Instant Delivery)</option>
+                        <option value="Physical">📦 Physical / Shipping</option>
+                    </select>
+                </div>
+            </div>
+
             <div class="form-group">
                 <label>Description</label>
                 <textarea name="description" id="edit_description_hidden" style="display:none;" required></textarea>
@@ -560,6 +580,11 @@ function openEditModal(product) {
     document.getElementById('edit_category').value = product.category;
     document.getElementById('edit_price').value = product.price;
     document.getElementById('edit_limit').value = product.limit_amount;
+    document.getElementById('edit_discount').value = product.discount_percent || 0;
+    
+    // Set delivery type
+    var deliveryEl = document.getElementById('edit_delivery_type');
+    if (deliveryEl) deliveryEl.value = product.delivery_type || 'Digital';
     
     // Set Quill content safely
     editDescQuill.clipboard.dangerouslyPasteHTML(product.description || '');

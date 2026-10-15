@@ -380,6 +380,11 @@ function initializeSchema() {
             WHERE is_vendor = 1 AND (category IS NULL OR category = '')
         `, (err) => {});
 
+        // Add discount_percent to products table for vendor discount system
+        db.run(`ALTER TABLE products ADD COLUMN discount_percent REAL DEFAULT 0`, (err) => {
+            // Ignore error if column already exists
+        });
+
         db.run(`CREATE TABLE IF NOT EXISTS address_pool (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             currency TEXT,
@@ -1078,8 +1083,10 @@ app.post('/cart/add', (req, res) => {
             let total = 0;
             const cartItems = (products || []).map(p => {
                 const q = req.session.cart[p.id];
-                total += (p.price * q);
-                return { id: p.id, name: p.name, image: p.image, price: p.price, quantity: q };
+                const discPct = parseFloat(p.discount_percent) || 0;
+                const effectivePrice = discPct > 0 ? parseFloat((p.price * (1 - discPct / 100)).toFixed(2)) : p.price;
+                total += (effectivePrice * q);
+                return { id: p.id, name: p.name, image: p.image, price: effectivePrice, originalPrice: p.price, discountPercent: discPct, quantity: q };
             });
             return res.json({ success: true, cartCount: cartCount, cartItems: cartItems, total: total });
         });
@@ -1123,8 +1130,10 @@ app.get('/cart', (req, res) => {
         let total = 0;
         const cartItems = (products || []).map(p => {
             const qty = cartObj[p.id];
-            total += (p.price * qty);
-            return { ...p, quantity: qty };
+            const discPct = parseFloat(p.discount_percent) || 0;
+            const effectivePrice = discPct > 0 ? parseFloat((p.price * (1 - discPct / 100)).toFixed(2)) : p.price;
+            total += (effectivePrice * qty);
+            return { ...p, effectivePrice, discountPercent: discPct, quantity: qty };
         });
         res.render('cart', { cartItems, total });
     });
@@ -1146,8 +1155,10 @@ app.get('/checkout', requireAuth, (req, res) => {
         let total = 0;
         const cartItems = (products || []).map(p => {
             const qty = cartObj[p.id];
-            total += (p.price * qty);
-            return { ...p, quantity: qty };
+            const discPct = parseFloat(p.discount_percent) || 0;
+            const effectivePrice = discPct > 0 ? parseFloat((p.price * (1 - discPct / 100)).toFixed(2)) : p.price;
+            total += (effectivePrice * qty);
+            return { ...p, effectivePrice, discountPercent: discPct, quantity: qty };
         });
         res.render('checkout', { cartItems, total });
     });
@@ -1216,9 +1227,13 @@ app.post('/checkout', requireAuth, (req, res) => {
                             // Calculate total USD manually since we don't have it here yet, just assuming product.price for now (or doing it correctly)
                             // We need full total. Let's get total from products
                             const placeholders = productIds.map(() => '?').join(',');
-                            db.all(`SELECT id, price FROM products WHERE id IN (${placeholders})`, productIds, async (err, prods) => {
+                            db.all(`SELECT id, price, discount_percent FROM products WHERE id IN (${placeholders})`, productIds, async (err, prods) => {
                                 let totalUsd = 0;
-                                prods.forEach(p => totalUsd += (p.price * cartObj[p.id]));
+                                prods.forEach(p => {
+                                    const discPct = parseFloat(p.discount_percent) || 0;
+                                    const effPrice = discPct > 0 ? p.price * (1 - discPct / 100) : p.price;
+                                    totalUsd += (effPrice * cartObj[p.id]);
+                                });
                                 
                                 const cryptoValue = totalUsd / (rates[payment_method] || 1);
                                 
@@ -2448,9 +2463,11 @@ app.post('/vendor/products/add', requireVendor, imageUpload.single('product_imag
     const { name, description, price, limit_amount, tier, delivery_type } = req.body;
     const category = req.body.category || req.session.user.category || 'General';
     const image = req.file ? '/images/' + req.file.filename : '/images/ai-asset.svg';
+    // Clamp discount_percent between 0 and 99
+    const discountPercent = Math.min(99, Math.max(0, parseFloat(req.body.discount_percent) || 0));
     db.run(
-        "INSERT INTO products (vendor_id, name, description, price, limit_amount, image, tier, category, delivery_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        [req.session.user.id, name, description, price, limit_amount, image, tier, category, delivery_type || 'Digital'],
+        "INSERT INTO products (vendor_id, name, description, price, limit_amount, image, tier, category, delivery_type, discount_percent) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        [req.session.user.id, name, description, price, limit_amount, image, tier, category, delivery_type || 'Digital', discountPercent],
         (err) => {
             res.redirect('/vendor');
         }
@@ -2666,12 +2683,14 @@ app.post('/vendor/order/:id/tracking', requireVendor, (req, res) => {
 
 app.post('/vendor/products/edit/:id', requireVendor, imageUpload.single('product_image'), (req, res) => {
     const { name, description, price, limit_amount, tier, category, delivery_type } = req.body;
+    // Clamp discount_percent between 0 and 99
+    const discountPercent = Math.min(99, Math.max(0, parseFloat(req.body.discount_percent) || 0));
     
     db.get("SELECT id, image FROM products WHERE id = ? AND vendor_id = ?", [req.params.id, req.session.user.id], (err, product) => {
         if (!product) return res.redirect('/vendor');
         
-        const updateParams = [name, description, price, limit_amount, tier, category, delivery_type || 'Digital'];
-        let query = "UPDATE products SET name = ?, description = ?, price = ?, limit_amount = ?, tier = ?, category = ?, delivery_type = ?";
+        const updateParams = [name, description, price, limit_amount, tier, category, delivery_type || 'Digital', discountPercent];
+        let query = "UPDATE products SET name = ?, description = ?, price = ?, limit_amount = ?, tier = ?, category = ?, delivery_type = ?, discount_percent = ?";
         
         if (req.file) {
             query += ", image = ?";
