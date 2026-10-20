@@ -278,9 +278,11 @@
     </div>
 
     <!-- LOAD MORE -->
-    <div style="text-align: center; margin-bottom: 50px;">
-        <button class="btn" style="background: #10b981; color: white; padding: 14px 45px; border: none; border-radius: 4px; font-weight: bold; font-size: 16px; cursor: pointer; text-transform: uppercase;">Load More</button>
-    </div>
+    <% if (hasMore) { %>
+        <div style="text-align: center; margin-bottom: 50px;">
+            <a href="/?page=<%= page + 1 %>" class="btn" style="background: #10b981; color: white; padding: 14px 45px; border: none; border-radius: 4px; font-weight: bold; font-size: 16px; cursor: pointer; text-transform: uppercase; text-decoration: none; display: inline-block;">Load More</a>
+        </div>
+    <% } %>
 
     <!-- BOTTOM BANNERS -->
     <%- include('_advert_carousel', { advert_count: 2, pageKey: 'home' }) %>

@@ -109,14 +109,16 @@ function sanitizeHtmlMarkup(html) {
     let clean = html.replace(/<\s*(script|style|iframe|object|embed|svg|math|form|input|button|textarea|meta|link)\b[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, '');
     clean = clean.replace(/<\s*(script|style|iframe|object|embed|svg|math|form|input|button|textarea|meta|link)\b[^>]*\/?>/gi, '');
     clean = clean.replace(/\s*on\w+\s*=\s*(?:'[^']*'|"[^"]*"|[^\s>]+)/gi, '');
-    clean = clean.replace(/\b(href|src)\s*=\s*([\"\'])\s*(javascript:|vbscript:|data:)[^\"\']*\2/gi, '$1="#"');
-    clean = clean.replace(/\b(href|src)\s*=\s*(javascript:|vbscript:|data:)[^\s>]+/gi, '$1="#"');
-    const allowedTags = /^(a|b|blockquote|br|em|h1|h2|h3|h4|hr|i|li|ol|p|s|span|strike|strong|u|ul)$/i;
+    clean = clean.replace(/\b(href|src)\s*=\s*([\"'])\s*(javascript:|vbscript:)[^\"']*\2/gi, '$1="#"');
+    clean = clean.replace(/\b(href|src)\s*=\s*(javascript:|vbscript:)[^\s>]+/gi, '$1="#"');
+    const allowedTags = /^(a|b|blockquote|br|em|h1|h2|h3|h4|hr|i|img|li|ol|p|s|span|strike|strong|u|ul)$/i;
     clean = clean.replace(/<\/?([a-z0-9]+)\b([^>]*)>/gi, (match, tagName, attrs) => {
-        if (!allowedTags.test(tagName)) return '';
-        if (match.startsWith('</')) return `</${tagName.toLowerCase()}>`;
+        const lowerTag = tagName.toLowerCase();
+        if (!allowedTags.test(lowerTag)) return '';
+        if (match.startsWith('</')) return `</${lowerTag}>`;
+
         let cleanAttrs = '';
-        if (tagName.toLowerCase() === 'a') {
+        if (lowerTag === 'a') {
             const hrefMatch = attrs.match(/\bhref\s*=\s*(['"])(.*?)\1/i);
             if (hrefMatch) {
                 const url = hrefMatch[2].trim();
@@ -126,7 +128,31 @@ function sanitizeHtmlMarkup(html) {
             }
             cleanAttrs += ' rel="noopener noreferrer"';
         }
-        return `<${tagName.toLowerCase()}${cleanAttrs}>`;
+
+        if (lowerTag === 'img') {
+            const srcMatch = attrs.match(/\bsrc\s*=\s*(['"])(.*?)\1/i);
+            const altMatch = attrs.match(/\balt\s*=\s*(['"])(.*?)\1/i);
+            const titleMatch = attrs.match(/\btitle\s*=\s*(['"])(.*?)\1/i);
+            const src = srcMatch ? srcMatch[2].trim() : '';
+
+            if (!src || /^(javascript:|vbscript:)/i.test(src)) {
+                return '';
+            }
+
+            const safeSrc = /^(https?:\/\/|\/|#)/i.test(src) || src.startsWith('data:image/') ? src : '';
+            if (!safeSrc) return '';
+
+            cleanAttrs += ` src="${encodeURI(safeSrc)}"`;
+            if (altMatch) {
+                cleanAttrs += ` alt="${altMatch[2].replace(/["<>]/g, '')}"`;
+            }
+            if (titleMatch) {
+                cleanAttrs += ` title="${titleMatch[2].replace(/["<>]/g, '')}"`;
+            }
+            return `<img${cleanAttrs}>`;
+        }
+
+        return `<${lowerTag}${cleanAttrs}>`;
     });
     return clean;
 }
@@ -178,7 +204,20 @@ app.use(session({
 
 // Setup Multer for standard file uploads with extension & MIME whitelists and 5MB size limit
 const ALLOWED_IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
+const ALLOWED_VIDEO_EXTS = ['.mp4', '.webm', '.ogg'];
 const ALLOWED_IMAGE_MIMES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+const ALLOWED_VIDEO_MIMES = ['video/mp4', 'video/webm', 'video/ogg'];
+
+function standardMediaFileFilter(req, file, cb) {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const isImage = ALLOWED_IMAGE_EXTS.includes(ext) && ALLOWED_IMAGE_MIMES.includes(file.mimetype);
+    const isVideo = ALLOWED_VIDEO_EXTS.includes(ext) && ALLOWED_VIDEO_MIMES.includes(file.mimetype);
+
+    if (!isImage && !isVideo) {
+        return cb(new Error('Disallowed file type. Allowed: .jpg, .jpeg, .png, .webp, .gif, .mp4, .webm, .ogg'));
+    }
+    cb(null, true);
+}
 
 function standardImageFileFilter(req, file, cb) {
     const ext = path.extname(file.originalname).toLowerCase();
@@ -244,13 +283,14 @@ const proofsStorage = multer.diskStorage({
     },
     filename: function (req, file, cb) {
         const ext = path.extname(file.originalname).toLowerCase();
-        cb(null, 'proof-' + Date.now() + '-' + Math.round(Math.random() * 1E9) + (ALLOWED_IMAGE_EXTS.includes(ext) ? ext : '.jpg'));
+        const safeExt = ALLOWED_IMAGE_EXTS.concat(ALLOWED_VIDEO_EXTS).includes(ext) ? ext : '.jpg';
+        cb(null, 'proof-' + Date.now() + '-' + Math.round(Math.random() * 1E9) + safeExt);
     }
 });
 const proofsUpload = multer({
     storage: proofsStorage,
-    limits: { fileSize: 5 * 1024 * 1024 },
-    fileFilter: standardImageFileFilter
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: standardMediaFileFilter
 });
 
 const reviewsDir = isVercel ? '/tmp/reviews' : path.join(__dirname, 'public', 'images', 'reviews');
@@ -261,13 +301,14 @@ const reviewsStorage = multer.diskStorage({
     },
     filename: function (req, file, cb) {
         const ext = path.extname(file.originalname).toLowerCase();
-        cb(null, 'review-' + Date.now() + '-' + Math.round(Math.random() * 1E9) + (ALLOWED_IMAGE_EXTS.includes(ext) ? ext : '.jpg'));
+        const safeExt = ALLOWED_IMAGE_EXTS.concat(ALLOWED_VIDEO_EXTS).includes(ext) ? ext : '.jpg';
+        cb(null, 'review-' + Date.now() + '-' + Math.round(Math.random() * 1E9) + safeExt);
     }
 });
 const reviewsUpload = multer({
     storage: reviewsStorage,
-    limits: { fileSize: 5 * 1024 * 1024 },
-    fileFilter: standardImageFileFilter
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: standardMediaFileFilter
 });
 
 // Database Initialization
@@ -749,6 +790,7 @@ function initializeSchema() {
 
         // Add is_vip column to users if not exists
         db.run("ALTER TABLE users ADD COLUMN is_vip INTEGER DEFAULT 0", (err) => {});
+        db.run("ALTER TABLE users ADD COLUMN is_partner INTEGER DEFAULT 0", (err) => {});
 
         // Seed forum posts for simulation (if empty)
         db.get("SELECT COUNT(*) AS count FROM forum_posts", (err, row) => {
@@ -824,7 +866,9 @@ app.use((req, res, next) => {
     res.locals.user = req.session.user || null;
     res.locals.cartCount = req.session.cart ? Object.keys(req.session.cart).length : 0;
     res.locals.csrfToken = req.session.csrfToken;
+    res.locals.flash = req.session.flash || null;
     res.locals.currentHost = (req.protocol || 'http') + '://' + req.get('host') + '/';
+    if (req.session.flash) delete req.session.flash;
     
     // Fetch active adverts, site settings, and user purchase history
     db.all("SELECT * FROM adverts WHERE is_active = 1", (err, adverts) => {
@@ -866,6 +910,7 @@ const requireAuth = (req, res, next) => {
         if (req.path.startsWith('/api/') || (req.headers.accept && req.headers.accept.includes('application/json'))) {
             return res.status(401).json({ error: 'Not authenticated. Please log in.' });
         }
+        req.session.flash = { type: 'warning', message: 'Please log in to continue.' };
         req.session.returnTo = req.originalUrl;
         return res.redirect('/login');
     }
@@ -874,6 +919,7 @@ const requireAuth = (req, res, next) => {
 
 const requireAdmin = (req, res, next) => {
     if (!req.session.user) {
+        req.session.flash = { type: 'warning', message: 'Please log in to continue.' };
         req.session.returnTo = req.originalUrl;
         return res.redirect('/login');
     }
@@ -910,6 +956,12 @@ const requireStepUp = (req, res, next) => {
 
 const requireCsrf = (req, res, next) => {
     if (['POST', 'PUT', 'DELETE'].includes(req.method)) {
+        const isMultipartBeforeParse = req.headers && req.headers['content-type'] && req.headers['content-type'].includes('multipart/form-data') && !(req.body && req.body._csrf);
+
+        if (isMultipartBeforeParse) {
+            return next();
+        }
+
         const token = (req.body && req.body._csrf) || req.headers['x-csrf-token'] || req.query._csrf;
         if (!token || typeof token !== 'string' || !req.session.csrfToken || token.length !== req.session.csrfToken.length) {
             return res.status(403).send('Invalid CSRF token');
@@ -936,19 +988,35 @@ app.use(requireCsrf);
 // --- ROUTES ---
 
 app.get('/', (req, res) => {
+    const page = Math.max(1, parseInt(req.query.page || '1', 10));
+    const pageSize = 9;
+    const offset = (page - 1) * pageSize;
+
     db.all("SELECT products.*, users.vendor_name, users.username FROM products LEFT JOIN users ON products.vendor_id = users.id ORDER BY products.is_featured DESC, products.id DESC LIMIT 6", (err, products) => {
-        db.all("SELECT * FROM users WHERE is_vendor = 1 AND vendor_status = 'approved' ORDER BY id DESC LIMIT 24", (vErr, vendors) => {
-            const featuredCategories = [
-                { name: 'AI Tools', emoji: '⚙️' },
-                { name: 'Design', emoji: '🎨' },
-                { name: 'Music', emoji: '🎵' },
-                { name: 'Education', emoji: '📚' }
-            ];
-            const testimonials = [
-                { name: 'Aster', quote: 'The delivery was instant and the seller was responsive.' },
-                { name: 'K', quote: 'A calm, privacy-first marketplace that feels premium.' }
-            ];
-            res.render('index', { products: products || [], vendors: vendors || [], featuredCategories, testimonials });
+        db.get("SELECT COUNT(*) AS total FROM users WHERE is_vendor = 1 AND vendor_status = 'approved'", (countErr, countRow) => {
+            db.all("SELECT * FROM users WHERE is_vendor = 1 AND vendor_status = 'approved' ORDER BY created_at ASC, id ASC LIMIT ? OFFSET ?", [pageSize, offset], (vErr, vendors) => {
+                const featuredCategories = [
+                    { name: 'AI Tools', emoji: '⚙️' },
+                    { name: 'Design', emoji: '🎨' },
+                    { name: 'Music', emoji: '🎵' },
+                    { name: 'Education', emoji: '📚' }
+                ];
+                const testimonials = [
+                    { name: 'Aster', quote: 'The delivery was instant and the seller was responsive.' },
+                    { name: 'K', quote: 'A calm, privacy-first marketplace that feels premium.' }
+                ];
+                const totalVendors = countRow ? Number(countRow.total || 0) : 0;
+                const hasMore = (offset + (vendors ? vendors.length : 0)) < totalVendors;
+                res.render('index', {
+                    products: products || [],
+                    vendors: vendors || [],
+                    featuredCategories,
+                    testimonials,
+                    page,
+                    hasMore,
+                    totalVendors
+                });
+            });
         });
     });
 });
@@ -1516,9 +1584,9 @@ app.post('/partner/register', (req, res) => {
     }
     const username = email.split('@')[0]; // Quick username generation
     const hash = bcrypt.hashSync(password, 10);
-    db.run("INSERT INTO users (username, email, password, btc_wallet) VALUES (?, ?, ?, ?)", [username, email, hash, btc_wallet], function(err) {
+    db.run("INSERT INTO users (username, email, password, btc_wallet, is_partner) VALUES (?, ?, ?, ?, 1)", [username, email, hash, btc_wallet], function(err) {
         if (err) return res.render('partner_auth', { error: 'Email already exists.' });
-        req.session.user = { id: this.lastID, username, role: 'client', is_vendor: 0, is_vip: 0 };
+        req.session.user = { id: this.lastID, username, role: 'client', is_vendor: 0, is_vip: 0, partner_registered: true };
         res.redirect('/partner/dashboard');
     });
 });
@@ -1539,8 +1607,9 @@ app.post('/partner/login', (req, res) => {
     db.get("SELECT * FROM users WHERE email = ? OR username = ?", [email, email], (err, user) => {
         if (user && bcrypt.compareSync(password, user.password)) {
             loginRateLimiter.recordSuccess(rateLimitKey);
+            db.run("UPDATE users SET is_partner = 1 WHERE id = ?", [user.id]);
             req.session.regenerate((err) => {
-                req.session.user = { id: user.id, username: user.username, role: user.role, is_vendor: user.is_vendor, is_vip: user.is_vip || 0 };
+                req.session.user = { id: user.id, username: user.username, role: user.role, is_vendor: user.is_vendor, is_vip: user.is_vip || 0, partner_registered: true };
                 return res.redirect('/partner/dashboard');
             });
         } else {
@@ -1691,6 +1760,7 @@ app.post('/login', (req, res) => {
                     role: user.role, 
                     is_vendor: user.is_vendor, 
                     is_vip: user.is_vip || 0,
+                    partner_registered: !!user.is_partner,
                     admin_role: user.admin_role || (user.role === 'admin' ? 'SUPER_ADMIN' : null),
                     vendor_name: user.vendor_name,
                     vendor_description: user.vendor_description,
@@ -1881,7 +1951,7 @@ app.get('/dashboard', requireAuth, (req, res) => {
     });
 });
 
-app.post('/order/complete/:id', requireAuth, reviewsUpload.single('review_photo'), (req, res) => {
+app.post('/order/complete/:id', requireAuth, reviewsUpload.single('review_photo'), requireCsrf, (req, res) => {
     const { rating, comment } = req.body;
     const orderId = req.params.id;
     const userId = req.session.user.id;
@@ -2337,7 +2407,10 @@ app.get('/about', (req, res) => {
 });
 
 app.get('/job', (req, res) => {
-    // Generate dynamic consistent top partners using seeded PRNG
+    if (req.session && req.session.user && req.session.user.partner_registered) {
+        return res.redirect('/partner/dashboard');
+    }
+
     function mulberry32(a) {
         return function() {
           var t = a += 0x6D2B79F5;
@@ -2355,7 +2428,6 @@ app.get('/job', (req, res) => {
         const prefixes = ["Slis", "Wayz", "Blak", "Thr0", "Grab", "Trgo", "Mork", "Rash", "Hall", "Conn", "Vect", "Zork", "Nixx", "Flex", "Bane", "Kilo", "Jaxx"];
         
         let availablePrefixes = [...prefixes];
-        // Fisher-Yates shuffle with PRNG
         for (let i = availablePrefixes.length - 1; i > 0; i--) {
             const j = Math.floor(prng() * (i + 1));
             [availablePrefixes[i], availablePrefixes[j]] = [availablePrefixes[j], availablePrefixes[i]];
@@ -2378,18 +2450,75 @@ app.get('/job', (req, res) => {
     }
 
     const today = new Date().toISOString().split('T')[0];
-    
-    // Get ISO week string for weekly seed
     const d = new Date();
     d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7));
     const yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
     const weekNo = Math.ceil(( ( (d - yearStart) / 86400000) + 1)/7);
     const weekStr = d.getUTCFullYear() + "-W" + weekNo;
 
-    const topDailyPartners = generateTopPartners("daily" + today, 10, 40, 280);
-    const topWeeklyPartners = generateTopPartners("weekly" + weekStr, 10, 400, 2500);
+    const defaultTopDailyPartners = generateTopPartners("daily" + today, 10, 40, 280);
+    const defaultTopWeeklyPartners = generateTopPartners("weekly" + weekStr, 10, 400, 2500);
 
-    res.render('job', { topDailyPartners, topWeeklyPartners });
+    db.all(`SELECT setting_key, setting_value FROM site_settings WHERE setting_key IN ('job_top_daily_partners', 'job_top_weekly_partners')`, (err, rows) => {
+        const settings = {};
+        (rows || []).forEach(row => {
+            settings[row.setting_key] = row.setting_value;
+        });
+
+        let topDailyPartners = defaultTopDailyPartners;
+        let topWeeklyPartners = defaultTopWeeklyPartners;
+
+        try {
+            if (settings.job_top_daily_partners) {
+                const parsed = JSON.parse(settings.job_top_daily_partners);
+                if (Array.isArray(parsed) && parsed.length) topDailyPartners = parsed;
+            }
+            if (settings.job_top_weekly_partners) {
+                const parsed = JSON.parse(settings.job_top_weekly_partners);
+                if (Array.isArray(parsed) && parsed.length) topWeeklyPartners = parsed;
+            }
+        } catch (parseErr) {
+            console.warn('Failed to parse job partner settings:', parseErr.message);
+        }
+
+        res.render('job', { topDailyPartners, topWeeklyPartners });
+    });
+});
+
+app.post('/admin/job-partners', requireAdmin, requireCsrf, (req, res) => {
+    const parsePartners = (value, label) => {
+        if (!value || !value.trim()) return [];
+        try {
+            const parsed = JSON.parse(value);
+            if (!Array.isArray(parsed)) throw new Error(`${label} must be a JSON array.`);
+            const cleaned = parsed.filter(item => item && typeof item.name === 'string' && Number.isFinite(Number(item.usd)));
+            return cleaned.map(item => ({ name: item.name.trim(), usd: Number(item.usd) }));
+        } catch (err) {
+            throw new Error(`Invalid ${label} JSON: ${err.message}`);
+        }
+    };
+
+    try {
+        const daily = parsePartners(req.body.daily_partners, 'Daily partners');
+        const weekly = parsePartners(req.body.weekly_partners, 'Weekly partners');
+
+        db.serialize(() => {
+            const stmt = db.prepare(`
+                INSERT INTO site_settings (setting_key, setting_value)
+                VALUES (?, ?)
+                ON CONFLICT(setting_key) DO UPDATE SET setting_value = excluded.setting_value
+            `);
+            stmt.run('job_top_daily_partners', JSON.stringify(daily));
+            stmt.run('job_top_weekly_partners', JSON.stringify(weekly));
+            stmt.finalize(() => {
+                req.session.flash = { type: 'success', message: 'Top partner rankings updated.' };
+                res.redirect('/admin');
+            });
+        });
+    } catch (err) {
+        req.session.flash = { type: 'error', message: err.message };
+        res.redirect('/admin');
+    }
 });
 
 app.post('/support/send', requireAuth, (req, res) => {
@@ -2419,6 +2548,7 @@ app.post('/support/send', requireAuth, (req, res) => {
 
 function requireVendor(req, res, next) {
     if (!req.session.user) {
+        req.session.flash = { type: 'warning', message: 'Please log in to continue.' };
         req.session.returnTo = req.originalUrl;
         return res.redirect('/login');
     }
@@ -2426,8 +2556,10 @@ function requireVendor(req, res, next) {
         next();
     } else {
         if (req.session.user.vendor_status === 'pending') {
+            req.session.flash = { type: 'info', message: 'Your vendor application is still pending approval.' };
             res.redirect('/apply-vendor');
         } else {
+            req.session.flash = { type: 'info', message: 'Become a vendor to access this area.' };
             res.redirect('/seller-dashboard');
         }
     }
@@ -2459,7 +2591,7 @@ app.get('/vendor', requireVendor, (req, res) => {
     });
 });
 
-app.post('/vendor/products/add', requireVendor, imageUpload.single('product_image'), (req, res) => {
+app.post('/vendor/products/add', requireVendor, imageUpload.single('product_image'), requireCsrf, (req, res) => {
     const { name, description, price, limit_amount, tier, delivery_type } = req.body;
     const category = req.body.category || req.session.user.category || 'General';
     const image = req.file ? '/images/' + req.file.filename : '/images/ai-asset.svg';
@@ -2474,7 +2606,7 @@ app.post('/vendor/products/add', requireVendor, imageUpload.single('product_imag
     );
 });
 
-app.post('/vendor/proofs/add', requireVendor, proofsUpload.single('proof_file'), (req, res) => {
+app.post('/vendor/proofs/add', requireVendor, proofsUpload.single('proof_file'), requireCsrf, (req, res) => {
     if (!req.file) return res.redirect('/vendor');
     
     const type = req.file.mimetype.startsWith('video/') ? 'video' : 'image';
@@ -2533,7 +2665,7 @@ app.post('/vendor/adverts/delete/:id', requireVendor, requireCsrf, (req, res) =>
         }
     });
 });
-app.post('/vendor/profile/edit', requireVendor, imageUpload.fields([{ name: 'vendor_logo', maxCount: 1 }, { name: 'vendor_banner', maxCount: 1 }, { name: 'vendor_video', maxCount: 1 }]), (req, res) => {
+app.post('/vendor/profile/edit', requireVendor, imageUpload.fields([{ name: 'vendor_logo', maxCount: 1 }, { name: 'vendor_banner', maxCount: 1 }, { name: 'vendor_video', maxCount: 1 }]), requireCsrf, (req, res) => {
     const { vendor_name, vendor_description, vendor_short_description, created_at, btc_wallet, category } = req.body;
     
     let updates = ["vendor_name = ?", "vendor_description = ?", "vendor_short_description = ?"];
@@ -2598,7 +2730,7 @@ app.post('/vendor/profile/edit', requireVendor, imageUpload.fields([{ name: 'ven
     });
 });
 
-app.post('/vendor/simulate-review', requireVendor, upload.single('review_media'), (req, res) => {
+app.post('/vendor/simulate-review', requireVendor, upload.single('review_media'), requireCsrf, (req, res) => {
     const { custom_buyer_name, custom_buyer_role, rating, product_id, custom_date, comment } = req.body;
     
     // We parse custom_date and add arbitrary time for DATETIME column
@@ -2681,7 +2813,7 @@ app.post('/vendor/order/:id/tracking', requireVendor, (req, res) => {
     });
 });
 
-app.post('/vendor/products/edit/:id', requireVendor, imageUpload.single('product_image'), (req, res) => {
+app.post('/vendor/products/edit/:id', requireVendor, imageUpload.single('product_image'), requireCsrf, (req, res) => {
     const { name, description, price, limit_amount, tier, category, delivery_type } = req.body;
     // Clamp discount_percent between 0 and 99
     const discountPercent = Math.min(99, Math.max(0, parseFloat(req.body.discount_percent) || 0));
@@ -3556,7 +3688,7 @@ app.post('/admin/vendors/create', requireAdmin, (req, res) => {
     );
 });
 
-app.post('/admin/simulate-review', requireAdmin, upload.single('review_media'), (req, res) => {
+app.post('/admin/simulate-review', requireAdmin, upload.single('review_media'), requireCsrf, (req, res) => {
     const { vendor_id, custom_buyer_name, custom_buyer_role, rating, custom_date, comment, product_id } = req.body;
     
     const dateStr = custom_date.includes('T') ? custom_date : custom_date + ' 12:00:00';
@@ -3595,7 +3727,7 @@ app.post('/admin/reviews/bulk-import-preview', requireAdmin, (req, res) => {
     }
 });
 
-app.post('/admin/reviews/bulk-import-finalize', requireAdmin, upload.any(), (req, res) => {
+app.post('/admin/reviews/bulk-import-finalize', requireAdmin, upload.any(), requireCsrf, (req, res) => {
     const { vendor_id, product_ids, ratings, comments, usernames, badges, dates } = req.body;
     
     if (!product_ids) return res.redirect('/admin');
@@ -3610,6 +3742,8 @@ app.post('/admin/reviews/bulk-import-finalize', requireAdmin, upload.any(), (req
     const badgesArray = arr(badges);
     const datesArray = arr(dates);
     
+    db.all("SELECT id FROM products WHERE vendor_id = ?", [vendor_id], (pErr, vendorProducts) => {
+    const vendorProductIds = (vendorProducts || []).map(p => p.id);
     const stmt = db.prepare("INSERT INTO reviews (vendor_id, product_id, rating, comment, custom_buyer_name, custom_buyer_role, custom_date, photo_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
     
     db.serialize(() => {
@@ -3624,9 +3758,15 @@ app.post('/admin/reviews/bulk-import-finalize', requireAdmin, upload.any(), (req
             const file = req.files && req.files.find(f => f.fieldname === expectedFieldName);
             const photoUrl = file ? `/uploads/${file.filename}` : null;
             
+            let chosenProductId = null;
+            if (productIdsArray[i] === 'random') {
+                if (vendorProductIds.length) chosenProductId = vendorProductIds[Math.floor(Math.random() * vendorProductIds.length)];
+            } else if (productIdsArray[i]) {
+                chosenProductId = parseInt(productIdsArray[i]);
+            }
             stmt.run(
                 vendor_id,
-                productIdsArray[i] ? parseInt(productIdsArray[i]) : null,
+                chosenProductId,
                 ratingsArray[i] || 5,
                 commentsArray[i] || "",
                 usernamesArray[i] || "Anonymous",
@@ -3638,6 +3778,7 @@ app.post('/admin/reviews/bulk-import-finalize', requireAdmin, upload.any(), (req
         stmt.finalize(() => {
             res.redirect('/admin');
         });
+    });
     });
 });
 
@@ -3687,7 +3828,7 @@ app.post('/admin/approve-vendor/:id', requireAdmin, (req, res) => {
     });
 });
 
-app.post('/admin/products/add', requireAdmin, imageUpload.single('product_image'), (req, res) => {
+app.post('/admin/products/add', requireAdmin, imageUpload.single('product_image'), requireCsrf, (req, res) => {
     const { name, description, price, limit_amount, tier, category } = req.body;
     const image = req.file ? '/images/' + req.file.filename : '/images/ai-asset.svg';
 
@@ -3719,7 +3860,7 @@ app.post('/admin/users/:id/role', requireAdmin, (req, res) => {
     });
 });
 
-app.post('/admin/upload-asset', requireAdmin, assetUpload.any(), (req, res) => {
+app.post('/admin/upload-asset', requireAdmin, assetUpload.any(), requireCsrf, (req, res) => {
     // Files are automatically saved to public/images by multer using their fieldnames
     res.redirect('/admin?assetUploaded=true');
 });

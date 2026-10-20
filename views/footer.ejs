@@ -91,6 +91,43 @@
             }
         });
     </script>
+
+    <!-- Job popup for guests: ~2x per 6 minutes, only when the register popup isn't showing -->
+    <div class="promo-overlay" id="jobPromoModalGuest">
+        <div class="promo-modal">
+            <button class="promo-close" onclick="closeGuestJobPromo()">×</button>
+            <div class="promo-image-container" style="background: #fdf2f8;">
+                <img src="/images/btc-wallet.png" alt="Start Earning" style="max-height: 120px;" onerror="this.src='/images/ai-asset.svg'">
+            </div>
+            <h2>START EARNING BTC</h2>
+            <p class="promo-subtitle"><strong>Become a TorMart Partner</strong></p>
+            <p class="promo-text">Get paid directly to your Bitcoin wallet.<br>No purchases or experience required!</p>
+            <div class="promo-buttons">
+                <a href="/job" class="promo-btn promo-btn-register" style="width: 100%;">View Job Details</a>
+            </div>
+        </div>
+    </div>
+    <script>
+        function closeGuestJobPromo() {
+            document.getElementById('jobPromoModalGuest').classList.remove('active');
+            localStorage.setItem('job_guest_popup_last_shown', Date.now());
+        }
+        (function () {
+            const cooldownMs = 3 * 60 * 1000;
+            function tryShow() {
+                const registerModal = document.getElementById('promoModal');
+                if (registerModal && registerModal.classList.contains('active')) return;
+                const last = parseInt(localStorage.getItem('job_guest_popup_last_shown') || '0');
+                if (Date.now() - last < cooldownMs) return;
+                document.getElementById('jobPromoModalGuest').classList.add('active');
+                localStorage.setItem('job_guest_popup_last_shown', Date.now());
+            }
+            window.addEventListener('DOMContentLoaded', () => {
+                setTimeout(tryShow, 12000);
+                setInterval(tryShow, 20000);
+            });
+        })();
+    </script>
     <% } %>
 
     <% if (typeof user !== 'undefined' && user && !user.is_vendor && !user.is_partner && typeof cartCount !== 'undefined' && cartCount === 0 && typeof hasPurchased !== 'undefined' && !hasPurchased) { %>

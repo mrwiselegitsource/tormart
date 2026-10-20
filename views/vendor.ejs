@@ -254,7 +254,7 @@ details.tidy-panel[open] > summary::after {
             
             <div class="form-panel">
                 <h3 style="margin-top: 0;">Add New Listing</h3>
-                <form action="/vendor/products/add?_csrf=<%= csrfToken %>" method="POST" enctype="multipart/form-data">
+                <form id="addProductForm" action="/vendor/products/add?_csrf=<%= csrfToken %>" method="POST" enctype="multipart/form-data">
                     <input type="hidden" name="_csrf" value="<%= csrfToken %>">
                     <div style="display: flex; gap: 15px;">
                         <div class="form-group" style="flex: 1;">
@@ -301,7 +301,7 @@ details.tidy-panel[open] > summary::after {
 
                     <div class="form-group">
                         <label>Description</label>
-                        <textarea name="description" id="add_description_hidden" style="display:none;" required></textarea>
+                        <textarea name="description" id="add_description_hidden" style="display:none;"></textarea>
                         <div id="add_description_editor"></div>
                     </div>
                     
@@ -512,7 +512,7 @@ details.tidy-panel[open] > summary::after {
 
             <div class="form-group">
                 <label>Description</label>
-                <textarea name="description" id="edit_description_hidden" style="display:none;" required></textarea>
+                <textarea name="description" id="edit_description_hidden" style="display:none;"></textarea>
                 <div id="edit_description_editor"></div>
             </div>
             
@@ -554,6 +554,24 @@ var vendorDescQuill = new Quill('#vendor_description_editor', quillOptions);
 var addDescQuill = new Quill('#add_description_editor', quillOptions);
 var editDescQuill = new Quill('#edit_description_editor', quillOptions);
 
+function syncQuillBeforeSubmit(quillInstance, hiddenFieldId, formId, label) {
+    var form = document.getElementById(formId);
+    var hiddenField = document.getElementById(hiddenFieldId);
+    if (!form || !hiddenField || !quillInstance) return;
+
+    form.addEventListener('submit', function(event) {
+        var content = quillInstance.root.innerHTML;
+        var plainText = quillInstance.getText().trim();
+        if (!plainText || content === '<p><br></p>' || content === '<p></p>') {
+            event.preventDefault();
+            alert('Please add a description before saving the ' + label + '.');
+            quillInstance.focus();
+            return;
+        }
+        hiddenField.value = content;
+    });
+}
+
 // Sync Quill to hidden textarea on profile form submit
 document.getElementById('vendorProfileForm').addEventListener('submit', function() {
     var content = vendorDescQuill.root.innerHTML;
@@ -561,19 +579,8 @@ document.getElementById('vendorProfileForm').addEventListener('submit', function
     document.getElementById('vendor_description_hidden').value = content;
 });
 
-// Sync Quill to hidden textarea on add product form submit
-document.querySelector('form[action="/vendor/products/add"]').addEventListener('submit', function() {
-    var content = addDescQuill.root.innerHTML;
-    if (content === '<p><br></p>') content = '';
-    document.getElementById('add_description_hidden').value = content;
-});
-
-// Sync Quill to hidden textarea on edit product form submit
-document.getElementById('editProductForm').addEventListener('submit', function() {
-    var content = editDescQuill.root.innerHTML;
-    if (content === '<p><br></p>') content = '';
-    document.getElementById('edit_description_hidden').value = content;
-});
+syncQuillBeforeSubmit(addDescQuill, 'add_description_hidden', 'addProductForm', 'listing');
+syncQuillBeforeSubmit(editDescQuill, 'edit_description_hidden', 'editProductForm', 'listing');
 
 function openEditModal(product) {
     document.getElementById('edit_name').value = product.name;

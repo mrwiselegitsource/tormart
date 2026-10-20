@@ -270,12 +270,37 @@ details.tidy-panel[open] > summary::after {
                 </div>
                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 15px;">
                     <div class="form-group">
+                        <label>Site Favicon (favicon.ico)</label>
+                        <input type="file" name="favicon.ico" class="form-control" accept="image/png, image/x-icon, image/vnd.microsoft.icon">
+                    </div>
+                    <div class="form-group">
                         <label>Bitcoin Guide Banner (bitcoin-banner.jpg)</label>
                         <input type="file" name="bitcoin-banner.jpg" class="form-control" accept="image/png, image/jpeg">
                     </div>
                 </div>
 
                 <button type="submit" class="btn" style="background: #3b82f6; color: white; border: none; padding: 10px 20px; font-weight: bold; border-radius: 2px; cursor: pointer;">Upload Selected Assets</button>
+            </form>
+        </div>
+    </details>
+
+    <details class="tidy-panel">
+        <summary>Top Referral Partners</summary>
+        <div class="tidy-content">
+            <p style="font-size: 13px; color: #666; margin-bottom: 20px;">Update the job page rankings manually. Use JSON arrays like: [{"name":"Sli****","usd":240}]</p>
+            <form action="/admin/job-partners?_csrf=<%= csrfToken %>" method="POST">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 20px;">
+                    <div class="form-group">
+                        <label>Daily Partners</label>
+                        <textarea name="daily_partners" rows="8" class="form-control" style="font-family: monospace; resize: vertical;"><%= typeof siteSettings !== 'undefined' && siteSettings.job_top_daily_partners ? siteSettings.job_top_daily_partners : '[{"name":"Slis*****","usd":240},{"name":"Wayz*****","usd":220}]' %></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Weekly Partners</label>
+                        <textarea name="weekly_partners" rows="8" class="form-control" style="font-family: monospace; resize: vertical;"><%= typeof siteSettings !== 'undefined' && siteSettings.job_top_weekly_partners ? siteSettings.job_top_weekly_partners : '[{"name":"Slis*****","usd":2100},{"name":"Wayz*****","usd":1900}]' %></textarea>
+                    </div>
+                </div>
+                <button type="submit" class="btn" style="background: #10b981; color: white; border: none; padding: 10px 20px; font-weight: bold; border-radius: 2px; cursor: pointer;">Save Partner Rankings</button>
             </form>
         </div>
     </details>
@@ -565,7 +590,7 @@ details.tidy-panel[open] > summary::after {
                             <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 10px;">
                                 <div>
                                     <strong>Order #<%= order.id %> - <%= order.product_name %></strong><br>
-                                    <span style="font-size: 12px; color: #666;">Buyer: <%= order.customer_name %> | Vendor: <%= order.vendor_name %></span>
+                                    <span style="font-size: 12px; color: #666;">Buyer: <%= order.customer_name %> (User ID #<%= order.user_id %>) | Vendor: <%= order.vendor_name %></span>
                                 </div>
                                 <div>
                                     <span style="background: <%= order.status === 'disputed' ? 'red' : 'green' %>; color: white; padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; text-transform: uppercase;">
@@ -622,7 +647,7 @@ details.tidy-panel[open] > summary::after {
                             <div style="display: flex; justify-content: space-between; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
                                 <div>
                                     <strong style="font-size: 16px;">Order #<%= order.id %></strong> - <%= order.product_name %><br>
-                                    <span style="font-size: 12px; color: var(--text-muted);">Customer: <%= order.customer_name %> | <%= new Date(order.created_at).toLocaleString() %></span>
+                                    <span style="font-size: 12px; color: var(--text-muted);">Customer: <%= order.customer_name %> (User ID #<%= order.user_id %>) | <%= new Date(order.created_at).toLocaleString() %></span>
                                 </div>
                                 <span style="background: <%= order.status === 'active' ? 'var(--primary-green)' : '#f59e0b' %>; color: white; padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; text-transform: uppercase; height: max-content;">
                                     <%= order.status %>

@@ -20,6 +20,39 @@
         .vp-products-grid { grid-template-columns: 1fr; }
     }
     
+    .vp2-card { background:#fff; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.1); margin-bottom:40px; overflow:hidden; }
+    .vp2-banner { width:100%; height:200px; background-color:#2c3e50; background-size:cover; background-position:center; background-repeat:no-repeat; }
+    .vp2-body { display:flex; gap:30px; padding:40px 35px; align-items:flex-start; }
+    .vp2-left { width:370px; flex-shrink:0; box-sizing:border-box; border:1px solid #eee; padding:20px 20px 25px; display:flex; flex-direction:column; align-items:center; }
+    .vp2-logo { width:220px; height:220px; border-radius:50%; overflow:hidden; background:#000; display:flex; align-items:center; justify-content:center; margin:10px 0 20px; }
+    .vp2-logo img { width:100%; height:100%; object-fit:cover; }
+    .vp2-msg-btn { display:block; width:205px; max-width:100%; box-sizing:border-box; background:#2dbe4e; border:1px solid #25a043; color:#fff; text-align:center; text-decoration:none; padding:14px 10px; border-radius:4px; font-size:15px; }
+    .vp2-promo-btn { width:205px; max-width:100%; margin-top:10px; background:#ff4757; color:#fff; border:none; padding:11px 10px; border-radius:4px; cursor:pointer; font-weight:bold; }
+    .vp2-right { flex:1; min-width:0; }
+    .vp2-name { margin:0; font-size:34px; font-weight:700; color:#333; }
+    .vp2-desc { color:#333; font-size:18px; margin:2px 0 20px; }
+    .vp2-row { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:11px 10px; font-size:18px; }
+    .vp2-row:nth-child(odd) { background:#f5f5f5; }
+    .vp2-row .k { color:#999; }
+    .vp2-row .v { color:#333; text-align:right; }
+    .vp2-stars { display:flex; gap:1px; align-items:center; font-size:22px; line-height:1; }
+    .vp2-star.off { filter:grayscale(1); opacity:.25; }
+    .vp2-protect { display:flex; gap:10px; align-items:flex-start; margin-top:25px; }
+    .vp2-protect img { width:90px; height:auto; flex-shrink:0; object-fit:contain; }
+    .vp2-protect strong { display:block; font-size:30px; color:#4cc03e; line-height:1.1; margin-bottom:6px; }
+    .vp2-protect .lines { font-size:14px; color:#333; display:flex; flex-direction:column; gap:5px; }
+    @media (max-width: 900px) {
+        .vp2-body { flex-direction:column; align-items:stretch; padding:20px 15px; gap:20px; }
+        .vp2-left { width:100%; }
+        .vp2-banner { height:130px; }
+        .vp2-logo { width:180px; height:180px; }
+        .vp2-name { font-size:26px; }
+        .vp2-desc { font-size:15px; }
+        .vp2-row { font-size:15px; }
+        .vp2-protect img { width:60px; }
+        .vp2-protect strong { font-size:22px; }
+        .vp2-protect .lines { font-size:13px; }
+    }
     /* Ensure user-pasted images are responsive */
     .ql-editor img {
         max-width: 100%;
@@ -63,108 +96,62 @@
 </style>
 
 <div class="container" style="max-width: 1200px; margin-top: 20px; margin-bottom: 50px;">
+    <%- include('_advert_carousel', { advert_count: 2, pageKey: 'vendor_profile' }) %>
     
-    <!-- Vendor Info Card Container (Combined Banner and Content) -->
-    <div style="background: #fff; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 40px; overflow: hidden;">
-        
-        <!-- Top Banner -->
-        <div style="width: 100%; height: 250px; background-color: #2c3e50; background-image: url('<%= vendor.vendor_banner ? vendor.vendor_banner : '/images/ai-asset.svg' %>'); background-size: 100% 100%; background-position: center; background-repeat: no-repeat; position: relative;">
-            <div style="position: absolute; right: 40px; top: 50%; transform: translateY(-50%); text-align: center; color: white;">
-                <div style="font-size: 24px; margin-bottom: 5px; color: #fff; letter-spacing: 4px;">★★★★★</div>
-                <div style="font-size: 36px; font-weight: bold; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); text-transform: uppercase;"><%= vendor.vendor_name || 'Vendor' %></div>
-            </div>
-        </div>
-        
-        <!-- Vendor Info Content -->
-        <div class="vp-info-card" style="padding: 30px;">
-            
-            <!-- Left: Logo & Action -->
-            <div class="vp-info-left" style="display: flex; flex-direction: column; align-items: center;">
-                <div style="width: 180px; height: 180px; border-radius: 50%; background: #fff; border: 8px solid #00b300; overflow: hidden; margin-bottom: 20px; display: flex; align-items: center; justify-content: center; background-color: #000;">
-                <% if (vendor.vendor_logo) { %>
-                    <img src="<%= vendor.vendor_logo %>" alt="Logo" style="width: 100%; height: 100%; object-fit: cover;">
-                <% } else { %>
-                    <span style="color: #fff; font-size: 60px;">👤</span>
+    <!-- Vendor Info Card (banner + left box + right details) -->
+    <div class="vp2-card">
+        <div class="vp2-banner" style="background-image: url('<%= vendor.vendor_banner ? vendor.vendor_banner : '/images/ai-asset.svg' %>');"></div>
+
+        <div class="vp2-body">
+            <!-- Left: logo box -->
+            <div class="vp2-left">
+                <div class="vp2-logo">
+                    <% if (vendor.vendor_logo) { %>
+                        <img src="<%= vendor.vendor_logo %>" alt="Logo">
+                    <% } else { %>
+                        <span style="color: #fff; font-size: 60px;">👤</span>
+                    <% } %>
+                </div>
+                <a href="/messages?chat=<%= vendor.id %>" class="vp2-msg-btn">Send Message</a>
+                <% if (vendor.vendor_video) { %>
+                    <button onclick="openVideoModal('<%= vendor.vendor_video %>')" class="vp2-promo-btn">▶ Watch Promo</button>
                 <% } %>
             </div>
-            <a href="/messages?chat=<%= vendor.id %>" class="btn" style="background: #28a745; color: white; padding: 12px 20px; width: 100%; text-decoration: none; text-align: center; border-radius: 4px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">Message</a>
-            <% if (vendor.vendor_video) { %>
-                <button onclick="openVideoModal('<%= vendor.vendor_video %>')" class="btn" style="background: #ff4757; color: white; padding: 10px 20px; width: 100%; border: none; cursor: pointer; border-radius: 4px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                    ▶ Watch Promo
-                </button>
-            <% } %>
-        </div>
-        
-        <!-- Right: Info & Stats -->
-        <div style="flex-grow: 1; display: flex; flex-direction: column; justify-content: center;">
-            <h1 style="margin: 0 0 5px 0; font-size: 32px; color: #111; text-transform: uppercase;"><%= vendor.vendor_name || 'Vendor' %></h1>
-            <div style="color: #333; font-size: 16px; margin-bottom: 5px;"><%= vendor.vendor_short_description || 'Digital - Prepaid - Cloned Cards. The best quality at the best price!' %></div>
-            <div style="color: #f1c40f; font-size: 22px; letter-spacing: 2px; margin-bottom: 20px;">★★★★★</div>
-            
-            <table style="width: 100%; border-collapse: collapse; font-size: 15px; margin-bottom: 20px;">
-                <tbody>
-                    <tr style="background: #f5f5f5;">
-                        <td style="padding: 12px 10px; color: #999;">Category</td>
-                        <td style="padding: 12px 10px; text-align: right; color: #007bff;"><%= vendor.category || 'General' %></td>
-                    </tr>
-                    <tr style="background: #ffffff;">
-                        <td style="padding: 12px 10px; color: #999;">Status</td>
-                        <td style="padding: 12px 10px; text-align: right; color: #008000;">Online</td>
-                    </tr>
-                    <tr style="background: #f5f5f5;">
-                        <td style="padding: 12px 10px; color: #999;">Member Since:</td>
-                        <td style="padding: 12px 10px; text-align: right; color: #333;"><%= vendor.created_at ? new Date(vendor.created_at).toLocaleDateString(undefined, {month: 'short', year: 'numeric'}) : '' %></td>
-                    </tr>
-                    <tr style="background: #ffffff;">
-                        <td style="padding: 12px 10px; color: #999;">Orders</td>
-                        <td style="padding: 12px 10px; text-align: right; color: #333;"><%= (typeof orderCount !== 'undefined' ? orderCount : 0) %></td>
-                    </tr>
-                    <tr style="background: #f5f5f5;">
-                        <td style="padding: 12px 10px; color: #999;">Customer protection:</td>
-                        <td style="padding: 12px 10px; text-align: right; color: #008000;">Yes</td>
-                    </tr>
-                    <tr style="background: #ffffff;">
-                        <td style="padding: 12px 10px; color: #999;">Rating</td>
-                        <td style="padding: 12px 10px; text-align: right; display: flex; justify-content: flex-end; gap: 2px;">
+
+            <!-- Right: details -->
+            <div class="vp2-right">
+                <h1 class="vp2-name"><%= vendor.vendor_name || 'Vendor' %></h1>
+                <div class="vp2-desc"><%= vendor.vendor_short_description || 'Digital - Prepaid - Cloned Cards. The best quality at the best price!' %></div>
+
+                <div class="vp2-rows">
+                    <div class="vp2-row"><span class="k">Category</span><span class="v" style="color:#007bff;"><%= vendor.category || 'General' %></span></div>
+                    <div class="vp2-row"><span class="k">Status</span><span class="v" style="color:#008000;">Online</span></div>
+                    <div class="vp2-row"><span class="k">Member Since:</span><span class="v"><%= vendor.created_at ? new Date(vendor.created_at).toLocaleDateString(undefined, {month: 'short', year: 'numeric'}) : '' %></span></div>
+                    <div class="vp2-row"><span class="k">Orders</span><span class="v"><%= (typeof orderCount !== 'undefined' ? orderCount : 0) %></span></div>
+                    <div class="vp2-row"><span class="k">Customer protection:</span><span class="v" style="color:#008000;">Yes</span></div>
+                    <div class="vp2-row"><span class="k">Rating</span>
+                        <span class="v vp2-stars">
                             <% let avgRating = 4.5; %>
-                            <% if (reviews && reviews.length > 0) { avgRating = (reviews.reduce((a,b)=>a+b.rating, 0)/reviews.length).toFixed(1); } %>
-                            <% for(let i=1; i<=5; i++) { %>
-                                <% if (i <= avgRating) { %>
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="#f59e0b"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
-                                <% } else if (i - 0.75 <= avgRating) { %>
-                                    <svg width="18" height="18" viewBox="0 0 24 24">
-                                        <defs>
-                                            <clipPath id="half-star-<%= i %>">
-                                                <rect x="0" y="0" width="50%" height="100%" />
-                                            </clipPath>
-                                        </defs>
-                                        <path fill="#e2e8f0" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
-                                        <path fill="#f59e0b" clip-path="url(#half-star-<%= i %>)" d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
-                                    </svg>
-                                <% } else { %>
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="#e2e8f0"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
-                                <% } %>
-                            <% } %>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-            
-            <div style="display: flex; align-items: flex-start; gap: 15px; margin-top: 10px;">
-                <div style="width: 50px; height: 50px; flex-shrink: 0;">
-                    <img src="/images/uploaded_logo.png" style="width: 100%; height: 100%; object-fit: contain;">
+                            <% if (reviews && reviews.length > 0) { avgRating = (reviews.reduce((a,b)=>a+b.rating, 0)/reviews.length); } %>
+                            <% const filledStars = Math.max(0, Math.min(5, Math.round(avgRating))); %>
+                            <% for(let i=1; i<=5; i++) { %><span class="vp2-star <%= i <= filledStars ? '' : 'off' %>">⭐</span><% } %>
+                        </span>
+                    </div>
                 </div>
-                <div>
-                    <strong style="display: block; font-size: 18px; color: #28a745; margin-bottom: 5px;">Buyer Protection</strong>
-                    <div style="font-size: 12px; color: #475569; display: flex; flex-direction: column; gap: 4px;">
-                        <div><span style="color: #64748b;">☑</span> <strong>Full Refund</strong> if you don't receive your order</div>
-                        <div><span style="color: #64748b;">☑</span> <strong>Full or Partial Refund</strong>, if the item is not as described</div>
+
+                <div class="vp2-protect">
+                    <img src="/images/uploaded_logo.png" alt="Buyer Protection">
+                    <div>
+                        <strong>Buyer Protection</strong>
+                        <div class="lines">
+                            <div>✓ <b>Full Refund</b> if you don't receive your order</div>
+                            <div>✓ <b>Full or Partial Refund</b>, if the item is not as described</div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div> <!-- /vp-info-card -->
-</div> <!-- /Vendor Info Card Container (Combined Banner and Content) -->
+    </div>
 
     <!-- About Vendor -->
     <div style="margin-bottom: 40px; padding: 20px; background: #fff; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
@@ -203,27 +190,31 @@
         <% } else { %>
             <div class="vp-products-grid">
                 <% products.forEach(product => { %>
-                    <a href="/<%= slugify(vendor.vendor_name || vendor.username) %>/<%= slugify(product.name) %>" style="text-decoration: none; display: block; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition: transform 0.2s;">
-                        <div style="position: relative; height: 180px; background: #111;">
-                            <img src="<%= product.image %>" alt="<%= product.name %>" style="width: 100%; height: 100%; object-fit: cover;">
-                            <% if (product.discount_percent && product.discount_percent > 0) { %>
-                                <div style="position: absolute; top: 10px; left: 10px; background: #dc3545; color: white; padding: 5px 10px; font-size: 13px; font-weight: bold; border-radius: 4px; letter-spacing: 0.5px;">-<%= Math.round(product.discount_percent) %>%</div>
-                            <% } %>
-                        </div>
-                        <div style="padding: 15px; text-align: center;">
-                            <h4 style="margin: 0 0 10px 0; color: #111; font-size: 14px; font-weight: bold; line-height: 1.4;"><%= product.name %> <span style="font-size: 11px; color: #888; font-weight: normal;">(ID: #<%= product.id %>)</span></h4>
+                    <div style="display: flex; flex-direction: column; align-items: stretch; gap: 10px;">
+                        <a href="/<%= slugify(vendor.vendor_name || vendor.username) %>/<%= slugify(product.name) %>" style="text-decoration: none; display: block; background: transparent; border: none; border-radius: 0; overflow: visible; box-shadow: none; padding: 0;">
+                            <div style="position: relative; width: 100%; height: 220px; background: transparent; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                                <img src="<%= product.image %>" alt="<%= product.name %>" style="width: 100%; height: 100%; object-fit: contain; display: block; background: transparent; border-radius: 0;">
+                                <% if (product.discount_percent && product.discount_percent > 0) { %>
+                                    <div style="position: absolute; top: 10px; left: 10px; background: #dc3545; color: white; padding: 5px 10px; font-size: 13px; font-weight: bold; border-radius: 4px; letter-spacing: 0.5px;">-<%= Math.round(product.discount_percent) %>%</div>
+                                <% } %>
+                            </div>
+                        </a>
+                        <div style="text-align: center; background: transparent; padding: 0;">
+                            <a href="/<%= slugify(vendor.vendor_name || vendor.username) %>/<%= slugify(product.name) %>" style="text-decoration: none; color: #111; display: block; font-weight: 800; font-size: 15px; line-height: 1.45; margin-bottom: 8px;">
+                                <%= product.name %>
+                            </a>
                             <% if (product.discount_percent && product.discount_percent > 0) { %>
                                 <% const salePrice = (product.price * (1 - product.discount_percent / 100)).toFixed(2); %>
-                                <div style="margin-bottom: 15px;">
+                                <div style="margin-bottom: 12px;">
                                     <span style="color: #e53e3e; font-size: 18px; font-weight: bold;">$<%= salePrice %></span>
                                     <span style="font-size: 13px; color: #999; text-decoration: line-through; margin-left: 6px;">$<%= product.price.toFixed(2) %></span>
                                 </div>
                             <% } else { %>
-                                <div style="color: #111; font-size: 18px; font-weight: bold; margin-bottom: 15px;">$<%= product.price.toFixed(2) %></div>
+                                <div style="color: #111; font-size: 18px; font-weight: 800; margin-bottom: 12px;">$<%= product.price.toFixed(2) %></div>
                             <% } %>
-                            <div style="background: var(--primary-purple); color: white; padding: 8px 15px; border-radius: 4px; font-weight: bold; font-size: 14px;">See More</div>
+                            <a href="/<%= slugify(vendor.vendor_name || vendor.username) %>/<%= slugify(product.name) %>" style="display: inline-block; background: #6d28d9; color: #fff; text-decoration: none; font-weight: 800; font-size: 14px; padding: 10px 20px; border-radius: 6px; min-width: 120px; box-shadow: 0 2px 8px rgba(109, 40, 217, 0.25);">See More</a>
                         </div>
-                    </a>
+                    </div>
                 <% }) %>
             </div>
         <% } %>
@@ -261,16 +252,16 @@
 
     <!-- Vendor Reviews -->
     <div style="background: #ffffff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.03);">
-        <h3 style="color: #111; font-size: 22px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 20px;">Vendor Reviews (<%= reviews.length %>)</h3>
+        <h3 style="color: #111; font-size: 22px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 20px;">Vendor Reviews</h3>
         
         <% if (reviews.length === 0) { %>
             <div style="background: #fff; padding: 20px; text-align: center; color: #888; border-radius: 8px;">
                 No reviews yet.
             </div>
         <% } else { %>
-            <div style="display: flex; flex-direction: column; gap: 20px;">
-                <% reviews.forEach(review => { %>
-                    <div style="padding: 15px 0; border-bottom: 1px solid #cbd5e1;">
+            <div id="vendorReviewsList" style="display: flex; flex-direction: column; gap: 20px;">
+                <% reviews.forEach((review, index) => { %>
+                    <div class="vendor-review-item" style="<%= index >= 10 ? 'display: none;' : '' %> padding: 15px 0; border-bottom: 1px solid #cbd5e1;">
                         <!-- Header Row -->
                         <div style="display: flex; gap: 15px; align-items: flex-start; margin-bottom: 15px; flex-wrap: wrap;">
                             <!-- Determine Role Attributes -->
@@ -372,10 +363,11 @@
                 <% }) %>
             </div>
             
-            <!-- Footer actions -->
-            <div style="text-align: center; margin-top: 30px;">
-                <button style="background: #007bff; color: white; border: none; padding: 10px 25px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 13px;">Load more</button>
-            </div>
+            <% if (reviews.length > 10) { %>
+                <div style="text-align: center; margin-top: 30px;">
+                    <button id="showMoreReviewsBtn" type="button" style="background: #007bff; color: white; border: none; padding: 10px 25px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 13px;">Show More</button>
+                </div>
+            <% } %>
             
             <% if (typeof siteSettings !== 'undefined' && siteSettings.reviews_locked !== 'true') { %>
             <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 40px;">
@@ -390,7 +382,30 @@
     </div>
 </div>
 
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const showMoreBtn = document.getElementById('showMoreReviewsBtn');
+        if (!showMoreBtn) return;
 
+        const reviewItems = Array.from(document.querySelectorAll('.vendor-review-item'));
+        let visibleCount = 10;
+        const batchSize = 10;
 
-<%- include('_advert_carousel', { advert_count: 1, pageKey: 'vendor_profile' }) %>
+        showMoreBtn.addEventListener('click', function() {
+            const nextCount = Math.min(visibleCount + batchSize, reviewItems.length);
+            for (let i = visibleCount; i < nextCount; i++) {
+                reviewItems[i].style.display = 'block';
+            }
+
+            visibleCount = nextCount;
+            if (visibleCount >= reviewItems.length) {
+                showMoreBtn.style.display = 'none';
+            } else {
+                const remaining = reviewItems.length - visibleCount;
+                showMoreBtn.textContent = remaining > 1 ? 'Show More (' + remaining + ' more)' : 'Show More';
+            }
+        });
+    });
+</script>
+
 <%- include('footer') %>

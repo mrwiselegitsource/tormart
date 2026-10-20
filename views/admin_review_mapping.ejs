@@ -28,9 +28,10 @@
                         <div>
                             <label style="font-weight: bold; font-size: 14px; display: block; margin-bottom: 8px;">Assign to Product:</label>
                             <select name="product_ids[]" style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ccc; background: #f8fafc;">
+                                <option value="random" <%= review.product_id ? '' : 'selected' %>>🎲 Random product from this vendor</option>
                                 <option value="">-- General Vendor Review (No Product) --</option>
                                 <% products.forEach(product => { %>
-                                    <option value="<%= product.id %>" <%= review.product_id == product.id ? 'selected' : '' %>><%= product.name %> (ID: #<%= product.id %>)</option>
+                                    <option value="<%= product.id %>" <%= review.product_id == product.id ? 'selected' : '' %>><%= product.name %></option>
                                 <% }) %>
                             </select>
                         </div>
